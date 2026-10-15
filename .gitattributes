@@ -1,0 +1,6 @@
+# Finais de linha LF em todas as plataformas, coerentes com o .editorconfig e com o dotnet format.
+* text=auto eol=lf
+*.sln text eol=crlf
+*.png binary
+*.jpg binary
+*.pdf binary
