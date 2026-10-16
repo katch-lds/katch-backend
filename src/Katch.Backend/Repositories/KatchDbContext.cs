@@ -31,6 +31,21 @@ public sealed class KatchDbContext : DbContext
     /// </summary>
     public DbSet<Recruiter> Recruiters => this.Set<Recruiter>();
 
+    /// <summary>
+    /// Gets the candidates and their professional profiles (<c>candidate</c>).
+    /// </summary>
+    public DbSet<Candidate> Candidates => this.Set<Candidate>();
+
+    /// <summary>
+    /// Gets the pre-defined list of locations (<c>location</c>), read-only in the application.
+    /// </summary>
+    public DbSet<Location> Locations => this.Set<Location>();
+
+    /// <summary>
+    /// Gets the professional links of the candidates (<c>candidate_link</c>).
+    /// </summary>
+    public DbSet<CandidateLink> CandidateLinks => this.Set<CandidateLink>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,5 +60,8 @@ public sealed class KatchDbContext : DbContext
 
         modelBuilder.ApplyConfiguration(new AppUserConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new RecruiterConfiguration());
+        modelBuilder.ApplyConfiguration(new LocationConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new CandidateConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new CandidateLinkConfiguration(usesPostgres));
     }
 }
