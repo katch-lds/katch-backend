@@ -62,7 +62,3 @@ dotnet_naming_rule.types_are_pascal_case.symbols = type_symbols
 dotnet_naming_rule.types_are_pascal_case.style = pascal_case_style
 dotnet_naming_symbols.type_symbols.applicable_kinds = class, struct, enum, delegate
 dotnet_naming_style.pascal_case_style.capitalization = pascal_case
-
-# Código gerado pelo Entity Framework Core (migrations): fica fora da formatação e da análise de estilo.
-[**/Migrations/*.cs]
-generated_code = true

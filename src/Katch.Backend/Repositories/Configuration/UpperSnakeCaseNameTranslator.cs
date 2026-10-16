@@ -3,7 +3,7 @@
 using Npgsql;
 using Npgsql.NameTranslation;
 
-namespace Katch.Backend.Infrastructure.Persistence;
+namespace Katch.Backend.Repositories.Configuration;
 
 /// <summary>
 /// Converte os nomes dos membros das enumerações nos valores dos tipos enumerados do modelo de dados,

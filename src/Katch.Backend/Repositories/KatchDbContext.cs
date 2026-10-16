@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Infrastructure.Persistence;
+using Katch.Backend.Repositories.Configuration;
 using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Repositories;

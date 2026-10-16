@@ -1,8 +1,8 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Infrastructure.Persistence;
+using Katch.Backend.Repositories.Configuration;
 
-namespace Katch.Backend.UnitTests.Infrastructure.Persistence;
+namespace Katch.Backend.UnitTests.Repositories.Configuration;
 
 /// <summary>
 /// Testes da conversão dos nomes das enumerações para os valores do modelo de dados (secção 5.1).

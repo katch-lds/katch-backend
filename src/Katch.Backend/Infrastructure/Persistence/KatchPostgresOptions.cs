@@ -1,6 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain.Enums;
+using Katch.Backend.Repositories.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
@@ -9,12 +10,11 @@ namespace Katch.Backend.Infrastructure.Persistence;
 
 /// <summary>
 /// Configuração do <see cref="Repositories.KatchDbContext"/> sobre PostgreSQL 18: fornecedor Npgsql,
-/// nomes em <c>snake_case</c> e tipos enumerados do modelo de dados (secção 5.1).
+/// nomes em <c>snake_case</c> e mapeamento das enumerações para os tipos do modelo de dados (secção 5.1).
+/// A declaração dos tipos no modelo fica em <see cref="KatchEnumConfiguration"/>, na camada Repositories.
 /// </summary>
 public static class KatchPostgresOptions
 {
-    private static readonly INpgsqlNameTranslator EnumValueTranslator = new UpperSnakeCaseNameTranslator();
-
     /// <summary>
     /// Configura o contexto para a base de dados <c>katch</c> em PostgreSQL.
     /// </summary>
@@ -39,42 +39,20 @@ public static class KatchPostgresOptions
     {
         ArgumentNullException.ThrowIfNull(npgsql);
 
+        INpgsqlNameTranslator translator = KatchEnumConfiguration.ValueTranslator;
+
         return npgsql
-            .MapEnum<UserType>("user_type", nameTranslator: EnumValueTranslator)
-            .MapEnum<AccountStatus>("account_status", nameTranslator: EnumValueTranslator)
-            .MapEnum<WorkMode>("work_mode", nameTranslator: EnumValueTranslator)
-            .MapEnum<ContractType>("contract_type", nameTranslator: EnumValueTranslator)
-            .MapEnum<Availability>("availability", nameTranslator: EnumValueTranslator)
-            .MapEnum<Industry>("industry", nameTranslator: EnumValueTranslator)
-            .MapEnum<CompanyStatus>("company_status", nameTranslator: EnumValueTranslator)
-            .MapEnum<JobStatus>("job_status", nameTranslator: EnumValueTranslator)
-            .MapEnum<MatchStatus>("match_status", nameTranslator: EnumValueTranslator)
-            .MapEnum<ConversationStatus>("conversation_status", nameTranslator: EnumValueTranslator)
-            .MapEnum<ConversationCloseReason>("conversation_close_reason", nameTranslator: EnumValueTranslator)
-            .MapEnum<OperationType>("operation_type", nameTranslator: EnumValueTranslator);
-    }
-
-    /// <summary>
-    /// Declara no modelo os tipos enumerados do PostgreSQL, com os valores pela ordem do modelo de dados (secção 5.1).
-    /// </summary>
-    /// <param name="modelBuilder">Construtor do modelo do contexto.</param>
-    /// <returns>O mesmo construtor, para encadear chamadas.</returns>
-    public static ModelBuilder HasKatchEnums(this ModelBuilder modelBuilder)
-    {
-        ArgumentNullException.ThrowIfNull(modelBuilder);
-
-        return modelBuilder
-            .HasPostgresEnum<UserType>(name: "user_type", nameTranslator: EnumValueTranslator)
-            .HasPostgresEnum<AccountStatus>(name: "account_status", nameTranslator: EnumValueTranslator)
-            .HasPostgresEnum<WorkMode>(name: "work_mode", nameTranslator: EnumValueTranslator)
-            .HasPostgresEnum<ContractType>(name: "contract_type", nameTranslator: EnumValueTranslator)
-            .HasPostgresEnum<Availability>(name: "availability", nameTranslator: EnumValueTranslator)
-            .HasPostgresEnum<Industry>(name: "industry", nameTranslator: EnumValueTranslator)
-            .HasPostgresEnum<CompanyStatus>(name: "company_status", nameTranslator: EnumValueTranslator)
-            .HasPostgresEnum<JobStatus>(name: "job_status", nameTranslator: EnumValueTranslator)
-            .HasPostgresEnum<MatchStatus>(name: "match_status", nameTranslator: EnumValueTranslator)
-            .HasPostgresEnum<ConversationStatus>(name: "conversation_status", nameTranslator: EnumValueTranslator)
-            .HasPostgresEnum<ConversationCloseReason>(name: "conversation_close_reason", nameTranslator: EnumValueTranslator)
-            .HasPostgresEnum<OperationType>(name: "operation_type", nameTranslator: EnumValueTranslator);
+            .MapEnum<UserType>("user_type", nameTranslator: translator)
+            .MapEnum<AccountStatus>("account_status", nameTranslator: translator)
+            .MapEnum<WorkMode>("work_mode", nameTranslator: translator)
+            .MapEnum<ContractType>("contract_type", nameTranslator: translator)
+            .MapEnum<Availability>("availability", nameTranslator: translator)
+            .MapEnum<Industry>("industry", nameTranslator: translator)
+            .MapEnum<CompanyStatus>("company_status", nameTranslator: translator)
+            .MapEnum<JobStatus>("job_status", nameTranslator: translator)
+            .MapEnum<MatchStatus>("match_status", nameTranslator: translator)
+            .MapEnum<ConversationStatus>("conversation_status", nameTranslator: translator)
+            .MapEnum<ConversationCloseReason>("conversation_close_reason", nameTranslator: translator)
+            .MapEnum<OperationType>("operation_type", nameTranslator: translator);
     }
 }
