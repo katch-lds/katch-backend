@@ -95,6 +95,30 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_app_user_terms", "user_type = 'ADMIN' OR terms_accepted_at IS NOT NULL");
                         });
                 });
+
+            modelBuilder.Entity("Katch.Backend.Domain.Recruiter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_recruiter");
+
+                    b.ToTable("recruiter", (string)null);
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.Recruiter", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.AppUser", "User")
+                        .WithOne()
+                        .HasForeignKey("Katch.Backend.Domain.Recruiter", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_recruiter_app_user_id");
+
+                    b.Navigation("User");
+                });
 #pragma warning restore 612, 618
         }
     }
