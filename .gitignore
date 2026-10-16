@@ -56,3 +56,6 @@ Thumbs.db
 # Rider
 .idea/
 *.sln.iml
+
+# Notas locais pessoais
+LOCAL-NOTAS.md
