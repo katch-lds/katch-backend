@@ -17,20 +17,27 @@ namespace Katch.Backend.Domain;
 public sealed class AppUser
 {
     /// <summary>
+    /// Comprimento máximo do correio eletrónico e do resumo da palavra-passe, o das colunas <c>varchar(255)</c>.
+    /// </summary>
+    public const int MaxLength = 255;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="AppUser"/> class com o estado <see cref="AccountStatus.Active"/>.
     /// </summary>
     /// <param name="email">Endereço de correio eletrónico, no formato local@domínio.</param>
-    /// <param name="passwordHash">Resumo criptográfico da palavra-passe; a palavra-passe nunca é guardada.</param>
+    /// <param name="passwordHash">
+    /// Resumo criptográfico da palavra-passe, com no máximo 255 caracteres; a palavra-passe nunca é guardada.
+    /// </param>
     /// <param name="userType">Tipo de conta.</param>
     /// <param name="termsAcceptedAt">Instante da aceitação das condições; obrigatório fora do Administrador.</param>
     /// <param name="now">Instante do registo, em UTC.</param>
     /// <exception cref="ArgumentException">
-    /// Se o correio eletrónico não tiver o formato local@domínio, se o resumo estiver vazio ou se faltar a aceitação
-    /// das condições numa conta que não seja de Administrador.
+    /// Se o correio eletrónico não tiver o formato local@domínio ou passar dos 255 caracteres, se o resumo estiver vazio
+    /// ou passar dos 255 caracteres, ou se faltar a aceitação das condições numa conta que não seja de Administrador.
     /// </exception>
     public AppUser(string email, string passwordHash, UserType userType, DateTimeOffset? termsAcceptedAt, DateTimeOffset now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
+        ValidatePasswordHash(passwordHash);
         ValidateEmail(email);
 
         if (userType != UserType.Admin && termsAcceptedAt is null)
@@ -109,11 +116,12 @@ public sealed class AppUser
     }
 
     /// <summary>
-    /// Bloqueia a conta (RF086). Aplica-se a contas de Candidato e de Recrutador ativas.
+    /// Bloqueia a conta (RF086). Aplica-se a contas de Candidato e de Recrutador. O RF086 não impõe estado de origem,
+    /// por isso também se bloqueia uma conta de Candidato suspensa.
     /// </summary>
     /// <param name="now">Instante da alteração, em UTC.</param>
     /// <exception cref="InvalidOperationException">
-    /// Se a conta for de Administrador ou se não estiver ativa.
+    /// Se a conta for de Administrador ou se já estiver bloqueada.
     /// </exception>
     public void Block(DateTimeOffset now)
     {
@@ -122,15 +130,16 @@ public sealed class AppUser
             throw new InvalidOperationException("A conta de Administrador não pode ser bloqueada.");
         }
 
-        this.ChangeStatusFromActive(AccountStatus.Blocked, now);
+        this.ChangeStatus(AccountStatus.Blocked, now);
     }
 
     /// <summary>
-    /// Suspende a conta (RF089). Aplica-se só a contas de Candidato ativas.
+    /// Suspende a conta (RF089). Aplica-se só a contas de Candidato. O RF089 não impõe estado de origem, por isso
+    /// também se suspende uma conta de Candidato bloqueada.
     /// </summary>
     /// <param name="now">Instante da alteração, em UTC.</param>
     /// <exception cref="InvalidOperationException">
-    /// Se a conta não for de Candidato ou se não estiver ativa.
+    /// Se a conta não for de Candidato ou se já estiver suspensa.
     /// </exception>
     public void Suspend(DateTimeOffset now)
     {
@@ -139,7 +148,7 @@ public sealed class AppUser
             throw new InvalidOperationException("Só a conta de Candidato pode ser suspensa.");
         }
 
-        this.ChangeStatusFromActive(AccountStatus.Suspended, now);
+        this.ChangeStatus(AccountStatus.Suspended, now);
     }
 
     /// <summary>
@@ -159,22 +168,29 @@ public sealed class AppUser
     }
 
     /// <summary>
-    /// Substitui o resumo da palavra-passe (RF040). A regra P05 é validada antes do cálculo do resumo.
+    /// Substitui o resumo da palavra-passe (RF040 e RF084). A regra P05 é validada antes do cálculo do resumo.
     /// </summary>
-    /// <param name="hash">Novo resumo criptográfico da palavra-passe.</param>
+    /// <param name="hash">Novo resumo criptográfico da palavra-passe, com no máximo 255 caracteres.</param>
     /// <param name="now">Instante da alteração, em UTC.</param>
-    /// <exception cref="ArgumentException">Se o resumo estiver vazio.</exception>
+    /// <exception cref="ArgumentException">Se o resumo estiver vazio ou passar dos 255 caracteres.</exception>
     public void SetPasswordHash(string hash, DateTimeOffset now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(hash);
+        ValidatePasswordHash(hash);
 
         this.PasswordHash = hash;
         this.UpdatedAt = now;
     }
 
+    private static void ValidatePasswordHash(string hash)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(hash);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(hash.Length, MaxLength);
+    }
+
     private static void ValidateEmail(string email)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(email.Length, MaxLength);
 
         // Mesma regra do CHECK ck_app_user_email: exatamente um '@', com texto sem espaços de cada lado.
         int at = email.IndexOf('@', StringComparison.Ordinal);
@@ -189,11 +205,11 @@ public sealed class AppUser
         }
     }
 
-    private void ChangeStatusFromActive(AccountStatus target, DateTimeOffset now)
+    private void ChangeStatus(AccountStatus target, DateTimeOffset now)
     {
-        if (this.Status != AccountStatus.Active)
+        if (this.Status == target)
         {
-            throw new InvalidOperationException("Só uma conta ativa pode mudar para esse estado.");
+            throw new InvalidOperationException("A conta já está nesse estado.");
         }
 
         this.Status = target;

@@ -49,11 +49,11 @@ public sealed class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(user => user.Email)
-            .HasMaxLength(255)
+            .HasMaxLength(AppUser.MaxLength)
             .IsRequired();
 
         builder.Property(user => user.PasswordHash)
-            .HasMaxLength(255)
+            .HasMaxLength(AppUser.MaxLength)
             .IsRequired();
 
         builder.Property(user => user.UserType)
