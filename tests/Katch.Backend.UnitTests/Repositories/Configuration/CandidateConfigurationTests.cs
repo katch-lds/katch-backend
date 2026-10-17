@@ -168,6 +168,8 @@ public sealed class CandidateConfigurationTests
             ["candidate_id", "id", "position", "url"],
             entity.GetProperties().Select(property => property.GetColumnName(table)!).Order(StringComparer.Ordinal).ToArray());
         Assert.Equal(500, entity.FindProperty(nameof(CandidateLink.Url))!.GetMaxLength());
+        Assert.Equal("gen_random_uuid()", entity.FindProperty(nameof(CandidateLink.Id))!.GetDefaultValueSql());
+        Assert.Equal(ValueGenerated.Never, entity.FindProperty(nameof(CandidateLink.Id))!.ValueGenerated);
 
         IForeignKey candidate = Assert.Single(entity.GetForeignKeys());
         Assert.Equal(typeof(Candidate), candidate.PrincipalEntityType.ClrType);

@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using System.Reflection;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 
@@ -64,6 +65,7 @@ public sealed class CandidateTests
     [InlineData("Ana Silva", "91234567")]
     [InlineData("Ana Silva", "9123456789")]
     [InlineData("Ana Silva", "91234567a")]
+    [InlineData("Ana Silva", "912345678\n")]
     [InlineData("Ana Silva", "")]
     public void InvalidNameOrPhoneIsRejected(string fullName, string phoneNumber)
     {
@@ -199,24 +201,84 @@ public sealed class CandidateTests
     }
 
     /// <summary>
-    /// Substituir as hiperligações atualiza as existentes na própria posição, acrescenta as novas e remove as que sobram.
+    /// Substituir as hiperligações deixa só as indicadas, nas posições 1 a n, e remove as que sobram.
     /// </summary>
     [Fact]
     public void SetLinksReplacesTheExistingLinks()
     {
         Candidate candidate = CreateCandidate();
         candidate.SetLinks(["https://a.pt", "https://b.pt", "https://c.pt"]);
-        CandidateLink first = candidate.Links.First();
 
         candidate.SetLinks(["https://x.pt"]);
 
         CandidateLink only = Assert.Single(candidate.Links);
-        Assert.Same(first, only);
         Assert.Equal("https://x.pt", only.Url);
         Assert.Equal(1, only.Position);
 
         candidate.SetLinks([]);
         Assert.Empty(candidate.Links);
+    }
+
+    /// <summary>
+    /// Lidas da base de dados sem ordenação, as hiperligações podem chegar fora da ordem das posições (por exemplo
+    /// <c>[2, 3, 1]</c>, depois de um <c>UPDATE</c> no PostgreSQL); a substituição segue a posição e não o índice da lista.
+    /// </summary>
+    [Fact]
+    public void SetLinksFollowsThePositionAndNotTheOrderOfTheLoadedLinks()
+    {
+        Candidate candidate = CreateCandidate();
+        candidate.SetLinks(["https://a.pt", "https://b.pt", "https://c.pt"]);
+        ReverseInternalLinks(candidate);
+
+        candidate.SetLinks(["https://x.pt", "https://y.pt"]);
+
+        Assert.Equal([1, 2], candidate.Links.Select(link => (int)link.Position).ToArray());
+        Assert.Equal(["https://x.pt", "https://y.pt"], candidate.Links.Select(link => link.Url).ToArray());
+    }
+
+    /// <summary>
+    /// A consulta das hiperligações devolve-as sempre por ordem de posição, mesmo que tenham sido carregadas fora de ordem.
+    /// </summary>
+    [Fact]
+    public void LinksAreAlwaysReturnedInPositionOrder()
+    {
+        Candidate candidate = CreateCandidate();
+        candidate.SetLinks(["https://a.pt", "https://b.pt", "https://c.pt"]);
+        ReverseInternalLinks(candidate);
+
+        Assert.Equal([1, 2, 3], candidate.Links.Select(link => (int)link.Position).ToArray());
+        Assert.Equal(["https://a.pt", "https://b.pt", "https://c.pt"], candidate.Links.Select(link => link.Url).ToArray());
+    }
+
+    /// <summary>
+    /// Trocar a ordem de duas hiperligações já guardadas troca os endereços entre as posições.
+    /// </summary>
+    [Fact]
+    public void SetLinksCanSwapTwoLinks()
+    {
+        Candidate candidate = CreateCandidate();
+        candidate.SetLinks(["https://a.pt", "https://b.pt"]);
+
+        candidate.SetLinks(["https://b.pt", "https://a.pt"]);
+
+        Assert.Equal(["https://b.pt", "https://a.pt"], candidate.Links.Select(link => link.Url).ToArray());
+        Assert.Equal([1, 2], candidate.Links.Select(link => (int)link.Position).ToArray());
+    }
+
+    /// <summary>
+    /// Uma hiperligação que não mudou de posição nem de endereço mantém a mesma instância (e, por isso, a mesma linha).
+    /// </summary>
+    [Fact]
+    public void SetLinksKeepsTheLinksThatDidNotChange()
+    {
+        Candidate candidate = CreateCandidate();
+        candidate.SetLinks(["https://a.pt", "https://b.pt"]);
+        CandidateLink first = candidate.Links.First();
+
+        candidate.SetLinks(["https://a.pt", "https://c.pt"]);
+
+        Assert.Same(first, candidate.Links.First());
+        Assert.Equal(["https://a.pt", "https://c.pt"], candidate.Links.Select(link => link.Url).ToArray());
     }
 
     /// <summary>
@@ -251,6 +313,12 @@ public sealed class CandidateTests
             () => candidate.SetLinks(["https://a.pt", "https://b.pt", "https://c.pt", "https://d.pt"]));
         Assert.Throws<ArgumentException>(() => candidate.SetLinks(["https://" + new string('a', 493)]));
         Assert.Empty(candidate.Links);
+    }
+
+    private static void ReverseInternalLinks(Candidate candidate)
+    {
+        FieldInfo field = typeof(Candidate).GetField("links", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        ((List<CandidateLink>)field.GetValue(candidate)!).Reverse();
     }
 
     private static AppUser CreateUser()

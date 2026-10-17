@@ -128,6 +128,48 @@ public sealed class CandidatePersistenceTests : IClassFixture<KatchWebApplicatio
     }
 
     /// <summary>
+    /// Remover a primeira hiperligação desloca as restantes para as posições 1 e 2, sem violar os índices únicos.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task RemovingTheFirstLinkShiftsTheOthersDown()
+    {
+        Guid candidateId = await this.SaveCandidateWithLinksAsync("remover@katch.pt", ["https://a.pt", "https://b.pt", "https://c.pt"]);
+
+        await this.ReplaceLinksAsync(candidateId, ["https://b.pt", "https://c.pt"]);
+
+        Assert.Equal(["https://b.pt", "https://c.pt"], await this.ReadLinksAsync(candidateId));
+    }
+
+    /// <summary>
+    /// Trocar a ordem de duas hiperligações grava os endereços trocados, sem violar o índice único dos endereços.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task SwappingTwoLinksPersistsTheNewOrder()
+    {
+        Guid candidateId = await this.SaveCandidateWithLinksAsync("trocar@katch.pt", ["https://a.pt", "https://b.pt"]);
+
+        await this.ReplaceLinksAsync(candidateId, ["https://b.pt", "https://a.pt"]);
+
+        Assert.Equal(["https://b.pt", "https://a.pt"], await this.ReadLinksAsync(candidateId));
+    }
+
+    /// <summary>
+    /// Alterar só a primeira hiperligação, lida da base de dados, grava o novo endereço e mantém as outras.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task EditingOnlyTheFirstLinkKeepsTheOthers()
+    {
+        Guid candidateId = await this.SaveCandidateWithLinksAsync("editar@katch.pt", ["https://a.pt", "https://b.pt", "https://c.pt"]);
+
+        await this.ReplaceLinksAsync(candidateId, ["https://novo.pt", "https://b.pt", "https://c.pt"]);
+
+        Assert.Equal(["https://novo.pt", "https://b.pt", "https://c.pt"], await this.ReadLinksAsync(candidateId));
+    }
+
+    /// <summary>
     /// Um Candidato com uma localidade inexistente é rejeitado pela chave estrangeira.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
@@ -143,5 +185,47 @@ public sealed class CandidatePersistenceTests : IClassFixture<KatchWebApplicatio
         context.Candidates.Add(new Candidate(user, "Sem Local", "934567890", Guid.NewGuid()));
 
         await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync(cancellationToken));
+    }
+
+    private async Task<Guid> SaveCandidateWithLinksAsync(string email, string[] urls)
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        var location = new Location("Local " + email, "Distrito", 39m, -8m);
+        var user = new AppUser(email, "hash", UserType.Candidate, Registered, Registered);
+        var candidate = new Candidate(user, "Nome Teste", "945678901", location.Id);
+        candidate.SetLinks(urls);
+
+        using IServiceScope scope = this.factory.Services.CreateScope();
+        KatchDbContext context = scope.ServiceProvider.GetRequiredService<KatchDbContext>();
+        await context.Database.EnsureCreatedAsync(cancellationToken);
+        context.Locations.Add(location);
+        context.Candidates.Add(candidate);
+        await context.SaveChangesAsync(cancellationToken);
+        return user.Id;
+    }
+
+    private async Task ReplaceLinksAsync(Guid candidateId, string[] urls)
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+
+        using IServiceScope scope = this.factory.Services.CreateScope();
+        KatchDbContext context = scope.ServiceProvider.GetRequiredService<KatchDbContext>();
+        Candidate candidate = await context.Candidates
+            .Include(item => item.Links)
+            .SingleAsync(item => item.Id == candidateId, cancellationToken);
+
+        candidate.SetLinks(urls);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<string[]> ReadLinksAsync(Guid candidateId)
+    {
+        using IServiceScope scope = this.factory.Services.CreateScope();
+        KatchDbContext context = scope.ServiceProvider.GetRequiredService<KatchDbContext>();
+        return await context.CandidateLinks
+            .Where(link => link.CandidateId == candidateId)
+            .OrderBy(link => link.Position)
+            .Select(link => link.Url)
+            .ToArrayAsync(TestContext.Current.CancellationToken);
     }
 }
