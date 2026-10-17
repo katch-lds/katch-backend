@@ -44,8 +44,11 @@ public sealed class CandidateLinkConfiguration : IEntityTypeConfiguration<Candid
 
         builder.HasKey(link => link.Id);
 
+        // O identificador é gerado pela entidade. Sem ValueGeneratedNever, uma hiperligação nova acrescentada a um
+        // Candidato já carregado seria tratada pelo EF Core como existente (chave preenchida) e daria um UPDATE sem linhas.
         builder.Property(link => link.Id)
-            .HasDefaultValueSql("gen_random_uuid()");
+            .HasDefaultValueSql("gen_random_uuid()")
+            .ValueGeneratedNever();
 
         builder.Property(link => link.Url)
             .HasMaxLength(500)

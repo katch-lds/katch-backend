@@ -47,13 +47,4 @@ public sealed class CandidateLink
     /// Gets the address of the link (<c>url</c>), starting with <c>http://</c> or <c>https://</c>.
     /// </summary>
     public string Url { get; private set; }
-
-    /// <summary>
-    /// Substitui o endereço, mantendo a posição.
-    /// </summary>
-    /// <param name="url">Novo endereço iniciado por <c>http://</c> ou <c>https://</c>.</param>
-    internal void ChangeUrl(string url)
-    {
-        this.Url = url;
-    }
 }

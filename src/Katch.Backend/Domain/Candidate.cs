@@ -166,7 +166,7 @@ public sealed partial class Candidate
     /// <summary>
     /// Gets the professional links of the candidate, ordered by position.
     /// </summary>
-    public IReadOnlyCollection<CandidateLink> Links => this.links;
+    public IEnumerable<CandidateLink> Links => this.links.OrderBy(link => link.Position);
 
     /// <summary>
     /// Indica se o Candidato pode manifestar um novo interesse: há interesses na quota ou o período de bloqueio terminou
@@ -222,7 +222,8 @@ public sealed partial class Candidate
 
     /// <summary>
     /// Substitui as hiperligações profissionais pelas indicadas, por ordem: a primeira fica na posição 1 (RF012, P10).
-    /// As hiperligações existentes são atualizadas na própria posição e as que sobram são removidas.
+    /// As que não mudaram de posição nem de endereço ficam como estão; as outras são substituídas e as que sobram são
+    /// removidas.
     /// </summary>
     /// <param name="urls">Até três endereços diferentes, iniciados por <c>http://</c> ou <c>https://</c>.</param>
     /// <exception cref="ArgumentException">Se houver mais de três endereços, repetidos, vazios ou com formato inválido.</exception>
@@ -248,22 +249,33 @@ public sealed partial class Candidate
             throw new ArgumentException("As hiperligações não podem estar repetidas.", nameof(urls));
         }
 
+        // As hiperligações lidas da base de dados não vêm ordenadas (um UPDATE no PostgreSQL muda a ordem física das
+        // linhas), por isso cada uma é procurada pela posição e nunca pelo índice na lista.
         for (int index = 0; index < urls.Count; index++)
         {
-            if (index < this.links.Count)
+            short position = (short)(index + 1);
+            CandidateLink? existing = this.links.Find(link => link.Position == position);
+
+            if (existing is not null && string.Equals(existing.Url, urls[index], StringComparison.Ordinal))
             {
-                this.links[index].ChangeUrl(urls[index]);
+                continue;
             }
-            else
+
+            // Uma hiperligação com outro endereço é substituída por uma nova (apagar e inserir) e não atualizada:
+            // o EF Core ordena os apagamentos antes das inserções, o que permite remover a primeira ou trocar duas
+            // sem violar os índices únicos de posição e de endereço.
+            if (existing is not null)
             {
-                this.links.Add(new CandidateLink(this.Id, (short)(index + 1), urls[index]));
+                this.links.Remove(existing);
             }
+
+            this.links.Add(new CandidateLink(this.Id, position, urls[index]));
         }
 
-        this.links.RemoveRange(urls.Count, this.links.Count - urls.Count);
+        this.links.RemoveAll(link => link.Position > urls.Count);
     }
 
-    [GeneratedRegex("^[0-9]{9}$")]
+    [GeneratedRegex(@"^[0-9]{9}\z")]
     private static partial Regex PhoneNumberPattern();
 
     [GeneratedRegex("^https?://", RegexOptions.IgnoreCase)]

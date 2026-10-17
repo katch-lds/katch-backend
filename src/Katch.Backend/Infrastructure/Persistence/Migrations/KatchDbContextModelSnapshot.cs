@@ -204,7 +204,6 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Katch.Backend.Domain.CandidateLink", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
