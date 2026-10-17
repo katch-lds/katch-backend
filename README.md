@@ -34,7 +34,7 @@ PowerShell (menu Iniciar, "Windows PowerShell") ou escreva `powershell` no termi
 | Ferramenta | Versão | Como confirmar |
 | --- | --- | --- |
 | SDK do .NET | 10.0.401 ou superior | `dotnet --version` mostra um número 10.x |
-| PostgreSQL | 17 ou superior | O serviço aparece em "Serviços" do Windows |
+| PostgreSQL | 18 | O serviço aparece em "Serviços" do Windows |
 | pgAdmin | qualquer | Vem com o instalador do PostgreSQL (opcional, mas usado neste guia) |
 | Git | qualquer | `git --version` |
 
@@ -156,7 +156,7 @@ secção 11.2), por isso **não precisam de PostgreSQL nem da variável `Connect
 Corre bem quando termina com `failed: 0`, por exemplo:
 
 ```text
-Test summary: total: 97; failed: 0; succeeded: 97; skipped: 0
+Test summary: total: 109; failed: 0; succeeded: 109; skipped: 0
 ```
 
 ## 6. Migrations
@@ -221,4 +221,4 @@ Executar na raiz do repositório.
   `.gitignore` e nunca é enviado para o repositório.
 - Dados de teste são sempre fictícios; é proibido importar dados reais de utilizadores.
 - Não fazer push direto para `main`: todas as alterações entram por Pull Request aprovado e com a pipeline verde.
-- Antes de acrescentar funcionalidades ou tabelas, confirmar que estão no âmbito aprovado (F001 a F011).
+- Antes de acrescentar funcionalidades ou tabelas, confirmar que estão no âmbito aprovado (F001 a F010).
