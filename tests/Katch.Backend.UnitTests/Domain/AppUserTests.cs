@@ -86,6 +86,25 @@ public sealed class AppUserTests
     }
 
     /// <summary>
+    /// O correio eletrónico e o resumo da palavra-passe aceitam 255 caracteres e rejeitam 256, o limite das colunas.
+    /// </summary>
+    [Fact]
+    public void EmailAndPasswordHashAreLimitedToTheColumnLength()
+    {
+        string email255 = new string('a', 246) + "@katch.pt";
+        string email256 = "a" + email255;
+
+        var user = new AppUser(email255, new string('h', 255), UserType.Candidate, Registered, Registered);
+
+        Assert.Equal(255, user.Email.Length);
+        Assert.Throws<ArgumentOutOfRangeException>(() => new AppUser(email256, "hash", UserType.Candidate, Registered, Registered));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new AppUser("ana@katch.pt", new string('h', 256), UserType.Candidate, Registered, Registered));
+        Assert.Throws<ArgumentOutOfRangeException>(() => user.SetPasswordHash(new string('h', 256), Later));
+        Assert.Equal(new string('h', 255), user.PasswordHash);
+    }
+
+    /// <summary>
     /// O bloqueio de uma conta ativa de Candidato ou de Recrutador impede o início de sessão.
     /// </summary>
     /// <param name="userType">Tipo de conta.</param>
@@ -135,20 +154,41 @@ public sealed class AppUserTests
     }
 
     /// <summary>
-    /// Só uma conta ativa pode ser bloqueada ou suspensa.
+    /// O RF086 e o RF089 não impõem estado de origem: uma conta de Candidato suspensa pode ser bloqueada e uma bloqueada
+    /// pode ser suspensa.
     /// </summary>
     [Fact]
-    public void OnlyActiveAccountCanBeBlockedOrSuspended()
+    public void BlockedAndSuspendedAccountsCanSwitchBetweenTheTwoStates()
+    {
+        AppUser suspended = CreateUser(UserType.Candidate);
+        suspended.Suspend(Later);
+        AppUser blocked = CreateUser(UserType.Candidate);
+        blocked.Block(Later);
+
+        suspended.Block(Later.AddHours(1));
+        blocked.Suspend(Later.AddHours(1));
+
+        Assert.Equal(AccountStatus.Blocked, suspended.Status);
+        Assert.Equal(AccountStatus.Suspended, blocked.Status);
+        Assert.Equal(Later.AddHours(1), suspended.UpdatedAt);
+        Assert.Equal(Later.AddHours(1), blocked.UpdatedAt);
+    }
+
+    /// <summary>
+    /// Bloquear uma conta já bloqueada ou suspender uma já suspensa é uma transição inválida.
+    /// </summary>
+    [Fact]
+    public void RepeatingTheSameStateChangeIsRejected()
     {
         AppUser blocked = CreateUser(UserType.Candidate);
         blocked.Block(Later);
         AppUser suspended = CreateUser(UserType.Candidate);
         suspended.Suspend(Later);
 
-        Assert.Throws<InvalidOperationException>(() => blocked.Block(Later));
-        Assert.Throws<InvalidOperationException>(() => blocked.Suspend(Later));
-        Assert.Throws<InvalidOperationException>(() => suspended.Block(Later));
-        Assert.Throws<InvalidOperationException>(() => suspended.Suspend(Later));
+        Assert.Throws<InvalidOperationException>(() => blocked.Block(Later.AddHours(1)));
+        Assert.Throws<InvalidOperationException>(() => suspended.Suspend(Later.AddHours(1)));
+        Assert.Equal(Later, blocked.UpdatedAt);
+        Assert.Equal(Later, suspended.UpdatedAt);
     }
 
     /// <summary>
