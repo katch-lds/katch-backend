@@ -11,7 +11,7 @@ string connectionString = builder.Configuration.GetConnectionString("Katch")
         "Falta a cadeia de ligação ao PostgreSQL. Defina a variável de ambiente ConnectionStrings__Katch.");
 
 builder.Services.AddDbContext<KatchDbContext>(options => options.UseKatchPostgres(connectionString));
-builder.Services.AddControllers();
+   builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
