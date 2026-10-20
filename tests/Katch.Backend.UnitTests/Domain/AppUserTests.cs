@@ -154,24 +154,23 @@ public sealed class AppUserTests
     }
 
     /// <summary>
-    /// O RF086 e o RF089 não impõem estado de origem: uma conta de Candidato suspensa pode ser bloqueada e uma bloqueada
-    /// pode ser suspensa.
+    /// Bloquear uma conta suspensa e suspender uma conta bloqueada são transições inválidas: o bloqueio e a suspensão só
+    /// partem de uma conta ativa (documentação da API v02, secções 6.10.3 e 6.10.4).
     /// </summary>
     [Fact]
-    public void BlockedAndSuspendedAccountsCanSwitchBetweenTheTwoStates()
+    public void BlockingSuspendedAndSuspendingBlockedAccountsAreRejected()
     {
         AppUser suspended = CreateUser(UserType.Candidate);
         suspended.Suspend(Later);
         AppUser blocked = CreateUser(UserType.Candidate);
         blocked.Block(Later);
 
-        suspended.Block(Later.AddHours(1));
-        blocked.Suspend(Later.AddHours(1));
-
-        Assert.Equal(AccountStatus.Blocked, suspended.Status);
-        Assert.Equal(AccountStatus.Suspended, blocked.Status);
-        Assert.Equal(Later.AddHours(1), suspended.UpdatedAt);
-        Assert.Equal(Later.AddHours(1), blocked.UpdatedAt);
+        Assert.Throws<InvalidOperationException>(() => suspended.Block(Later.AddHours(1)));
+        Assert.Throws<InvalidOperationException>(() => blocked.Suspend(Later.AddHours(1)));
+        Assert.Equal(AccountStatus.Suspended, suspended.Status);
+        Assert.Equal(AccountStatus.Blocked, blocked.Status);
+        Assert.Equal(Later, suspended.UpdatedAt);
+        Assert.Equal(Later, blocked.UpdatedAt);
     }
 
     /// <summary>
@@ -187,6 +186,8 @@ public sealed class AppUserTests
 
         Assert.Throws<InvalidOperationException>(() => blocked.Block(Later.AddHours(1)));
         Assert.Throws<InvalidOperationException>(() => suspended.Suspend(Later.AddHours(1)));
+        Assert.Equal(AccountStatus.Blocked, blocked.Status);
+        Assert.Equal(AccountStatus.Suspended, suspended.Status);
         Assert.Equal(Later, blocked.UpdatedAt);
         Assert.Equal(Later, suspended.UpdatedAt);
     }
