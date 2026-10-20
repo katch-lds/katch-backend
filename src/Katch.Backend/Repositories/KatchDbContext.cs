@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Domain;
 using Katch.Backend.Repositories.Configuration;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,14 +21,23 @@ public sealed class KatchDbContext : DbContext
     {
     }
 
+    /// <summary>
+    /// Gets the accounts of the users (<c>app_user</c>).
+    /// </summary>
+    public DbSet<AppUser> Users => this.Set<AppUser>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        if (this.Database.IsNpgsql())
+        bool usesPostgres = this.Database.IsNpgsql();
+
+        if (usesPostgres)
         {
             modelBuilder.HasKatchEnums();
         }
+
+        modelBuilder.ApplyConfiguration(new AppUserConfiguration(usesPostgres));
     }
 }
