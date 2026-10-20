@@ -26,6 +26,11 @@ public sealed class KatchDbContext : DbContext
     /// </summary>
     public DbSet<AppUser> Users => this.Set<AppUser>();
 
+    /// <summary>
+    /// Gets the recruiters (<c>recruiter</c>).
+    /// </summary>
+    public DbSet<Recruiter> Recruiters => this.Set<Recruiter>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -39,5 +44,6 @@ public sealed class KatchDbContext : DbContext
         }
 
         modelBuilder.ApplyConfiguration(new AppUserConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new RecruiterConfiguration());
     }
 }
