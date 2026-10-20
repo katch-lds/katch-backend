@@ -116,12 +116,12 @@ public sealed class AppUser
     }
 
     /// <summary>
-    /// Bloqueia a conta (RF086). Aplica-se a contas de Candidato e de Recrutador. O RF086 não impõe estado de origem,
-    /// por isso também se bloqueia uma conta de Candidato suspensa.
+    /// Bloqueia a conta (RF086). Aplica-se a contas de Candidato e de Recrutador ativas (documentação da API v02,
+    /// secção 6.10.3).
     /// </summary>
     /// <param name="now">Instante da alteração, em UTC.</param>
     /// <exception cref="InvalidOperationException">
-    /// Se a conta for de Administrador ou se já estiver bloqueada.
+    /// Se a conta for de Administrador ou se não estiver ativa.
     /// </exception>
     public void Block(DateTimeOffset now)
     {
@@ -130,16 +130,15 @@ public sealed class AppUser
             throw new InvalidOperationException("A conta de Administrador não pode ser bloqueada.");
         }
 
-        this.ChangeStatus(AccountStatus.Blocked, now);
+        this.ChangeStatusFromActive(AccountStatus.Blocked, now);
     }
 
     /// <summary>
-    /// Suspende a conta (RF089). Aplica-se só a contas de Candidato. O RF089 não impõe estado de origem, por isso
-    /// também se suspende uma conta de Candidato bloqueada.
+    /// Suspende a conta (RF089). Aplica-se só a contas de Candidato ativas (documentação da API v02, secção 6.10.4).
     /// </summary>
     /// <param name="now">Instante da alteração, em UTC.</param>
     /// <exception cref="InvalidOperationException">
-    /// Se a conta não for de Candidato ou se já estiver suspensa.
+    /// Se a conta não for de Candidato ou se não estiver ativa.
     /// </exception>
     public void Suspend(DateTimeOffset now)
     {
@@ -148,7 +147,7 @@ public sealed class AppUser
             throw new InvalidOperationException("Só a conta de Candidato pode ser suspensa.");
         }
 
-        this.ChangeStatus(AccountStatus.Suspended, now);
+        this.ChangeStatusFromActive(AccountStatus.Suspended, now);
     }
 
     /// <summary>
@@ -205,11 +204,11 @@ public sealed class AppUser
         }
     }
 
-    private void ChangeStatus(AccountStatus target, DateTimeOffset now)
+    private void ChangeStatusFromActive(AccountStatus target, DateTimeOffset now)
     {
-        if (this.Status == target)
+        if (this.Status != AccountStatus.Active)
         {
-            throw new InvalidOperationException("A conta já está nesse estado.");
+            throw new InvalidOperationException("Só uma conta ativa pode mudar para esse estado.");
         }
 
         this.Status = target;
