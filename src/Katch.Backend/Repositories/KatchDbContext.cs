@@ -27,6 +27,11 @@ public sealed class KatchDbContext : DbContext
     public DbSet<AppUser> Users => this.Set<AppUser>();
 
     /// <summary>
+    /// Gets the administrators (<c>admin</c>).
+    /// </summary>
+    public DbSet<Admin> Admins => this.Set<Admin>();
+
+    /// <summary>
     /// Gets the recruiters (<c>recruiter</c>).
     /// </summary>
     public DbSet<Recruiter> Recruiters => this.Set<Recruiter>();
@@ -59,6 +64,7 @@ public sealed class KatchDbContext : DbContext
         }
 
         modelBuilder.ApplyConfiguration(new AppUserConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new AdminConfiguration());
         modelBuilder.ApplyConfiguration(new RecruiterConfiguration());
         modelBuilder.ApplyConfiguration(new LocationConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CandidateConfiguration(usesPostgres));
