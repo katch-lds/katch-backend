@@ -20,6 +20,13 @@ public sealed partial class AuthService : IAuthService
     /// </summary>
     internal const string EmailUniqueIndex = "uq_app_user_email";
 
+    /// <summary>
+    /// Resumo de uma palavra-passe aleatória que ninguém conhece, calculado com o mesmo <see cref="IPasswordHasher"/> das
+    /// contas. Quando o correio não existe, o início de sessão verifica a palavra-passe contra este resumo, para que o
+    /// tempo de resposta não revele se o correio está registado (RNF009).
+    /// </summary>
+    internal static readonly string ReferenceHash = new IdentityPasswordHasher().Hash(Guid.NewGuid().ToString("N"));
+
     private const int MaxFullNameLength = 150;
     private const int MinPasswordLength = 8;
     private const int MaxPasswordLength = 128;
@@ -78,7 +85,7 @@ public sealed partial class AuthService : IAuthService
         await this.ValidateEmailAsync(email, errors, cancellationToken);
         ValidatePhoneNumber(phoneNumber, errors);
         await this.ValidateLocationAsync(request.LocationId, errors, cancellationToken);
-        ValidatePassword(password, errors);
+        ValidatePassword(password, errors, "password");
 
         if (!request.AcceptTerms)
         {
@@ -110,6 +117,110 @@ public sealed partial class AuthService : IAuthService
         return this.tokenService.CreateToken(user);
     }
 
+    /// <inheritdoc/>
+    public async Task<LoginResponse> LoginAsync(
+        LoginRequest request,
+        ClientApp app,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        // Os espaços do correio são retirados (documentação da API v02, secção 2.3); a palavra-passe segue como foi enviada.
+        string email = request.Email?.Trim() ?? string.Empty;
+        string password = request.Password ?? string.Empty;
+
+        // Só se verifica que os campos não estão vazios: o formato do correio e a política da palavra-passe não são
+        // revelados (RNF009).
+        var errors = new List<FieldErrorDto>();
+        if (email.Length == 0)
+        {
+            errors.Add(new FieldErrorDto("email", FieldReasons.Required));
+        }
+
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            errors.Add(new FieldErrorDto("password", FieldReasons.Required));
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ValidationFailedException(errors);
+        }
+
+        // 1.º As credenciais. A palavra-passe é verificada mesmo sem conta, e a recusa é a mesma nos dois casos.
+        AppUser? user = await this.users.GetByEmailAsync(email, cancellationToken);
+        bool passwordMatches = this.passwordHasher.Verify(user?.PasswordHash ?? ReferenceHash, password);
+        if (user is null || !passwordMatches)
+        {
+            throw new LoginRejectedException(LoginRejection.InvalidCredentials);
+        }
+
+        // 2.º O estado da conta, que só é revelado a quem apresentou a palavra-passe correta.
+        if (!user.CanSignIn())
+        {
+            throw new LoginRejectedException(
+                user.Status == AccountStatus.Suspended ? LoginRejection.AccountSuspended : LoginRejection.AccountBlocked);
+        }
+
+        // 3.º O ponto de acesso. A Empresa do Recrutador não é consultada: só vedam as operações ApprovedCompany (RF038).
+        if (!CanSignInFrom(app, user.UserType))
+        {
+            throw new LoginRejectedException(LoginRejection.WrongAccessPoint);
+        }
+
+        return this.tokenService.CreateToken(user);
+    }
+
+    /// <inheritdoc/>
+    public async Task ChangePasswordAsync(
+        Guid userId,
+        ChangePasswordRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        string currentPassword = request.CurrentPassword ?? string.Empty;
+        string newPassword = request.NewPassword ?? string.Empty;
+
+        // A conta é a da credencial de sessão, cujo estado o pedido já confirmou na base de dados.
+        AppUser user = await this.users.GetByIdAsync(userId, cancellationToken)
+            ?? throw new InvalidOperationException("A conta da credencial de sessão não existe.");
+
+        var errors = new List<FieldErrorDto>();
+        if (string.IsNullOrWhiteSpace(currentPassword))
+        {
+            errors.Add(new FieldErrorDto("currentPassword", FieldReasons.Required));
+        }
+        else if (!this.passwordHasher.Verify(user.PasswordHash, currentPassword))
+        {
+            errors.Add(new FieldErrorDto("currentPassword", FieldReasons.CurrentIncorrect));
+        }
+
+        ValidatePassword(newPassword, errors, "newPassword");
+
+        if (errors.Count > 0)
+        {
+            throw new ValidationFailedException(errors);
+        }
+
+        user.SetPasswordHash(this.passwordHasher.Hash(newPassword), this.clock.UtcNow);
+        await this.unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// A aplicação móvel é só do Candidato; a área de gestão web é só do Recrutador e do Administrador (documentação da API
+    /// v02, secção 3.2). Qualquer outra combinação é recusada.
+    /// </summary>
+    private static bool CanSignInFrom(ClientApp app, UserType userType)
+    {
+        return (app, userType) switch
+        {
+            (ClientApp.Mobile, UserType.Candidate) => true,
+            (ClientApp.Web, UserType.Recruiter or UserType.Admin) => true,
+            _ => false,
+        };
+    }
+
     private static void ValidateFullName(string fullName, List<FieldErrorDto> errors)
     {
         if (fullName.Length == 0)
@@ -134,19 +245,19 @@ public sealed partial class AuthService : IAuthService
         }
     }
 
-    private static void ValidatePassword(string password, List<FieldErrorDto> errors)
+    private static void ValidatePassword(string password, List<FieldErrorDto> errors, string field)
     {
         if (string.IsNullOrWhiteSpace(password))
         {
-            errors.Add(new FieldErrorDto("password", FieldReasons.Required));
+            errors.Add(new FieldErrorDto(field, FieldReasons.Required));
         }
         else if (password.Length > MaxPasswordLength)
         {
-            errors.Add(new FieldErrorDto("password", FieldReasons.PasswordTooLong));
+            errors.Add(new FieldErrorDto(field, FieldReasons.PasswordTooLong));
         }
         else if (password.Length < MinPasswordLength || !password.Any(char.IsLetter) || !password.Any(char.IsDigit))
         {
-            errors.Add(new FieldErrorDto("password", FieldReasons.PasswordPolicy));
+            errors.Add(new FieldErrorDto(field, FieldReasons.PasswordPolicy));
         }
     }
 

@@ -43,6 +43,11 @@ public static class FieldReasons
     public const string PasswordTooLong = "A palavra-passe tem no máximo 128 caracteres.";
 
     /// <summary>
+    /// Palavra-passe atual que não coincide com a da conta, na alteração da palavra-passe (RF002, RF040, RF084).
+    /// </summary>
+    public const string CurrentIncorrect = "A palavra-passe atual está errada.";
+
+    /// <summary>
     /// Condições de utilização não aceites (RF003, RF037).
     /// </summary>
     public const string AcceptTerms = "É obrigatório aceitar as condições de utilização.";
