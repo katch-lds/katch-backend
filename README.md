@@ -229,6 +229,19 @@ segredo mais curto, a API **não arranca** e a mensagem de erro diz como configu
   passa à aplicação como variável de ambiente `Jwt__Secret`.
 - **O valor nunca vai para o repositório**: nem no `appsettings.json`, nem neste README, nem em logs ou commits.
 
+### Políticas de autorização e erros
+
+Os controllers usam as constantes de `AuthorizationPolicies`: `Candidate`, `Recruiter`, `CandidateOrRecruiter`,
+`Admin` e `ApprovedCompany` (Recrutador cuja Empresa está aprovada); `[Authorize]` sem política aceita qualquer
+conta autenticada. Os erros 401 e 403 têm sempre o corpo `ApiErrorDto`, pela ordem de verificação:
+
+| Ordem | Erro | Quando |
+| --- | --- | --- |
+| 1 | 401 `ERR-01` | Credencial em falta, mal formada, com assinatura inválida ou expirada, ou conta inexistente |
+| 2 | 403 `ERR-03` / `ERR-04` | Conta bloqueada / suspensa (verificada na base em cada pedido) |
+| 3 | 403 `ERR-06` | O tipo de conta não cumpre a política |
+| 4 | 403 `ERR-07` | Só em `ApprovedCompany`: a Empresa não está aprovada; a mensagem traz o estado atual (pendente, recusada, suspensa ou não registada), lido da base em cada pedido |
+
 ## 10. Regras a respeitar
 
 - **Nunca** pôr palavras-passe ou cadeias de ligação reais neste README nem em ficheiros versionados
