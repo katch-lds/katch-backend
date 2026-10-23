@@ -25,6 +25,16 @@ public sealed class AuthorizationProbeController : ControllerBase
     }
 
     /// <summary>
+    /// Endpoint sem atributos de autorização, protegido pela política de reserva.
+    /// </summary>
+    /// <returns>200.</returns>
+    [HttpGet("default")]
+    public IActionResult Default()
+    {
+        return this.Ok();
+    }
+
+    /// <summary>
     /// Qualquer conta autenticada.
     /// </summary>
     /// <returns>200.</returns>

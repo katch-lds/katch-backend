@@ -248,7 +248,8 @@ segredo mais curto, a API **não arranca** e a mensagem de erro diz como configu
 
 Os controllers usam as constantes de `AuthorizationPolicies`: `Candidate`, `Recruiter`, `CandidateOrRecruiter`,
 `Admin` e `ApprovedCompany` (Recrutador cuja Empresa está aprovada); `[Authorize]` sem política aceita qualquer
-conta autenticada. Os erros 401 e 403 têm sempre o corpo `ApiErrorDto`, pela ordem de verificação:
+conta autenticada. **Todos os endpoints exigem autenticação por omissão**: os endpoints anónimos (registo,
+início de sessão, lista de localidades) têm de ter `[AllowAnonymous]`. Os erros 401 e 403 têm sempre o corpo `ApiErrorDto`, pela ordem de verificação:
 
 | Ordem | Erro | Quando |
 | --- | --- | --- |
