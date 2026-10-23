@@ -38,6 +38,11 @@ public static class ApiErrorResponse
     public const string CompanyNotApprovedCode = "ERR-07";
 
     /// <summary>
+    /// Código do erro de validação automática dos campos.
+    /// </summary>
+    public const string ValidationFailedCode = "ERR-10";
+
+    /// <summary>
     /// Mensagem do ERR-01.
     /// </summary>
     public const string InvalidSessionMessage = "A sessão expirou ou não é válida. Inicie sessão novamente.";
@@ -56,6 +61,11 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-06.
     /// </summary>
     public const string AccountTypeNotAllowedMessage = "A operação não está disponível para este tipo de conta.";
+
+    /// <summary>
+    /// Mensagem do ERR-10.
+    /// </summary>
+    public const string ValidationFailedMessage = "Os dados enviados não cumprem a validação automática.";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -108,6 +118,18 @@ public static class ApiErrorResponse
     public static Task WriteCompanyNotApprovedAsync(HttpContext context, string message)
     {
         return WriteAsync(context, StatusCodes.Status403Forbidden, CompanyNotApprovedCode, message);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-10 (400): um ou mais campos não cumprem a validação automática (RF004, RF042, RNF008).
+    /// </summary>
+    /// <param name="fields">Um erro por campo em causa.</param>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ValidationFailed(IReadOnlyList<FieldErrorDto> fields)
+    {
+        ArgumentNullException.ThrowIfNull(fields);
+
+        return new ApiErrorDto(ValidationFailedCode, ValidationFailedMessage, fields);
     }
 
     /// <summary>

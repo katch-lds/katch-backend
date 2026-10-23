@@ -1,0 +1,44 @@
+// Copyright (c) Grupo G11. Katch, LDS 2026/2027.
+
+using Katch.Backend.Domain;
+
+namespace Katch.Backend.Repositories;
+
+/// <summary>
+/// Acesso às contas de utilizador (<c>app_user</c>) (modelo de classes do backend v02, secção 4). As restantes
+/// operações do modelo (<c>ListAsync</c>, <c>CountActiveCandidatesAtAsync</c>) são acrescentadas pelas Issues que as usam.
+/// </summary>
+public interface IUserRepository
+{
+    /// <summary>
+    /// Obtém a conta com o identificador indicado.
+    /// </summary>
+    /// <param name="id">Identificador da conta.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>A conta, ou <see langword="null"/> se não existir.</returns>
+    public Task<AppUser?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém a conta com o correio eletrónico indicado, sem distinção de maiúsculas.
+    /// </summary>
+    /// <param name="email">Correio eletrónico.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>A conta, ou <see langword="null"/> se não existir.</returns>
+    public Task<AppUser?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Indica se já existe uma conta com o correio eletrónico indicado, sem distinção de maiúsculas (RF004, RF037).
+    /// </summary>
+    /// <param name="email">Correio eletrónico.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><see langword="true"/> se o correio já estiver registado.</returns>
+    public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Acrescenta uma conta nova, gravada no <see cref="IUnitOfWork.SaveChangesAsync"/> seguinte.
+    /// </summary>
+    /// <param name="user">Conta nova.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Tarefa que termina quando a conta foi acrescentada.</returns>
+    public Task AddAsync(AppUser user, CancellationToken cancellationToken = default);
+}
