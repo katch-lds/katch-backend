@@ -98,6 +98,14 @@ base de dados fica só o resumo; a palavra-passe nunca vai para o repositório (
 $env:Katch__AdminPassword = "<palavra-passe do Administrador>"
 ```
 
+**Segredo da credencial (`Jwt__Secret`).** A API assina as credenciais de sessão (JWT) com um segredo lido desta
+variável e **não arranca** sem ele. Tem de ter pelo menos 32 bytes e nunca vai para o repositório. Mais
+pormenores na [secção 9](#9-autenticação-jwt).
+
+```powershell
+$env:Jwt__Secret = "<segredo com pelo menos 32 bytes>"
+```
+
 ### 3.4 Instalar a ferramenta das migrations
 
 Na raiz do repositório (a pasta onde está o `Katch.Backend.sln`):
@@ -148,6 +156,7 @@ Sempre que abrir um terminal novo para trabalhar:
 cd "<caminho para a pasta do repositório>"
 $env:ConnectionStrings__Katch = "Host=localhost;Port=<porto>;Database=katch;Username=postgres;Password=<palavra-passe>"
 $env:Katch__AdminPassword = "<palavra-passe do Administrador>"   # só para aplicar migrations
+$env:Jwt__Secret = "<segredo com pelo menos 32 bytes>"             # obrigatório para a API arrancar (secção 9)
 git pull
 dotnet ef database update --project src/Katch.Backend    # só é necessário se o git pull trouxe migrations novas
 dotnet run --project src/Katch.Backend --launch-profile http
