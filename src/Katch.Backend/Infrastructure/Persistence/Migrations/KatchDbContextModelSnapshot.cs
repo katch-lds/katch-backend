@@ -253,6 +253,137 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Katch.Backend.Domain.Company", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("address");
+
+                    b.Property<string>("CompanyName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("company_name");
+
+                    b.Property<string>("ContactEmail")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("contact_email");
+
+                    b.Property<string>("ContactPhone")
+                        .IsRequired()
+                        .HasMaxLength(9)
+                        .HasColumnType("character varying(9)")
+                        .HasColumnName("contact_phone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<Industry>("Industry")
+                        .HasColumnType("industry")
+                        .HasColumnName("industry");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("location_id");
+
+                    b.Property<string>("LogoPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("logo_path");
+
+                    b.PrimitiveCollection<List<string>>("PhotoPaths")
+                        .IsRequired()
+                        .HasColumnType("character varying(500)[]")
+                        .HasColumnName("photo_paths")
+                        .HasDefaultValueSql("'{}'");
+
+                    b.Property<Guid>("RecruiterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recruiter_id");
+
+                    b.Property<string>("ResponsibleName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("responsible_name");
+
+                    b.Property<CompanyStatus>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("company_status")
+                        .HasDefaultValue(CompanyStatus.Pending)
+                        .HasColumnName("status");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("status_reason");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("TaxId")
+                        .IsRequired()
+                        .HasMaxLength(9)
+                        .HasColumnType("character varying(9)")
+                        .HasColumnName("tax_id");
+
+                    b.Property<string>("Website")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("website");
+
+                    b.HasKey("Id")
+                        .HasName("pk_company");
+
+                    b.HasIndex("RecruiterId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_company_recruiter");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_company_status");
+
+                    b.HasIndex("TaxId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_company_tax_id");
+
+                    b.ToTable("company", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_company_address", "btrim(address) <> ''");
+
+                            t.HasCheckConstraint("ck_company_company_name", "btrim(company_name) <> ''");
+
+                            t.HasCheckConstraint("ck_company_contact_email", "contact_email ~ '^[^@[:space:]]+@[^@[:space:]]+$'");
+
+                            t.HasCheckConstraint("ck_company_contact_phone", "contact_phone ~ '^[0-9]{9}$'");
+
+                            t.HasCheckConstraint("ck_company_photo_paths", "cardinality(photo_paths) <= 6");
+
+                            t.HasCheckConstraint("ck_company_reason", "(status = 'REJECTED') = (status_reason IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_company_reason_length", "status_reason IS NULL OR char_length(btrim(status_reason)) BETWEEN 10 AND 500");
+
+                            t.HasCheckConstraint("ck_company_responsible_name", "btrim(responsible_name) <> ''");
+
+                            t.HasCheckConstraint("ck_company_tax_id", "tax_id ~ '^[0-9]{9}$'");
+
+                            t.HasCheckConstraint("ck_company_website", "website ~* '^https?://'");
+                        });
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.Location", b =>
                 {
                     b.Property<Guid>("Id")
@@ -353,6 +484,23 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_candidate_link_candidate_candidate_id");
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.Company", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_company_location_location_id");
+
+                    b.HasOne("Katch.Backend.Domain.Recruiter", null)
+                        .WithOne()
+                        .HasForeignKey("Katch.Backend.Domain.Company", "RecruiterId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_company_recruiter_recruiter_id");
                 });
 
             modelBuilder.Entity("Katch.Backend.Domain.Recruiter", b =>
