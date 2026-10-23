@@ -52,6 +52,11 @@ public sealed class KatchDbContext : DbContext
     /// </summary>
     public DbSet<Company> Companies => this.Set<Company>();
 
+    /// <summary>
+    /// Gets the jobs (<c>job</c>), without the deleted ones (global query filter on <c>deleted_at</c>).
+    /// </summary>
+    public DbSet<Job> Jobs => this.Set<Job>();
+
     /// <inheritdoc/>
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -83,5 +88,6 @@ public sealed class KatchDbContext : DbContext
         modelBuilder.ApplyConfiguration(new CandidateConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CandidateLinkConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CompanyConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new JobConfiguration(usesPostgres));
     }
 }
