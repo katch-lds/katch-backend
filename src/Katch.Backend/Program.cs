@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Persistence;
 using Katch.Backend.Repositories;
 
@@ -11,6 +12,7 @@ string connectionString = builder.Configuration.GetConnectionString("Katch")
         "Falta a cadeia de ligação ao PostgreSQL. Defina a variável de ambiente ConnectionStrings__Katch.");
 
 builder.Services.AddDbContext<KatchDbContext>(options => options.UseKatchPostgres(connectionString));
+builder.Services.AddKatchJwtOptions();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
