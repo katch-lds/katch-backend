@@ -12,7 +12,7 @@ string connectionString = builder.Configuration.GetConnectionString("Katch")
         "Falta a cadeia de ligação ao PostgreSQL. Defina a variável de ambiente ConnectionStrings__Katch.");
 
 builder.Services.AddDbContext<KatchDbContext>(options => options.UseKatchPostgres(connectionString));
-builder.Services.AddKatchJwtOptions();
+builder.Services.AddKatchAuthentication();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -30,6 +30,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAccountStatusCheck();
+app.UseAuthorization();
 app.MapControllers();
 
 await app.RunAsync();
