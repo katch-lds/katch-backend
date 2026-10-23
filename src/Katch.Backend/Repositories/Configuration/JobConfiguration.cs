@@ -9,7 +9,8 @@ namespace Katch.Backend.Repositories.Configuration;
 
 /// <summary>
 /// Mapeamento da entidade <see cref="Job"/> para a tabela <c>job</c> (modelo de dados v02, secções 5.2, 5.3, 6.11 e
-/// 7.1), com o filtro global que exclui as vagas eliminadas de todas as consultas (secção 7.2, DM-09).
+/// 7.1), com o filtro global que exclui as vagas eliminadas de todas as consultas (secção 7.2, DM-09), e as associações
+/// N:M <c>job_skill</c> e <c>job_benefit</c> às listas pré-definidas (secção 6.12).
 /// </summary>
 /// <remarks>
 /// As restrições escritas em SQL do PostgreSQL (<c>cardinality()</c> e comparações com os tipos enumerados) só são
@@ -124,5 +125,31 @@ public sealed class JobConfiguration : IEntityTypeConfiguration<Job>
         builder.Property(job => job.Status)
             .HasDefaultValue(JobStatus.Unpublished)
             .IsRequired();
+
+        // job_skill e job_benefit: associações N:M puras, sem classe própria (modelo de classes, secção 9). As linhas são
+        // eliminadas com a vaga; uma competência ou um benefício associado não pode ser eliminado.
+        builder.HasMany(job => job.Skills)
+            .WithMany()
+            .UsingEntity<Dictionary<string, object>>(
+                "job_skill",
+                right => right.HasOne<Skill>().WithMany().HasForeignKey("SkillId").OnDelete(DeleteBehavior.NoAction),
+                left => left.HasOne<Job>().WithMany().HasForeignKey("JobId").OnDelete(DeleteBehavior.Cascade),
+                join =>
+                {
+                    join.ToTable("job_skill");
+                    join.HasKey("JobId", "SkillId");
+                });
+
+        builder.HasMany(job => job.Benefits)
+            .WithMany()
+            .UsingEntity<Dictionary<string, object>>(
+                "job_benefit",
+                right => right.HasOne<Benefit>().WithMany().HasForeignKey("BenefitId").OnDelete(DeleteBehavior.NoAction),
+                left => left.HasOne<Job>().WithMany().HasForeignKey("JobId").OnDelete(DeleteBehavior.Cascade),
+                join =>
+                {
+                    join.ToTable("job_benefit");
+                    join.HasKey("JobId", "BenefitId");
+                });
     }
 }
