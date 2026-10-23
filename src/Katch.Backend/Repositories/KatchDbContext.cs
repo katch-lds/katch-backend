@@ -62,6 +62,12 @@ public sealed class KatchDbContext : DbContext
     /// </summary>
     public DbSet<Job> Jobs => this.Set<Job>();
 
+    /// <summary>
+    /// Gets the answers of the candidates to the jobs, the decisions of the recruiters, the matches and their
+    /// conversations (<c>match</c>).
+    /// </summary>
+    public DbSet<Match> Matches => this.Set<Match>();
+
     /// <inheritdoc/>
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -95,5 +101,6 @@ public sealed class KatchDbContext : DbContext
         modelBuilder.ApplyConfiguration(new CandidateLinkConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CompanyConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new JobConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new MatchConfiguration(usesPostgres));
     }
 }

@@ -545,6 +545,95 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Katch.Backend.Domain.Match", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTimeOffset>("CandidateActionAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("candidate_action_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("candidate_id");
+
+                    b.Property<ConversationCloseReason?>("ConversationCloseReason")
+                        .HasColumnType("conversation_close_reason")
+                        .HasColumnName("conversation_close_reason");
+
+                    b.Property<DateTimeOffset?>("ConversationClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("conversation_closed_at");
+
+                    b.Property<Guid?>("ConversationClosedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_closed_by");
+
+                    b.Property<ConversationStatus?>("ConversationStatus")
+                        .HasColumnType("conversation_status")
+                        .HasColumnName("conversation_status");
+
+                    b.Property<Guid?>("DecidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<DateTimeOffset?>("ProfileOpenedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("profile_opened_at");
+
+                    b.Property<DateTimeOffset?>("RecruiterActionAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recruiter_action_at");
+
+                    b.Property<MatchStatus>("Status")
+                        .HasColumnType("match_status")
+                        .HasColumnName("status");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_match");
+
+                    b.HasIndex("CandidateActionAt")
+                        .HasDatabaseName("ix_match_interest_at")
+                        .HasFilter("status <> 'DECLINED_BY_CANDIDATE'");
+
+                    b.HasIndex("CandidateId", "JobId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_match_candidate_job");
+
+                    b.HasIndex("JobId", "Status")
+                        .HasDatabaseName("ix_match_job_status");
+
+                    b.HasIndex("Status", "RecruiterActionAt")
+                        .HasDatabaseName("ix_match_matched");
+
+                    b.ToTable("match", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_match_closed_by", "(conversation_closed_by IS NOT NULL) = coalesce(conversation_close_reason = 'CLOSED_BY_PARTY', false)");
+
+                            t.HasCheckConstraint("ck_match_conversation", "(conversation_status IS NOT NULL) = (status = 'MATCHED')");
+
+                            t.HasCheckConstraint("ck_match_conversation_close", "coalesce(conversation_status = 'CLOSED', false) = (conversation_closed_at IS NOT NULL) AND coalesce(conversation_status = 'CLOSED', false) = (conversation_close_reason IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_match_decision", "(status IN ('MATCHED', 'REJECTED_BY_RECRUITER')) = (recruiter_action_at IS NOT NULL) AND (recruiter_action_at IS NOT NULL) = (decided_by IS NOT NULL) AND (recruiter_action_at IS NULL OR profile_opened_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_match_declined", "status <> 'DECLINED_BY_CANDIDATE' OR (profile_opened_at IS NULL AND recruiter_action_at IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.Recruiter", b =>
                 {
                     b.Property<Guid>("Id")
@@ -630,6 +719,35 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("fk_job_location_location_id");
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.Match", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Candidate", null)
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_match_candidate_candidate_id");
+
+                    b.HasOne("Katch.Backend.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationClosedById")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_match_app_user_conversation_closed_by");
+
+                    b.HasOne("Katch.Backend.Domain.Recruiter", null)
+                        .WithMany()
+                        .HasForeignKey("DecidedById")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_match_recruiter_decided_by");
+
+                    b.HasOne("Katch.Backend.Domain.Job", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_match_job_job_id");
                 });
 
             modelBuilder.Entity("Katch.Backend.Domain.Recruiter", b =>
