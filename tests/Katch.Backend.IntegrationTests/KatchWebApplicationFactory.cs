@@ -40,6 +40,7 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
+            services.AddControllers().AddApplicationPart(typeof(AuthorizationProbeController).Assembly);
             services.RemoveAll<IClock>();
             services.AddSingleton<IClock>(this.Clock);
 
