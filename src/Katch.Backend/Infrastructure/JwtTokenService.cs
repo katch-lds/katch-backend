@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Katch.Backend.Services;
+namespace Katch.Backend.Infrastructure;
 
 /// <summary>
 /// Emite credenciais JWT assinadas com HS256, com as claims <c>sub</c>, <c>role</c>, <c>iat</c> e <c>exp</c>.

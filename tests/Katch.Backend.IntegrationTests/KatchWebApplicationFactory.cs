@@ -1,8 +1,8 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using System.Security.Cryptography;
+using Katch.Backend.Infrastructure;
 using Katch.Backend.Repositories;
-using Katch.Backend.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;

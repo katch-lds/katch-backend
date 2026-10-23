@@ -5,15 +5,15 @@ using System.Text;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
+using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Authentication;
-using Katch.Backend.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Katch.Backend.UnitTests.Services;
+namespace Katch.Backend.UnitTests.Infrastructure;
 
 /// <summary>
 /// Testes da emissão da credencial JWT, com um relógio controlado e um segredo gerado em cada execução.

@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-namespace Katch.Backend.Services;
+namespace Katch.Backend.Infrastructure;
 
 /// <summary>
 /// Relógio de produção, que devolve o instante do sistema.

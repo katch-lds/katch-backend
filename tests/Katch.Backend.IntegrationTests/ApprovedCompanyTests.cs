@@ -4,8 +4,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
+using Katch.Backend.Infrastructure;
 using Katch.Backend.Repositories;
-using Katch.Backend.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
