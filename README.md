@@ -16,7 +16,8 @@ PowerShell (menu Iniciar, "Windows PowerShell") ou escreva `powershell` no termi
 6. [Migrations](#6-migrations)
 7. [Resumo dos comandos](#7-resumo-dos-comandos)
 8. [Erros comuns](#8-erros-comuns)
-9. [Regras a respeitar](#9-regras-a-respeitar)
+9. [Autenticação JWT](#9-autenticação-jwt)
+10. [Regras a respeitar](#10-regras-a-respeitar)
 
 ## 1. Estrutura do repositório
 
@@ -202,6 +203,7 @@ Executar na raiz do repositório.
 | --- | --- | --- |
 | `dotnet --version` falha, ou `No .NET SDKs were found` | Só o runtime está instalado, ou o terminal é anterior à instalação | Instalar o SDK (ver secção 2) e abrir um terminal novo |
 | `Falta a cadeia de ligação ao PostgreSQL` ao arrancar | `ConnectionStrings__Katch` não definida nesta janela | Definir a variável (secção 3.3) na mesma janela e voltar a correr |
+| `Falta o segredo JWT ou tem menos de 32 bytes` ao arrancar | `Jwt__Secret` não definida nesta janela, ou curta demais | Definir a variável (secção 9) e voltar a correr |
 | `Failed to connect to 127.0.0.1:6000` no `dotnet ef` | Variável não definida; o `dotnet ef` usa um porto por omissão | Definir a variável e repetir |
 | `A sintaxe do nome do ficheiro, do nome do diretório ou da etiqueta do volume é incorreta` | Usou `$env:` no cmd | Abrir o PowerShell, ou usar `set "..."` no cmd |
 | A variável não fica definida depois de `set "..."` | `set` só funciona no cmd, não no PowerShell | Usar `$env:ConnectionStrings__Katch = "..."` |
@@ -213,7 +215,21 @@ Executar na raiz do repositório.
 | A API arranca mas a base está sem tabelas | Faltou aplicar as migrations | `dotnet ef database update --project src/Katch.Backend` |
 | Erros de compilação logo a seguir a um `git pull` | O código trazido ainda não compila, ou faltam pacotes | `dotnet restore` e `dotnet build`; se persistir, falar com quem fez o commit |
 
-## 9. Regras a respeitar
+## 9. Autenticação JWT
+
+A API assina as credenciais JWT (HS256) com um segredo lido da variável de ambiente `Jwt__Secret` (dois
+sublinhados; corresponde à configuração `Jwt:Secret`). Tem de ter **pelo menos 32 bytes**. Sem ela, ou com um
+segredo mais curto, a API **não arranca** e a mensagem de erro diz como configurar (nunca mostra o valor).
+
+- **Windows (PowerShell):** gere um valor aleatório e guarde-o para o seu utilizador com
+  `setx Jwt__Secret "<segredo com pelo menos 32 bytes>"`. O `setx` só vale em terminais novos; na janela atual
+  use também `$env:Jwt__Secret = "<segredo com pelo menos 32 bytes>"`.
+- **CI (GitHub Actions):** os testes definem um segredo aleatório em cada execução, por isso não precisam de
+  nenhum segredo. Para uma API a correr num ambiente partilhado, o valor vai num *secret* do repositório e
+  passa à aplicação como variável de ambiente `Jwt__Secret`.
+- **O valor nunca vai para o repositório**: nem no `appsettings.json`, nem neste README, nem em logs ou commits.
+
+## 10. Regras a respeitar
 
 - **Nunca** pôr palavras-passe ou cadeias de ligação reais neste README nem em ficheiros versionados
   (`appsettings.json`, `.env`, etc.). A configuração local vai na variável de ambiente.
