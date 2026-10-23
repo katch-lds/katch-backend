@@ -28,6 +28,11 @@ public sealed class KatchDbContext : DbContext
     public DbSet<AppUser> Users => this.Set<AppUser>();
 
     /// <summary>
+    /// Gets the administrators (<c>admin</c>).
+    /// </summary>
+    public DbSet<Admin> Admins => this.Set<Admin>();
+
+    /// <summary>
     /// Gets the recruiters (<c>recruiter</c>).
     /// </summary>
     public DbSet<Recruiter> Recruiters => this.Set<Recruiter>();
@@ -51,6 +56,11 @@ public sealed class KatchDbContext : DbContext
     /// Gets the companies (<c>company</c>).
     /// </summary>
     public DbSet<Company> Companies => this.Set<Company>();
+
+    /// <summary>
+    /// Gets the jobs (<c>job</c>), without the deleted ones (global query filter on <c>deleted_at</c>).
+    /// </summary>
+    public DbSet<Job> Jobs => this.Set<Job>();
 
     /// <inheritdoc/>
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
@@ -78,10 +88,12 @@ public sealed class KatchDbContext : DbContext
         }
 
         modelBuilder.ApplyConfiguration(new AppUserConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new AdminConfiguration());
         modelBuilder.ApplyConfiguration(new RecruiterConfiguration());
         modelBuilder.ApplyConfiguration(new LocationConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CandidateConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CandidateLinkConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CompanyConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new JobConfiguration(usesPostgres));
     }
 }

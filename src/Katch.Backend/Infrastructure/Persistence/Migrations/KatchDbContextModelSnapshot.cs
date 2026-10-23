@@ -36,6 +36,18 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "work_mode", new[] { "ON_SITE", "HYBRID", "REMOTE" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Katch.Backend.Domain.Admin", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admin");
+
+                    b.ToTable("admin", (string)null);
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.AppUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -372,6 +384,118 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Katch.Backend.Domain.Job", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<ContractType>("ContractType")
+                        .HasColumnType("contract_type")
+                        .HasColumnName("contract_type");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTimeOffset?>("FirstPublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_published_at");
+
+                    b.Property<bool>("IsUrgent")
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_urgent");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("location_id");
+
+                    b.Property<decimal>("MaxSalary")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("max_salary");
+
+                    b.Property<decimal>("MinSalary")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("min_salary");
+
+                    b.PrimitiveCollection<List<string>>("PhotoPaths")
+                        .IsRequired()
+                        .HasColumnType("character varying(500)[]")
+                        .HasColumnName("photo_paths")
+                        .HasDefaultValueSql("'{}'");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<JobStatus>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("job_status")
+                        .HasDefaultValue(JobStatus.Unpublished)
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset?>("SuspendedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("suspended_at");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("title");
+
+                    b.Property<WorkMode>("WorkMode")
+                        .HasColumnType("work_mode")
+                        .HasColumnName("work_mode");
+
+                    b.HasKey("Id")
+                        .HasName("pk_job");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_job_expiry")
+                        .HasFilter("status = 'PUBLISHED'");
+
+                    b.HasIndex("LocationId")
+                        .HasDatabaseName("ix_job_location")
+                        .HasFilter("deleted_at IS NULL");
+
+                    b.HasIndex("CompanyId", "Status")
+                        .HasDatabaseName("ix_job_company_status")
+                        .HasFilter("deleted_at IS NULL");
+
+                    b.ToTable("job", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_job_description", "btrim(description) <> ''");
+
+                            t.HasCheckConstraint("ck_job_min_salary", "min_salary > 0");
+
+                            t.HasCheckConstraint("ck_job_photo_paths", "cardinality(photo_paths) <= 5");
+
+                            t.HasCheckConstraint("ck_job_published", "status NOT IN ('PUBLISHED', 'SUSPENDED') OR first_published_at IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_job_salary", "max_salary >= min_salary");
+
+                            t.HasCheckConstraint("ck_job_title", "btrim(title) <> ''");
+                        });
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.Location", b =>
                 {
                     b.Property<Guid>("Id")
@@ -433,6 +557,18 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                     b.ToTable("recruiter", (string)null);
                 });
 
+            modelBuilder.Entity("Katch.Backend.Domain.Admin", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.AppUser", "User")
+                        .WithOne()
+                        .HasForeignKey("Katch.Backend.Domain.Admin", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_admin_app_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.Candidate", b =>
                 {
                     b.HasOne("Katch.Backend.Domain.AppUser", "User")
@@ -477,6 +613,23 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("fk_company_recruiter_recruiter_id");
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.Job", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_job_company_company_id");
+
+                    b.HasOne("Katch.Backend.Domain.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_job_location_location_id");
                 });
 
             modelBuilder.Entity("Katch.Backend.Domain.Recruiter", b =>

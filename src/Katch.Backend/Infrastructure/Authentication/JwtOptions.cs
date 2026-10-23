@@ -3,7 +3,8 @@
 namespace Katch.Backend.Infrastructure.Authentication;
 
 /// <summary>
-/// Configuração da credencial JWT, lida da secção <c>Jwt</c>. O segredo vem da variável de ambiente
+/// Configuração da credencial JWT, lida da secção <c>Jwt</c>. Só o segredo é configurável: o emissor, o destinatário
+/// e a validade são constantes. O segredo vem da variável de ambiente
 /// <c>Jwt__Secret</c> e nunca do repositório.
 /// </summary>
 public sealed class JwtOptions
@@ -19,19 +20,19 @@ public sealed class JwtOptions
     public const int MinSecretBytes = 32;
 
     /// <summary>
-    /// Gets or sets the issuer (<c>iss</c>) of the credential.
+    /// Emissor (<c>iss</c>) da credencial, fixo pela API v02 (secção 3.1).
     /// </summary>
-    public string Issuer { get; set; } = "katch-backend";
+    public const string Issuer = "katch-backend";
 
     /// <summary>
-    /// Gets or sets the audience (<c>aud</c>) of the credential.
+    /// Destinatário (<c>aud</c>) da credencial, fixo pela API v02 (secção 3.1).
     /// </summary>
-    public string Audience { get; set; } = "katch-clients";
+    public const string Audience = "katch-clients";
 
     /// <summary>
-    /// Gets or sets the validity, in hours, counted from the instant of issue.
+    /// Validade da credencial, em horas, a contar do instante de emissão; fixa pela API v02 (secção 3.1).
     /// </summary>
-    public int LifetimeHours { get; set; } = 8;
+    public const int LifetimeHours = 8;
 
     /// <summary>
     /// Gets or sets the secret that signs the credential, with at least <see cref="MinSecretBytes"/> bytes.

@@ -1,9 +1,9 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain;
-using Katch.Backend.Services;
+using Katch.Backend.Infrastructure;
 
-namespace Katch.Backend.UnitTests.Services;
+namespace Katch.Backend.UnitTests.Infrastructure;
 
 /// <summary>
 /// Testes de <see cref="IdentityPasswordHasher"/> (modelo de classes do backend v02, secção 5.2; RNF003).

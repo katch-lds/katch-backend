@@ -6,9 +6,9 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
+using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Repositories;
-using Katch.Backend.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -26,7 +26,7 @@ public sealed class AuthenticationTests : IClassFixture<KatchWebApplicationFacto
     private const string AccountSuspended = "A conta está suspensa.";
     private const string WrongAccountType = "A operação não está disponível para este tipo de conta.";
 
-    private static readonly string[] Endpoints = ["any", "candidate", "recruiter", "candidate-or-recruiter", "admin"];
+    private static readonly string[] Endpoints = ["any", "default", "candidate", "recruiter", "candidate-or-recruiter", "admin"];
 
     private readonly KatchWebApplicationFactory factory;
 
@@ -59,6 +59,9 @@ public sealed class AuthenticationTests : IClassFixture<KatchWebApplicationFacto
     [InlineData(UserType.Candidate, "any")]
     [InlineData(UserType.Recruiter, "any")]
     [InlineData(UserType.Admin, "any")]
+    [InlineData(UserType.Candidate, "default")]
+    [InlineData(UserType.Recruiter, "default")]
+    [InlineData(UserType.Admin, "default")]
     public async Task ValidTokenOfTheRightTypeReturnsOk(UserType userType, string endpoint)
     {
         AppUser user = await this.SeedAsync(userType);
@@ -80,6 +83,21 @@ public sealed class AuthenticationTests : IClassFixture<KatchWebApplicationFacto
         using HttpResponseMessage response = await this.GetAsync(endpoint, token: null);
 
         await AssertErrorAsync(response, HttpStatusCode.Unauthorized, "ERR-01", InvalidSession);
+    }
+
+    /// <summary>
+    /// O endpoint anónimo responde 200 sem credencial, ao contrário do endpoint sem atributos, que exige autenticação
+    /// por omissão.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task AnonymousEndpointRespondsWithoutTokenWhileDefaultEndpointDoesNot()
+    {
+        using HttpResponseMessage anonymous = await this.GetAsync("anonymous", token: null);
+        using HttpResponseMessage unattributed = await this.GetAsync("default", token: null);
+
+        Assert.Equal(HttpStatusCode.OK, anonymous.StatusCode);
+        await AssertErrorAsync(unattributed, HttpStatusCode.Unauthorized, "ERR-01", InvalidSession);
     }
 
     /// <summary>

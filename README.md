@@ -89,6 +89,23 @@ $env:ConnectionStrings__Katch
 No cmd, a sintaxe é outra: `set "ConnectionStrings__Katch=Host=localhost;Port=<porto>;Database=katch;Username=postgres;Password=<palavra-passe>"`.
 No PowerShell, `set "..."` não define variáveis de ambiente e `$env:` não funciona no cmd.
 
+**Palavra-passe do Administrador (`Katch__AdminPassword`).** A migration `AddAdmin` cria a conta de Administrador
+dos dados iniciais (`admin@katch.pt`, modelo de dados v02, secção 9) e lê a palavra-passe desta variável, que só é
+precisa para **aplicar** as migrations. Tem de ter pelo menos 8 caracteres, com uma letra e um algarismo (P05). Na
+base de dados fica só o resumo; a palavra-passe nunca vai para o repositório (RI, secção 14.2).
+
+```powershell
+$env:Katch__AdminPassword = "<palavra-passe do Administrador>"
+```
+
+**Segredo da credencial (`Jwt__Secret`).** A API assina as credenciais de sessão (JWT) com um segredo lido desta
+variável e **não arranca** sem ele. Tem de ter pelo menos 32 bytes e nunca vai para o repositório. Mais
+pormenores na [secção 9](#9-autenticação-jwt).
+
+```powershell
+$env:Jwt__Secret = "<segredo com pelo menos 32 bytes>"
+```
+
 ### 3.4 Instalar a ferramenta das migrations
 
 Na raiz do repositório (a pasta onde está o `Katch.Backend.sln`):
@@ -105,7 +122,8 @@ Deve terminar com `Restore was successful.` Só é preciso uma vez por clone.
 dotnet ef database update --project src/Katch.Backend
 ```
 
-Corre bem quando aparece `Applying migration '...'` para cada migration e termina com `Done.` Pode ver
+Exige as variáveis `ConnectionStrings__Katch` e `Katch__AdminPassword` (secção 3.3). Corre bem quando aparece
+`Applying migration '...'` para cada migration e termina com `Done.` Pode ver
 "Failed executing DbCommand ... `__EFMigrationsHistory`" na primeira vez: é esperado, porque a tabela de histórico
 ainda não existia e foi criada nesse momento.
 
@@ -137,6 +155,8 @@ Sempre que abrir um terminal novo para trabalhar:
 ```powershell
 cd "<caminho para a pasta do repositório>"
 $env:ConnectionStrings__Katch = "Host=localhost;Port=<porto>;Database=katch;Username=postgres;Password=<palavra-passe>"
+$env:Katch__AdminPassword = "<palavra-passe do Administrador>"   # só para aplicar migrations
+$env:Jwt__Secret = "<segredo com pelo menos 32 bytes>"             # obrigatório para a API arrancar (secção 9)
 git pull
 dotnet ef database update --project src/Katch.Backend    # só é necessário se o git pull trouxe migrations novas
 dotnet run --project src/Katch.Backend --launch-profile http
@@ -171,6 +191,8 @@ Test summary: total: 109; failed: 0; succeeded: 109; skipped: 0
 
 - `migrations add` não precisa da variável definida: sem ela usa uma cadeia sem credenciais, suficiente para gerar.
   Aplicar ou reverter exige a variável.
+- Aplicar a `AddAdmin` exige também `Katch__AdminPassword`; reverter não. Reverter a `AddAdmin` apaga a tabela
+  `admin` e as contas de Administrador.
 - Reverter apaga dados. Use só na sua base local, nunca numa base partilhada.
 - Para verificar o resultado no pgAdmin (*Query Tool* na base `katch`, uma query de cada vez: selecione-a e carregue
   em F5, porque o pgAdmin só mostra o resultado da última instrução):
@@ -204,6 +226,8 @@ Executar na raiz do repositório.
 | `dotnet --version` falha, ou `No .NET SDKs were found` | Só o runtime está instalado, ou o terminal é anterior à instalação | Instalar o SDK (ver secção 2) e abrir um terminal novo |
 | `Falta a cadeia de ligação ao PostgreSQL` ao arrancar | `ConnectionStrings__Katch` não definida nesta janela | Definir a variável (secção 3.3) na mesma janela e voltar a correr |
 | `Falta o segredo JWT ou tem menos de 32 bytes` ao arrancar | `Jwt__Secret` não definida nesta janela, ou curta demais | Definir a variável (secção 9) e voltar a correr |
+| `Falta a palavra-passe da conta de Administrador` no `dotnet ef database update` | `Katch__AdminPassword` não definida nesta janela | Definir a variável (secção 3.3) e repetir |
+| `A palavra-passe do Administrador deve ter pelo menos 8 caracteres` | A variável não cumpre o P05 | Usar pelo menos 8 caracteres, com uma letra e um algarismo |
 | `Failed to connect to 127.0.0.1:6000` no `dotnet ef` | Variável não definida; o `dotnet ef` usa um porto por omissão | Definir a variável e repetir |
 | `A sintaxe do nome do ficheiro, do nome do diretório ou da etiqueta do volume é incorreta` | Usou `$env:` no cmd | Abrir o PowerShell, ou usar `set "..."` no cmd |
 | A variável não fica definida depois de `set "..."` | `set` só funciona no cmd, não no PowerShell | Usar `$env:ConnectionStrings__Katch = "..."` |
@@ -220,6 +244,8 @@ Executar na raiz do repositório.
 A API assina as credenciais JWT (HS256) com um segredo lido da variável de ambiente `Jwt__Secret` (dois
 sublinhados; corresponde à configuração `Jwt:Secret`). Tem de ter **pelo menos 32 bytes**. Sem ela, ou com um
 segredo mais curto, a API **não arranca** e a mensagem de erro diz como configurar (nunca mostra o valor).
+Só o segredo é configurável: o emissor (`katch-backend`), o destinatário (`katch-clients`) e a validade (8 horas) são
+fixos no código, conforme a API v02 (secção 3.1).
 
 - **Windows (PowerShell):** gere um valor aleatório e guarde-o para o seu utilizador com
   `setx Jwt__Secret "<segredo com pelo menos 32 bytes>"`. O `setx` só vale em terminais novos; na janela atual
@@ -233,7 +259,8 @@ segredo mais curto, a API **não arranca** e a mensagem de erro diz como configu
 
 Os controllers usam as constantes de `AuthorizationPolicies`: `Candidate`, `Recruiter`, `CandidateOrRecruiter`,
 `Admin` e `ApprovedCompany` (Recrutador cuja Empresa está aprovada); `[Authorize]` sem política aceita qualquer
-conta autenticada. Os erros 401 e 403 têm sempre o corpo `ApiErrorDto`, pela ordem de verificação:
+conta autenticada. **Todos os endpoints exigem autenticação por omissão**: os endpoints anónimos (registo,
+início de sessão, lista de localidades) têm de ter `[AllowAnonymous]`. Os erros 401 e 403 têm sempre o corpo `ApiErrorDto`, pela ordem de verificação:
 
 | Ordem | Erro | Quando |
 | --- | --- | --- |

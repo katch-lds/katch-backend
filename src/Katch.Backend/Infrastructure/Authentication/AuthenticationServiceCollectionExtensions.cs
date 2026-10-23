@@ -1,6 +1,5 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -29,7 +28,8 @@ public static class AuthenticationServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Regista a validação da credencial JWT, as políticas de autorização e as respostas de erro 401 e 403.
+    /// Regista a validação da credencial JWT, as políticas de autorização e as respostas de erro 401 e 403. Por omissão
+    /// todos os endpoints exigem autenticação (política de reserva); só os marcados com <c>[AllowAnonymous]</c> são anónimos.
     /// </summary>
     /// <param name="services">Coleção de serviços.</param>
     /// <returns>A mesma coleção, para encadear chamadas.</returns>
@@ -41,6 +41,7 @@ public static class AuthenticationServiceCollectionExtensions
         services.AddSingleton<IConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerOptions>();
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
         services.AddAuthorizationBuilder()
+            .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
             .AddPolicy(AuthorizationPolicies.Candidate, policy => policy.RequireRole(AccountRoles.Candidate))
             .AddPolicy(AuthorizationPolicies.Recruiter, policy => policy.RequireRole(AccountRoles.Recruiter))
             .AddPolicy(

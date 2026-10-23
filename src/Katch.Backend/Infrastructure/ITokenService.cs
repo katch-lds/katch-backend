@@ -3,7 +3,7 @@
 using Katch.Backend.Domain;
 using Katch.Backend.Dtos;
 
-namespace Katch.Backend.Services;
+namespace Katch.Backend.Infrastructure;
 
 /// <summary>
 /// Emite a credencial JWT de uma conta (documentação da API v02, secção 3.1).

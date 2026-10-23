@@ -5,15 +5,15 @@ using System.Text;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
+using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Authentication;
-using Katch.Backend.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Katch.Backend.UnitTests.Services;
+namespace Katch.Backend.UnitTests.Infrastructure;
 
 /// <summary>
 /// Testes da emissão da credencial JWT, com um relógio controlado e um segredo gerado em cada execução.
@@ -157,18 +157,39 @@ public sealed class JwtTokenServiceTests
 
         JwtOptions options = provider.GetRequiredService<IOptions<JwtOptions>>().Value;
 
-        Assert.Equal("katch-backend", options.Issuer);
-        Assert.Equal("katch-clients", options.Audience);
-        Assert.Equal(8, options.LifetimeHours);
+        Assert.Equal(new string('x', 32), options.Secret);
     }
 
-    private static ServiceProvider BuildProvider(string? configuredSecret)
+    /// <summary>
+    /// O emissor, o destinatário e a validade são fixos: a configuração não os altera.
+    /// </summary>
+    [Fact]
+    public void IssuerAudienceAndLifetimeAreFixedAndIgnoreConfiguration()
     {
+        var extra = new Dictionary<string, string?>
+        {
+            ["Jwt:Issuer"] = "outro-emissor",
+            ["Jwt:Audience"] = "outro-destinatario",
+            ["Jwt:LifetimeHours"] = "1",
+        };
+        using ServiceProvider provider = BuildProvider(new string('x', 32), extra);
+
+        LoginResponse response = provider.GetRequiredService<ITokenService>().CreateToken(NewUser(UserType.Candidate));
+        JsonWebToken token = Read(response);
+
+        Assert.Equal("katch-backend", JwtOptions.Issuer);
+        Assert.Equal("katch-clients", JwtOptions.Audience);
+        Assert.Equal(8, JwtOptions.LifetimeHours);
+        Assert.Equal("katch-backend", token.Issuer);
+        Assert.Equal(["katch-clients"], token.Audiences);
+        Assert.Equal(TimeSpan.FromHours(8), token.ValidTo - token.IssuedAt);
+    }
+
+    private static ServiceProvider BuildProvider(string? configuredSecret, Dictionary<string, string?>? extra = null)
+    {
+        var settings = new Dictionary<string, string?>(extra ?? []) { ["Jwt:Secret"] = configuredSecret };
         var services = new ServiceCollection();
-        services.AddSingleton<IConfiguration>(
-            new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:Secret"] = configuredSecret })
-                .Build());
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
         services.AddKatchJwtOptions();
         return services.BuildServiceProvider();
     }

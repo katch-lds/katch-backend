@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Services;
+using Katch.Backend.Infrastructure;
 
 namespace Katch.Backend.IntegrationTests;
 

@@ -3,7 +3,7 @@
 using Katch.Backend.Domain;
 using Microsoft.AspNetCore.Identity;
 
-namespace Katch.Backend.Services;
+namespace Katch.Backend.Infrastructure;
 
 /// <summary>
 /// <see cref="IPasswordHasher"/> com o <see cref="PasswordHasher{TUser}"/> do ASP.NET Core Identity (PBKDF2 com valor

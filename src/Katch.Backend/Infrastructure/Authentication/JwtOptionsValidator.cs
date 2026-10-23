@@ -25,16 +25,6 @@ internal sealed class JwtOptionsValidator : IValidateOptions<JwtOptions>
                 + $"{JwtOptions.MinSecretBytes} bytes; consulte a secção \"Autenticação JWT\" do README.");
         }
 
-        if (string.IsNullOrWhiteSpace(options.Issuer) || string.IsNullOrWhiteSpace(options.Audience))
-        {
-            failures.Add("Jwt:Issuer e Jwt:Audience não podem estar vazios.");
-        }
-
-        if (options.LifetimeHours <= 0)
-        {
-            failures.Add("Jwt:LifetimeHours tem de ser maior que zero.");
-        }
-
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 }

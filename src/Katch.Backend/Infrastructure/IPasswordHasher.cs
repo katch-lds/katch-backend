@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-namespace Katch.Backend.Services;
+namespace Katch.Backend.Infrastructure;
 
 /// <summary>
 /// Cálculo e verificação do resumo das palavras-passe (modelo de classes do backend v02, secção 5.2; RNF003). A

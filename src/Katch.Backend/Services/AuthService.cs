@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
+using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
 

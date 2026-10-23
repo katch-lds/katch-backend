@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Infrastructure;
 using Katch.Backend.Repositories;
 
 namespace Katch.Backend.Services;
