@@ -36,6 +36,18 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "work_mode", new[] { "ON_SITE", "HYBRID", "REMOTE" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Katch.Backend.Domain.Admin", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admin");
+
+                    b.ToTable("admin", (string)null);
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.AppUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -543,6 +555,18 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         .HasName("pk_recruiter");
 
                     b.ToTable("recruiter", (string)null);
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.Admin", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.AppUser", "User")
+                        .WithOne()
+                        .HasForeignKey("Katch.Backend.Domain.Admin", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_admin_app_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Katch.Backend.Domain.Candidate", b =>
