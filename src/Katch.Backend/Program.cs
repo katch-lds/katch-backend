@@ -22,6 +22,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     string xmlFile = Path.Combine(AppContext.BaseDirectory, $"{typeof(KatchDbContext).Assembly.GetName().Name}.xml");
     options.IncludeXmlComments(xmlFile);
+    options.AddKatchBearerAuthentication();
 });
 
 WebApplication app = builder.Build();
