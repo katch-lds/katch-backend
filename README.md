@@ -235,6 +235,8 @@ Executar na raiz do repositório.
 A API assina as credenciais JWT (HS256) com um segredo lido da variável de ambiente `Jwt__Secret` (dois
 sublinhados; corresponde à configuração `Jwt:Secret`). Tem de ter **pelo menos 32 bytes**. Sem ela, ou com um
 segredo mais curto, a API **não arranca** e a mensagem de erro diz como configurar (nunca mostra o valor).
+Só o segredo é configurável: o emissor (`katch-backend`), o destinatário (`katch-clients`) e a validade (8 horas) são
+fixos no código, conforme a API v02 (secção 3.1).
 
 - **Windows (PowerShell):** gere um valor aleatório e guarde-o para o seu utilizador com
   `setx Jwt__Secret "<segredo com pelo menos 32 bytes>"`. O `setx` só vale em terminais novos; na janela atual

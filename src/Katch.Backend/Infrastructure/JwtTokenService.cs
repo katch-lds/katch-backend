@@ -39,12 +39,12 @@ public sealed class JwtTokenService : ITokenService
 
         // As claims iat e exp têm precisão de segundos; truncar aqui faz o ExpiresAt coincidir com a claim exp.
         DateTimeOffset issuedAt = DateTimeOffset.FromUnixTimeSeconds(this.clock.UtcNow.ToUnixTimeSeconds());
-        DateTimeOffset expiresAt = issuedAt.AddHours(jwt.LifetimeHours);
+        DateTimeOffset expiresAt = issuedAt.AddHours(JwtOptions.LifetimeHours);
 
         var descriptor = new SecurityTokenDescriptor
         {
-            Issuer = jwt.Issuer,
-            Audience = jwt.Audience,
+            Issuer = JwtOptions.Issuer,
+            Audience = JwtOptions.Audience,
             IssuedAt = issuedAt.UtcDateTime,
             Expires = expiresAt.UtcDateTime,
             Claims = new Dictionary<string, object>
