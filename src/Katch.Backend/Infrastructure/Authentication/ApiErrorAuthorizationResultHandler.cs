@@ -8,13 +8,10 @@ namespace Katch.Backend.Infrastructure.Authentication;
 
 /// <summary>
 /// Dá o corpo <see cref="Dtos.ApiErrorDto"/> a todas as recusas da autorização: 401 ERR-01 quando não há sessão
-/// válida e 403 ERR-06 quando a política não é cumprida. Cobre a credencial em falta, mal formada, com assinatura
-/// inválida ou expirada, porque nestes casos o pedido chega aqui sem utilizador autenticado.
+/// válida, 403 ERR-07 quando o falhanço vem do requisito da Empresa aprovada (a mensagem, com o estado da Empresa,
+/// já vem no motivo da falha) e 403 ERR-06 quando outra política não é cumprida. Cobre a credencial em falta, mal
+/// formada, com assinatura inválida ou expirada, porque nestes casos o pedido chega aqui sem utilizador autenticado.
 /// </summary>
-/// <remarks>
-/// Para acrescentar o ERR-07 (Empresa não aprovada), distinguir aqui a falha da política <c>ApprovedCompany</c>
-/// em <see cref="PolicyAuthorizationResult.AuthorizationFailure"/> antes de escrever o ERR-06.
-/// </remarks>
 internal sealed class ApiErrorAuthorizationResultHandler : IAuthorizationMiddlewareResultHandler
 {
     /// <inheritdoc/>
@@ -34,6 +31,13 @@ internal sealed class ApiErrorAuthorizationResultHandler : IAuthorizationMiddlew
 
         if (authorizeResult.Forbidden)
         {
+            AuthorizationFailureReason? companyReason = authorizeResult.AuthorizationFailure?.FailureReasons
+                .FirstOrDefault(reason => reason.Handler is ApprovedCompanyAuthorizationHandler);
+            if (companyReason is not null)
+            {
+                return ApiErrorResponse.WriteCompanyNotApprovedAsync(context, companyReason.Message);
+            }
+
             return ApiErrorResponse.WriteAccountTypeNotAllowedAsync(context);
         }
 

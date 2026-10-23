@@ -46,7 +46,13 @@ public static class AuthenticationServiceCollectionExtensions
             .AddPolicy(
                 AuthorizationPolicies.CandidateOrRecruiter,
                 policy => policy.RequireRole(AccountRoles.Candidate, AccountRoles.Recruiter))
-            .AddPolicy(AuthorizationPolicies.Admin, policy => policy.RequireRole(AccountRoles.Admin));
+            .AddPolicy(AuthorizationPolicies.Admin, policy => policy.RequireRole(AccountRoles.Admin))
+            .AddPolicy(
+                AuthorizationPolicies.ApprovedCompany,
+                policy => policy
+                    .RequireRole(AccountRoles.Recruiter)
+                    .AddRequirements(new ApprovedCompanyRequirement()));
+        services.AddScoped<IAuthorizationHandler, ApprovedCompanyAuthorizationHandler>();
         services.AddSingleton<IAuthorizationMiddlewareResultHandler, ApiErrorAuthorizationResultHandler>();
         return services;
     }

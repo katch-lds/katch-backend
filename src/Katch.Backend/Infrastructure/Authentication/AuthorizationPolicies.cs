@@ -27,4 +27,9 @@ public static class AuthorizationPolicies
     /// Só contas de Administrador.
     /// </summary>
     public const string Admin = "Admin";
+
+    /// <summary>
+    /// Só Recrutadores cuja Empresa está aprovada.
+    /// </summary>
+    public const string ApprovedCompany = "ApprovedCompany";
 }

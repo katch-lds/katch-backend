@@ -1,6 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using System.Text.Json;
+using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
 
 namespace Katch.Backend.Infrastructure.Errors;
@@ -30,6 +31,11 @@ public static class ApiErrorResponse
     /// Código do erro de operação não disponível para o tipo de conta.
     /// </summary>
     public const string AccountTypeNotAllowedCode = "ERR-06";
+
+    /// <summary>
+    /// Código do erro de Empresa não aprovada.
+    /// </summary>
+    public const string CompanyNotApprovedCode = "ERR-07";
 
     /// <summary>
     /// Mensagem do ERR-01.
@@ -91,6 +97,38 @@ public static class ApiErrorResponse
     public static Task WriteAccountTypeNotAllowedAsync(HttpContext context)
     {
         return WriteAsync(context, StatusCodes.Status403Forbidden, AccountTypeNotAllowedCode, AccountTypeNotAllowedMessage);
+    }
+
+    /// <summary>
+    /// Escreve o ERR-07 (403): a operação exige a Empresa aprovada.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <param name="message">Mensagem, obtida com <see cref="CompanyNotApprovedMessage"/>.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteCompanyNotApprovedAsync(HttpContext context, string message)
+    {
+        return WriteAsync(context, StatusCodes.Status403Forbidden, CompanyNotApprovedCode, message);
+    }
+
+    /// <summary>
+    /// Compõe a mensagem do ERR-07 com o estado atual da Empresa.
+    /// </summary>
+    /// <param name="status">Estado da Empresa, ou <see langword="null"/> se o Recrutador não tem Empresa.</param>
+    /// <returns>A mensagem, por exemplo «A operação exige a Empresa aprovada. Estado atual da Empresa: pendente.».</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Se o estado não for conhecido.</exception>
+    public static string CompanyNotApprovedMessage(CompanyStatus? status)
+    {
+        string label = status switch
+        {
+            null => "não registada",
+            CompanyStatus.Pending => "pendente",
+            CompanyStatus.Approved => "aprovada",
+            CompanyStatus.Rejected => "recusada",
+            CompanyStatus.Suspended => "suspensa",
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Estado de Empresa desconhecido."),
+        };
+
+        return $"A operação exige a Empresa aprovada. Estado atual da Empresa: {label}.";
     }
 
     private static Task WriteAsync(HttpContext context, int statusCode, string code, string message)
