@@ -3,6 +3,7 @@
 using Katch.Backend.Domain;
 using Katch.Backend.Repositories.Configuration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
 namespace Katch.Backend.Repositories;
 
@@ -46,6 +47,24 @@ public sealed class KatchDbContext : DbContext
     /// </summary>
     public DbSet<CandidateLink> CandidateLinks => this.Set<CandidateLink>();
 
+    /// <summary>
+    /// Gets the companies (<c>company</c>).
+    /// </summary>
+    public DbSet<Company> Companies => this.Set<Company>();
+
+    /// <inheritdoc/>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(configurationBuilder);
+
+        base.ConfigureConventions(configurationBuilder);
+
+        // Os índices são os da secção 5.3 do modelo de dados, declarados em cada configuração. Sem esta linha, o EF Core
+        // criava um índice por cada chave estrangeira não coberta por outro índice (por exemplo, company.location_id),
+        // que o modelo de dados não prevê.
+        configurationBuilder.Conventions.Remove<ForeignKeyIndexConvention>();
+    }
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -63,5 +82,6 @@ public sealed class KatchDbContext : DbContext
         modelBuilder.ApplyConfiguration(new LocationConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CandidateConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CandidateLinkConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new CompanyConfiguration(usesPostgres));
     }
 }
