@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Infrastructure.Authentication;
@@ -37,7 +38,9 @@ internal sealed class AccountStatusMiddleware
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(database);
 
-        if (context.User.Identity?.IsAuthenticated != true)
+        // Os endpoints anónimos não dependem da conta: passam sem consultar a base de dados.
+        if (context.GetEndpoint()?.Metadata.GetMetadata<IAllowAnonymous>() is not null
+            || context.User.Identity?.IsAuthenticated != true)
         {
             await this.next(context);
             return;

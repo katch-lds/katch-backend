@@ -236,6 +236,49 @@ public sealed class AuthenticationTests : IClassFixture<KatchWebApplicationFacto
         await AssertErrorAsync(response, HttpStatusCode.Forbidden, "ERR-06", WrongAccountType);
     }
 
+    /// <summary>
+    /// Num endpoint anónimo, uma credencial de conta bloqueada, inexistente ou expirada não é verificada: responde 200,
+    /// enquanto o endpoint protegido continua a recusar com o erro respetivo.
+    /// </summary>
+    /// <param name="scenario">Estado da conta ou da credencial.</param>
+    /// <param name="expectedStatus">Estado HTTP esperado no endpoint protegido.</param>
+    /// <param name="expectedCode">Código de erro esperado no endpoint protegido.</param>
+    /// <param name="expectedMessage">Mensagem esperada no endpoint protegido.</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData("blocked", HttpStatusCode.Forbidden, "ERR-03", AccountBlocked)]
+    [InlineData("nonexistent", HttpStatusCode.Unauthorized, "ERR-01", InvalidSession)]
+    [InlineData("expired", HttpStatusCode.Unauthorized, "ERR-01", InvalidSession)]
+    public async Task AnonymousEndpointIgnoresTheAccountStateButProtectedOneDoesNot(
+        string scenario,
+        HttpStatusCode expectedStatus,
+        string expectedCode,
+        string expectedMessage)
+    {
+        string token;
+        switch (scenario)
+        {
+            case "blocked":
+                token = this.IssueToken(await this.SeedAsync(UserType.Recruiter, user => user.Block(DateTimeOffset.UtcNow)));
+                break;
+            case "nonexistent":
+                await this.EnsureDatabaseAsync();
+                token = this.IssueToken(NewUser(UserType.Candidate));
+                break;
+            default:
+                token = this.IssueToken(
+                    await this.SeedAsync(UserType.Candidate),
+                    DateTimeOffset.UtcNow.AddHours(-9));
+                break;
+        }
+
+        using HttpResponseMessage anonymous = await this.GetAsync("anonymous", token);
+        using HttpResponseMessage protectedResponse = await this.GetAsync("any", token);
+
+        Assert.Equal(HttpStatusCode.OK, anonymous.StatusCode);
+        await AssertErrorAsync(protectedResponse, expectedStatus, expectedCode, expectedMessage);
+    }
+
     private static AppUser NewUser(UserType userType)
     {
         DateTimeOffset now = DateTimeOffset.UtcNow;

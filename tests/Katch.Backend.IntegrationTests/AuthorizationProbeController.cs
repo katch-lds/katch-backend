@@ -14,6 +14,17 @@ namespace Katch.Backend.IntegrationTests;
 public sealed class AuthorizationProbeController : ControllerBase
 {
     /// <summary>
+    /// Endpoint anónimo.
+    /// </summary>
+    /// <returns>200.</returns>
+    [HttpGet("anonymous")]
+    [AllowAnonymous]
+    public IActionResult Anonymous()
+    {
+        return this.Ok();
+    }
+
+    /// <summary>
     /// Qualquer conta autenticada.
     /// </summary>
     /// <returns>200.</returns>
