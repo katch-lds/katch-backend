@@ -279,13 +279,15 @@ public sealed class AuthenticationTests : IClassFixture<KatchWebApplicationFacto
         await AssertErrorAsync(protectedResponse, expectedStatus, expectedCode, expectedMessage);
     }
 
-    private static AppUser NewUser(UserType userType)
-    {
-        DateTimeOffset now = DateTimeOffset.UtcNow;
-        return new AppUser($"{Guid.NewGuid():N}@katch.pt", "hash", userType, now, now);
-    }
-
-    private static async Task AssertErrorAsync(
+    /// <summary>
+    /// Verifica o estado HTTP e o corpo <c>ApiErrorDto</c> completo de uma resposta de erro.
+    /// </summary>
+    /// <param name="response">Resposta recebida.</param>
+    /// <param name="status">Estado HTTP esperado.</param>
+    /// <param name="code">Código de erro esperado.</param>
+    /// <param name="message">Mensagem esperada, exatamente como no catálogo.</param>
+    /// <returns>Tarefa do teste.</returns>
+    internal static async Task AssertErrorAsync(
         HttpResponseMessage response,
         HttpStatusCode status,
         string code,
@@ -306,6 +308,12 @@ public sealed class AuthenticationTests : IClassFixture<KatchWebApplicationFacto
         Assert.Equal(JsonValueKind.Array, root.GetProperty("fields").ValueKind);
         Assert.Equal(0, root.GetProperty("fields").GetArrayLength());
         Assert.Equal(JsonValueKind.Null, root.GetProperty("blockedUntil").ValueKind);
+    }
+
+    private static AppUser NewUser(UserType userType)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        return new AppUser($"{Guid.NewGuid():N}@katch.pt", "hash", userType, now, now);
     }
 
     private async Task EnsureDatabaseAsync()

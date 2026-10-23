@@ -78,4 +78,15 @@ public sealed class AuthorizationProbeController : ControllerBase
     {
         return this.Ok();
     }
+
+    /// <summary>
+    /// Só Recrutador com a Empresa aprovada.
+    /// </summary>
+    /// <returns>200.</returns>
+    [HttpGet("approved-company")]
+    [Authorize(Policy = AuthorizationPolicies.ApprovedCompany)]
+    public IActionResult ApprovedCompany()
+    {
+        return this.Ok();
+    }
 }
