@@ -26,7 +26,11 @@ public static class ApiConventionsMvcBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.AddMvcOptions(options => options.Filters.Add<ValidationFailedExceptionFilter>());
+        builder.AddMvcOptions(options =>
+        {
+            options.Filters.Add<ValidationFailedExceptionFilter>();
+            options.Filters.Add<ServiceExceptionFilter>();
+        });
         builder.AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper));
@@ -60,7 +64,7 @@ public static class ApiConventionsMvcBuilderExtensions
     {
         return field switch
         {
-            "locationId" => FieldReasons.NotInList,
+            "locationId" or "industry" => FieldReasons.NotInList,
             "acceptTerms" => FieldReasons.AcceptTerms,
             _ => FieldReasons.InvalidValue,
         };
