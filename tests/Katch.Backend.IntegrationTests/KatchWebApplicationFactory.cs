@@ -1,5 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using System.Security.Cryptography;
+using Katch.Backend.Infrastructure;
 using Katch.Backend.Repositories;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -19,6 +21,11 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection connection = new("DataSource=:memory:");
 
+    /// <summary>
+    /// Gets the clock injected in place of the system clock, so that tests can control the issue time of tokens.
+    /// </summary>
+    public FakeClock Clock { get; } = new();
+
     /// <inheritdoc/>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -28,8 +35,15 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:Katch", "Host=localhost;Database=katch_tests");
         builder.UseEnvironment("Development");
 
+        // O segredo JWT é gerado em cada execução; nunca existe um valor fixo no código.
+        builder.UseSetting("Jwt:Secret", Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)));
+
         builder.ConfigureServices(services =>
         {
+            services.AddControllers().AddApplicationPart(typeof(AuthorizationProbeController).Assembly);
+            services.RemoveAll<IClock>();
+            services.AddSingleton<IClock>(this.Clock);
+
             services.RemoveAll<DbContextOptions<KatchDbContext>>();
             services.RemoveAll<IDbContextOptionsConfiguration<KatchDbContext>>();
 
