@@ -18,12 +18,14 @@ PowerShell (menu Iniciar, "Windows PowerShell") ou escreva `powershell` no termi
 8. [Erros comuns](#8-erros-comuns)
 9. [Autenticação JWT](#9-autenticação-jwt)
 10. [Regras a respeitar](#10-regras-a-respeitar)
+11. [Scripts da base de dados](#11-scripts-da-base-de-dados)
 
 ## 1. Estrutura do repositório
 
 | Pasta ou ficheiro | O que é |
 | --- | --- |
 | `src/Katch.Backend/` | A API: controllers, serviços, repositórios, entidades e migrations |
+| `database/` | Scripts SQL de criação, reposição e dados iniciais da base de dados (ver secção 11) |
 | `tests/Katch.Backend.UnitTests/` | Testes unitários |
 | `tests/Katch.Backend.IntegrationTests/` | Testes de integração (usam SQLite em memória) |
 | `Katch.Backend.sln` | Solução .NET que junta os três projetos |
@@ -278,3 +280,10 @@ início de sessão, lista de localidades) têm de ter `[AllowAnonymous]`. Os err
 - Dados de teste são sempre fictícios; é proibido importar dados reais de utilizadores.
 - Não fazer push direto para `main`: todas as alterações entram por Pull Request aprovado e com a pipeline verde.
 - Antes de acrescentar funcionalidades ou tabelas, confirmar que estão no âmbito aprovado (F001 a F010).
+
+## 11. Scripts da base de dados
+
+A pasta `database/` tem os scripts para criar, repor e preencher a base `katch` sem passar pelo `dotnet ef`: o
+esquema e a reposição, gerados a partir das migrations, e os dados iniciais fictícios (localidades, competências,
+benefícios e dados de demonstração do P18). As instruções de execução e de geração estão em
+[`database/README.md`](database/README.md).
