@@ -62,6 +62,22 @@ public sealed class KatchDbContext : DbContext
     /// </summary>
     public DbSet<Job> Jobs => this.Set<Job>();
 
+    /// <summary>
+    /// Gets the answers of the candidates to the jobs, the decisions of the recruiters, the matches and their
+    /// conversations (<c>match</c>).
+    /// </summary>
+    public DbSet<Match> Matches => this.Set<Match>();
+
+    /// <summary>
+    /// Gets the messages of the conversations (<c>message</c>).
+    /// </summary>
+    public DbSet<Message> Messages => this.Set<Message>();
+
+    /// <summary>
+    /// Gets the authorship log of the operations (<c>operation_log</c>), insert-only.
+    /// </summary>
+    public DbSet<OperationLog> OperationLogs => this.Set<OperationLog>();
+
     /// <inheritdoc/>
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -95,5 +111,8 @@ public sealed class KatchDbContext : DbContext
         modelBuilder.ApplyConfiguration(new CandidateLinkConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CompanyConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new JobConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new MatchConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new MessageConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new OperationLogConfiguration(usesPostgres));
     }
 }
