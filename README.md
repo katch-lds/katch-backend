@@ -16,7 +16,8 @@ PowerShell (menu Iniciar, "Windows PowerShell") ou escreva `powershell` no termi
 6. [Migrations](#6-migrations)
 7. [Resumo dos comandos](#7-resumo-dos-comandos)
 8. [Erros comuns](#8-erros-comuns)
-9. [Regras a respeitar](#9-regras-a-respeitar)
+9. [Autenticação JWT](#9-autenticação-jwt)
+10. [Regras a respeitar](#10-regras-a-respeitar)
 
 ## 1. Estrutura do repositório
 
@@ -97,6 +98,14 @@ base de dados fica só o resumo; a palavra-passe nunca vai para o repositório (
 $env:Katch__AdminPassword = "<palavra-passe do Administrador>"
 ```
 
+**Segredo da credencial (`Jwt__Secret`).** A API assina as credenciais de sessão (JWT) com um segredo lido desta
+variável e **não arranca** sem ele. Tem de ter pelo menos 32 bytes e nunca vai para o repositório. Mais
+pormenores na [secção 9](#9-autenticação-jwt).
+
+```powershell
+$env:Jwt__Secret = "<segredo com pelo menos 32 bytes>"
+```
+
 ### 3.4 Instalar a ferramenta das migrations
 
 Na raiz do repositório (a pasta onde está o `Katch.Backend.sln`):
@@ -147,6 +156,7 @@ Sempre que abrir um terminal novo para trabalhar:
 cd "<caminho para a pasta do repositório>"
 $env:ConnectionStrings__Katch = "Host=localhost;Port=<porto>;Database=katch;Username=postgres;Password=<palavra-passe>"
 $env:Katch__AdminPassword = "<palavra-passe do Administrador>"   # só para aplicar migrations
+$env:Jwt__Secret = "<segredo com pelo menos 32 bytes>"             # obrigatório para a API arrancar (secção 9)
 git pull
 dotnet ef database update --project src/Katch.Backend    # só é necessário se o git pull trouxe migrations novas
 dotnet run --project src/Katch.Backend --launch-profile http
@@ -215,6 +225,7 @@ Executar na raiz do repositório.
 | --- | --- | --- |
 | `dotnet --version` falha, ou `No .NET SDKs were found` | Só o runtime está instalado, ou o terminal é anterior à instalação | Instalar o SDK (ver secção 2) e abrir um terminal novo |
 | `Falta a cadeia de ligação ao PostgreSQL` ao arrancar | `ConnectionStrings__Katch` não definida nesta janela | Definir a variável (secção 3.3) na mesma janela e voltar a correr |
+| `Falta o segredo JWT ou tem menos de 32 bytes` ao arrancar | `Jwt__Secret` não definida nesta janela, ou curta demais | Definir a variável (secção 9) e voltar a correr |
 | `Falta a palavra-passe da conta de Administrador` no `dotnet ef database update` | `Katch__AdminPassword` não definida nesta janela | Definir a variável (secção 3.3) e repetir |
 | `A palavra-passe do Administrador deve ter pelo menos 8 caracteres` | A variável não cumpre o P05 | Usar pelo menos 8 caracteres, com uma letra e um algarismo |
 | `Failed to connect to 127.0.0.1:6000` no `dotnet ef` | Variável não definida; o `dotnet ef` usa um porto por omissão | Definir a variável e repetir |
@@ -228,7 +239,37 @@ Executar na raiz do repositório.
 | A API arranca mas a base está sem tabelas | Faltou aplicar as migrations | `dotnet ef database update --project src/Katch.Backend` |
 | Erros de compilação logo a seguir a um `git pull` | O código trazido ainda não compila, ou faltam pacotes | `dotnet restore` e `dotnet build`; se persistir, falar com quem fez o commit |
 
-## 9. Regras a respeitar
+## 9. Autenticação JWT
+
+A API assina as credenciais JWT (HS256) com um segredo lido da variável de ambiente `Jwt__Secret` (dois
+sublinhados; corresponde à configuração `Jwt:Secret`). Tem de ter **pelo menos 32 bytes**. Sem ela, ou com um
+segredo mais curto, a API **não arranca** e a mensagem de erro diz como configurar (nunca mostra o valor).
+Só o segredo é configurável: o emissor (`katch-backend`), o destinatário (`katch-clients`) e a validade (8 horas) são
+fixos no código, conforme a API v02 (secção 3.1).
+
+- **Windows (PowerShell):** gere um valor aleatório e guarde-o para o seu utilizador com
+  `setx Jwt__Secret "<segredo com pelo menos 32 bytes>"`. O `setx` só vale em terminais novos; na janela atual
+  use também `$env:Jwt__Secret = "<segredo com pelo menos 32 bytes>"`.
+- **CI (GitHub Actions):** os testes definem um segredo aleatório em cada execução, por isso não precisam de
+  nenhum segredo. Para uma API a correr num ambiente partilhado, o valor vai num *secret* do repositório e
+  passa à aplicação como variável de ambiente `Jwt__Secret`.
+- **O valor nunca vai para o repositório**: nem no `appsettings.json`, nem neste README, nem em logs ou commits.
+
+### Políticas de autorização e erros
+
+Os controllers usam as constantes de `AuthorizationPolicies`: `Candidate`, `Recruiter`, `CandidateOrRecruiter`,
+`Admin` e `ApprovedCompany` (Recrutador cuja Empresa está aprovada); `[Authorize]` sem política aceita qualquer
+conta autenticada. **Todos os endpoints exigem autenticação por omissão**: os endpoints anónimos (registo,
+início de sessão, lista de localidades) têm de ter `[AllowAnonymous]`. Os erros 401 e 403 têm sempre o corpo `ApiErrorDto`, pela ordem de verificação:
+
+| Ordem | Erro | Quando |
+| --- | --- | --- |
+| 1 | 401 `ERR-01` | Credencial em falta, mal formada, com assinatura inválida ou expirada, ou conta inexistente |
+| 2 | 403 `ERR-03` / `ERR-04` | Conta bloqueada / suspensa (verificada na base em cada pedido) |
+| 3 | 403 `ERR-06` | O tipo de conta não cumpre a política |
+| 4 | 403 `ERR-07` | Só em `ApprovedCompany`: a Empresa não está aprovada; a mensagem traz o estado atual (pendente, recusada, suspensa ou não registada), lido da base em cada pedido |
+
+## 10. Regras a respeitar
 
 - **Nunca** pôr palavras-passe ou cadeias de ligação reais neste README nem em ficheiros versionados
   (`appsettings.json`, `.env`, etc.). A configuração local vai na variável de ambiente.
