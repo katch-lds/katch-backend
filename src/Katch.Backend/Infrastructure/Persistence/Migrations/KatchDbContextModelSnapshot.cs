@@ -109,6 +109,28 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Katch.Backend.Domain.Benefit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_benefit");
+
+                    b.ToTable("benefit", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_benefit_name", "btrim(name) <> ''");
+                        });
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.Candidate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -210,6 +232,32 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_candidate_quota_block", "next_swipe_available_at IS NULL OR swipe_rights_remaining = 0");
 
                             t.HasCheckConstraint("ck_candidate_swipe_rights_remaining", "swipe_rights_remaining BETWEEN 0 AND 10");
+                        });
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.CandidateCustomSkill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("candidate_id");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("label");
+
+                    b.HasKey("Id")
+                        .HasName("pk_candidate_custom_skill");
+
+                    b.ToTable("candidate_custom_skill", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_candidate_custom_skill_label", "char_length(label) BETWEEN 2 AND 40 AND btrim(label) <> '' AND label ~ '^[[:alnum:] +#.-]+$'");
                         });
                 });
 
@@ -735,6 +783,76 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                     b.ToTable("recruiter", (string)null);
                 });
 
+            modelBuilder.Entity("Katch.Backend.Domain.Skill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_skill");
+
+                    b.ToTable("skill", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_skill_name", "btrim(name) <> ''");
+                        });
+                });
+
+            modelBuilder.Entity("candidate_skill", b =>
+                {
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("candidate_id");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_id");
+
+                    b.HasKey("CandidateId", "SkillId")
+                        .HasName("pk_candidate_skill");
+
+                    b.ToTable("candidate_skill", (string)null);
+                });
+
+            modelBuilder.Entity("job_benefit", b =>
+                {
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<Guid>("BenefitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("benefit_id");
+
+                    b.HasKey("JobId", "BenefitId")
+                        .HasName("pk_job_benefit");
+
+                    b.ToTable("job_benefit", (string)null);
+                });
+
+            modelBuilder.Entity("job_skill", b =>
+                {
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_id");
+
+                    b.HasKey("JobId", "SkillId")
+                        .HasName("pk_job_skill");
+
+                    b.ToTable("job_skill", (string)null);
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.Admin", b =>
                 {
                     b.HasOne("Katch.Backend.Domain.AppUser", "User")
@@ -764,6 +882,16 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_candidate_location_location_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.CandidateCustomSkill", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Candidate", null)
+                        .WithMany("CustomSkills")
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_candidate_custom_skill_candidate_candidate_id");
                 });
 
             modelBuilder.Entity("Katch.Backend.Domain.CandidateLink", b =>
@@ -877,8 +1005,61 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("candidate_skill", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Candidate", null)
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_candidate_skill_candidate_candidate_id");
+
+                    b.HasOne("Katch.Backend.Domain.Skill", null)
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_candidate_skill_skill_skill_id");
+                });
+
+            modelBuilder.Entity("job_benefit", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Benefit", null)
+                        .WithMany()
+                        .HasForeignKey("BenefitId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_job_benefit_benefit_benefit_id");
+
+                    b.HasOne("Katch.Backend.Domain.Job", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_job_benefit_job_job_id");
+                });
+
+            modelBuilder.Entity("job_skill", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Job", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_job_skill_job_job_id");
+
+                    b.HasOne("Katch.Backend.Domain.Skill", null)
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_job_skill_skill_skill_id");
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.Candidate", b =>
                 {
+                    b.Navigation("CustomSkills");
+
                     b.Navigation("Links");
                 });
 #pragma warning restore 612, 618
