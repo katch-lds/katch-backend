@@ -118,13 +118,12 @@ public sealed class Message
     /// nada.
     /// </summary>
     /// <param name="now">Instante da leitura, em UTC.</param>
-    /// <returns><see langword="true"/> na primeira leitura e <see langword="false"/> nas seguintes.</returns>
     /// <exception cref="ArgumentException">Se o instante for anterior ao envio, o que o <c>CHECK</c> não admite.</exception>
-    public bool MarkRead(DateTimeOffset now)
+    public void MarkRead(DateTimeOffset now)
     {
         if (this.ReadAt is not null)
         {
-            return false;
+            return;
         }
 
         if (now < this.SentAt)
@@ -133,6 +132,5 @@ public sealed class Message
         }
 
         this.ReadAt = now;
-        return true;
     }
 }

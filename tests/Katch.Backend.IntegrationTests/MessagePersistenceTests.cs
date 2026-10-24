@@ -82,7 +82,7 @@ public sealed class MessagePersistenceTests : IClassFixture<KatchWebApplicationF
         {
             KatchDbContext context = scope.ServiceProvider.GetRequiredService<KatchDbContext>();
             Message stored = await context.Messages.SingleAsync(item => item.Id == message.Id, TestContext.Current.CancellationToken);
-            Assert.True(stored.MarkRead(Now.AddMinutes(4)));
+            stored.MarkRead(Now.AddMinutes(4));
             await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 

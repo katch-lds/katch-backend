@@ -118,14 +118,14 @@ public sealed class MessageTests
     }
 
     /// <summary>
-    /// A primeira leitura regista a data e devolve <see langword="true"/>.
+    /// A primeira leitura regista a data.
     /// </summary>
     [Fact]
     public void MarkReadRegistersTheFirstReading()
     {
         Message message = Message.Send(MatchId, SenderId, "Olá", Now);
 
-        Assert.True(message.MarkRead(Now.AddMinutes(3)));
+        message.MarkRead(Now.AddMinutes(3));
 
         Assert.Equal(Now.AddMinutes(3), message.ReadAt);
     }
@@ -139,7 +139,7 @@ public sealed class MessageTests
         Message message = Message.Send(MatchId, SenderId, "Olá", Now);
         message.MarkRead(Now.AddMinutes(3));
 
-        Assert.False(message.MarkRead(Now.AddHours(1)));
+        message.MarkRead(Now.AddHours(1));
 
         Assert.Equal(Now.AddMinutes(3), message.ReadAt);
     }
@@ -152,7 +152,7 @@ public sealed class MessageTests
     {
         Message message = Message.Send(MatchId, SenderId, "Olá", Now);
 
-        Assert.True(message.MarkRead(Now));
+        message.MarkRead(Now);
 
         Assert.Equal(Now, message.ReadAt);
     }
