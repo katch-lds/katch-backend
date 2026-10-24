@@ -38,3 +38,50 @@ jobs:
         with:
           name: test-results
           path: TestResults
+
+  database-scripts:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: katch
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: katch
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Criar o esquema e carregar os dados iniciais (duas vezes, para confirmar a idempotência)
+        run: |
+          for run in 1 2; do
+            psql -v ON_ERROR_STOP=1 -q -f database/01-create-schema.sql
+            psql -v ON_ERROR_STOP=1 -q -f database/02-seed-reference-data.sql
+            psql -v ON_ERROR_STOP=1 -q -f database/03-seed-demo-data.sql
+          done
+
+      - name: Verificar tabelas e volumes do P18
+        run: |
+          psql -f database/04-verify.sql
+          test "$(psql -Atc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '__EFMigrationsHistory'")" = "17"
+          test "$(psql -Atc "SELECT count(*) FROM information_schema.tables WHERE table_name = 'notification'")" = "0"
+          test "$(psql -Atc "SELECT count(*) FROM job WHERE status = 'PUBLISHED'")" -ge 50
+
+      - name: Repor e criar de novo
+        run: |
+          psql -v ON_ERROR_STOP=1 -q -f database/00-reset-schema.sql
+          test "$(psql -Atc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name <> '__EFMigrationsHistory'")" = "0"
+          psql -v ON_ERROR_STOP=1 -q -f database/01-create-schema.sql
+          psql -v ON_ERROR_STOP=1 -q -f database/02-seed-reference-data.sql
+          psql -v ON_ERROR_STOP=1 -q -f database/03-seed-demo-data.sql
