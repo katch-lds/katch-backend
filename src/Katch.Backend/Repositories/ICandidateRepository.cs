@@ -17,4 +17,13 @@ public interface ICandidateRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Tarefa que termina quando o Candidato foi acrescentado.</returns>
     public Task AddAsync(Candidate candidate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista os Candidatos com a quota esgotada cujo período de bloqueio já terminou no instante indicado, para a
+    /// reposição da quota (RF021). As alterações são gravadas no <see cref="IUnitOfWork.SaveChangesAsync"/> seguinte.
+    /// </summary>
+    /// <param name="now">Instante da verificação, em UTC.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Os Candidatos cujo <c>next_swipe_available_at</c> é anterior ou igual a <paramref name="now"/>.</returns>
+    public Task<List<Candidate>> ListQuotaDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default);
 }
