@@ -324,8 +324,12 @@ Na recusa e no interesse, a primeira que falhar decide o erro e nada fica regist
    `409` `ERR-33`. É só a parte de estado do RF014; a distância, o salário e as preferências são do cartão de vaga.
 4. Só no interesse, a quota: esgotada e dentro do bloqueio é `409` `ERR-31`.
 
-A concorrência usa o `xmin` de `candidate`: se dois interesses do mesmo Candidato chegam ao mesmo tempo, o segundo
-descarta o contexto e repete tudo desde a leitura, até 5 tentativas; à quinta falha responde `409` `ERR-41`.
+A concorrência usa o `xmin` de `candidate`: se vários pedidos do mesmo Candidato chegam ao mesmo tempo, só um grava de
+cada vez; os que perdem descartam o contexto, esperam entre 2 e 25 ms (valor aleatório, para não colidirem outra vez) e
+repetem tudo desde a leitura (vaga, resposta existente e quota), enquanto houver conflito e **até 5 segundos no total**.
+Cada repetição lê a quota já atualizada pelos outros, por isso 20 interesses simultâneos com a quota a 10 dão 10 × `200` e
+10 × `ERR-31`, nunca `ERR-41`. O `ERR-41` só é devolvido se o conflito durar mais de 5 segundos, como último recurso. O
+mesmo mecanismo serve a consulta da quota quando repõe e grava.
 
 ### Erros
 
@@ -338,7 +342,7 @@ descarta o contexto e repete tudo desde a leitura, até 5 tentativas; à quinta 
 | `ERR-31` | 409 | Esgotou a quota de interesses. Pode voltar a manifestar interesse dentro de {h} h {min} min. | Interesse com a quota esgotada; `blockedUntil` vem no corpo e os minutos são arredondados para cima (mínimo 1) |
 | `ERR-32` | 409 | Já respondeu a esta vaga. | Segunda resposta à mesma vaga |
 | `ERR-33` | 409 | A vaga já não está disponível. | A vaga deixou de cumprir o estado do RF014 |
-| `ERR-41` | 409 | O elemento foi alterado por outro pedido. Atualize e tente novamente. | Cinco conflitos de concorrência seguidos |
+| `ERR-41` | 409 | O elemento foi alterado por outro pedido. Atualize e tente novamente. | Conflito de concorrência que dura mais de 5 segundos (último recurso) |
 
 ### Como experimentar
 
@@ -399,7 +403,7 @@ GET /api/candidate/jobs/quota        (credencial de Recrutador)              (ER
 HTTP/1.1 403 Forbidden
 {"code":"ERR-06","message":"A operação não está disponível para este tipo de conta.","fields":[],"blockedUntil":null}
 
-POST /api/candidate/jobs/<jobId>/interest       (cinco conflitos de concorrência seguidos)   (ERR-41)
+POST /api/candidate/jobs/<jobId>/interest       (conflito de concorrência durante mais de 5 s)   (ERR-41)
 HTTP/1.1 409 Conflict
 {"code":"ERR-41","message":"O elemento foi alterado por outro pedido. Atualize e tente novamente.","fields":[],"blockedUntil":null}
 ```
