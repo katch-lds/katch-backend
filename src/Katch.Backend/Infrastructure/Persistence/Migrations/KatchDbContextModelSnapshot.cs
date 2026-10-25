@@ -634,6 +634,95 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Katch.Backend.Domain.Message", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("content");
+
+                    b.Property<Guid>("MatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("match_id");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sender_id");
+
+                    b.Property<DateTimeOffset>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("Id")
+                        .HasName("pk_message");
+
+                    b.HasIndex("MatchId")
+                        .HasDatabaseName("ix_message_unread")
+                        .HasFilter("read_at IS NULL");
+
+                    b.HasIndex("MatchId", "SentAt")
+                        .HasDatabaseName("ix_message_match_sent");
+
+                    b.ToTable("message", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_message_content", "btrim(content) <> ''");
+
+                            t.HasCheckConstraint("ck_message_read", "read_at IS NULL OR read_at >= sent_at");
+                        });
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.OperationLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<OperationType>("Operation")
+                        .HasColumnType("operation_type")
+                        .HasColumnName("operation");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_operation_log");
+
+                    b.HasIndex("EntityId", "OccurredAt")
+                        .HasDatabaseName("ix_operation_log_entity");
+
+                    b.HasIndex("Operation", "OccurredAt")
+                        .HasDatabaseName("ix_operation_log_occurred");
+
+                    b.ToTable("operation_log", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_operation_log_author", "user_id IS NOT NULL OR operation = 'JOB_CLOSED'");
+                        });
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.Recruiter", b =>
                 {
                     b.Property<Guid>("Id")
@@ -748,6 +837,32 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("fk_match_job_job_id");
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.Message", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Match", null)
+                        .WithMany()
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_message_match_match_id");
+
+                    b.HasOne("Katch.Backend.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_message_app_user_sender_id");
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.OperationLog", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_operation_log_app_user_user_id");
                 });
 
             modelBuilder.Entity("Katch.Backend.Domain.Recruiter", b =>
