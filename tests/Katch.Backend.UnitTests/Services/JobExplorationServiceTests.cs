@@ -310,26 +310,108 @@ public sealed class JobExplorationServiceTests
         Assert.Equal(2, fixture.Store.Discards);
         Assert.Equal(3, fixture.Candidates.Loads);
         Assert.Equal(1, fixture.Store.Saves);
+        Assert.Equal([1, 2], fixture.Delay.Attempts);
     }
 
     /// <summary>
-    /// À quinta falha de concorrência o interesse deixa a exceção propagar e nada fica gravado.
+    /// A espera só acontece entre tentativas: sem conflito não há espera, e com conflitos a primeira espera vem depois da
+    /// primeira leitura.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
-    public async Task InterestPropagatesTheConcurrencyConflictOnTheFifthFailure()
+    public async Task WaitsBetweenAttemptsAndNeverBeforeTheFirst()
+    {
+        Fixture clean = new();
+        await clean.Service.ExpressInterestAsync(clean.CandidateId, clean.AddJob(), TestContext.Current.CancellationToken);
+        Assert.Empty(clean.Delay.Attempts);
+
+        Fixture conflicting = new();
+        conflicting.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
+        conflicting.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
+        await conflicting.Service.ExpressInterestAsync(
+            conflicting.CandidateId,
+            conflicting.AddJob(),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal([1, 2], conflicting.Delay.LoadsAtEachWait);
+    }
+
+    /// <summary>
+    /// Mesmo com 30 conflitos seguidos o interesse acaba bem, enquanto o tempo total não passar do limite.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task InterestSucceedsAfterThirtyConsecutiveConflicts()
     {
         Fixture fixture = new();
-        for (int index = 0; index < 5; index++)
+        for (int index = 0; index < 30; index++)
         {
             fixture.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
         }
 
+        QuotaDto quota = await fixture.Service.ExpressInterestAsync(
+            fixture.CandidateId,
+            fixture.AddJob(),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(new QuotaDto(9, 10, null), quota);
+        Assert.Single(fixture.Store.Committed);
+        Assert.Equal(30, fixture.Store.Discards);
+        Assert.Equal(31, fixture.Candidates.Loads);
+        Assert.Equal(1, fixture.Store.Saves);
+        Assert.Equal(Enumerable.Range(1, 30), fixture.Delay.Attempts);
+    }
+
+    /// <summary>
+    /// Depois de vários conflitos, a leitura seguinte já vê a quota esgotada: o interesse recebe ERR-31, nunca ERR-41, e
+    /// nenhuma linha de <c>match</c> é gravada.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task ConflictsFollowedByAnExhaustedQuotaEndInErr31WithoutSaving()
+    {
+        Fixture fixture = new(() => CandidateWith(remaining: 1));
+        for (int index = 0; index < 3; index++)
+        {
+            fixture.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
+        }
+
+        fixture.Store.OnDiscard = () =>
+        {
+            if (fixture.Store.Discards == 3)
+            {
+                fixture.Candidates.SetSource(() => ExhaustedAt(Now.AddMinutes(-5)));
+            }
+        };
+
+        QuotaExhaustedException exception = await Assert.ThrowsAsync<QuotaExhaustedException>(
+            () => fixture.Service.ExpressInterestAsync(fixture.CandidateId, fixture.AddJob(), TestContext.Current.CancellationToken));
+
+        Assert.Equal(Now.AddMinutes(-5).AddHours(24), exception.BlockedUntil);
+        Assert.Equal(0, fixture.Store.Saves);
+        Assert.Empty(fixture.Store.Committed);
+        Assert.Empty(fixture.Store.Pending);
+    }
+
+    /// <summary>
+    /// Quando o limite de tempo acaba, o interesse deixa o <see cref="ConcurrencyConflictException"/> propagar (ERR-41, o
+    /// último recurso) e nada fica gravado. O tempo é o de um fornecedor falso: o teste não espera.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task InterestPropagatesTheConcurrencyConflictWhenTheTimeLimitEnds()
+    {
+        Fixture fixture = new();
+        fixture.Store.FailAlways = new ConcurrencyConflictException(new InvalidOperationException());
+        fixture.Delay.Step = TimeSpan.FromSeconds(1);
+
         await Assert.ThrowsAsync<ConcurrencyConflictException>(
             () => fixture.Service.ExpressInterestAsync(fixture.CandidateId, fixture.AddJob(), TestContext.Current.CancellationToken));
 
-        Assert.Equal(5, fixture.Candidates.Loads);
-        Assert.Equal(4, fixture.Store.Discards);
+        Assert.Equal(JobExplorationService.ConflictRetryLimit, TimeSpan.FromSeconds(5));
+        Assert.Equal(6, fixture.Candidates.Loads);
+        Assert.Equal(5, fixture.Delay.Attempts.Count);
+        Assert.Equal(5, fixture.Store.Discards);
         Assert.Empty(fixture.Store.Committed);
     }
 
@@ -392,29 +474,60 @@ public sealed class JobExplorationServiceTests
     }
 
     /// <summary>
-    /// A consulta que grava repete perante conflitos de concorrência e propaga à quinta falha.
+    /// A consulta que grava repete perante conflitos de concorrência, também 30 vezes seguidas, e grava uma só vez.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
-    public async Task GetQuotaRetriesOnConflictAndPropagatesOnTheFifthFailure()
+    public async Task GetQuotaRetriesOnConflictAndSavesOnce()
     {
-        Fixture retried = new(() => ExhaustedAt(Now.AddDays(-2)));
-        retried.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
-
-        QuotaDto quota = await retried.Service.GetQuotaAsync(retried.CandidateId, TestContext.Current.CancellationToken);
-
-        Assert.Equal(new QuotaDto(10, 10, null), quota);
-        Assert.Equal(1, retried.Store.Discards);
-
-        Fixture failing = new(() => ExhaustedAt(Now.AddDays(-2)));
-        for (int index = 0; index < 5; index++)
+        Fixture fixture = new(() => ExhaustedAt(Now.AddDays(-2)));
+        for (int index = 0; index < 30; index++)
         {
-            failing.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
+            fixture.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
         }
 
+        QuotaDto quota = await fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+
+        Assert.Equal(new QuotaDto(10, 10, null), quota);
+        Assert.Equal(30, fixture.Store.Discards);
+        Assert.Equal(1, fixture.Store.Saves);
+        Assert.Equal(Enumerable.Range(1, 30), fixture.Delay.Attempts);
+    }
+
+    /// <summary>
+    /// Se outro pedido repôs a quota entretanto, a repetição da consulta lê-a reposta e não grava outra vez.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task GetQuotaRetryDoesNotSaveWhenAnotherRequestAlreadyRestored()
+    {
+        Fixture fixture = new(() => ExhaustedAt(Now.AddDays(-2)));
+        fixture.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
+        fixture.Store.OnDiscard = () => fixture.Candidates.SetSource(() => CandidateWith(remaining: 10));
+
+        QuotaDto quota = await fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+
+        Assert.Equal(new QuotaDto(10, 10, null), quota);
+        Assert.Equal(1, fixture.Store.Discards);
+        Assert.Equal(0, fixture.Store.Saves);
+    }
+
+    /// <summary>
+    /// Quando o limite de tempo acaba, a consulta deixa o <see cref="ConcurrencyConflictException"/> propagar.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task GetQuotaPropagatesTheConcurrencyConflictWhenTheTimeLimitEnds()
+    {
+        Fixture fixture = new(() => ExhaustedAt(Now.AddDays(-2)));
+        fixture.Store.FailAlways = new ConcurrencyConflictException(new InvalidOperationException());
+        fixture.Delay.Step = TimeSpan.FromSeconds(1);
+
         await Assert.ThrowsAsync<ConcurrencyConflictException>(
-            () => failing.Service.GetQuotaAsync(failing.CandidateId, TestContext.Current.CancellationToken));
-        Assert.Equal(4, failing.Store.Discards);
+            () => fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken));
+
+        Assert.Equal(6, fixture.Candidates.Loads);
+        Assert.Equal(5, fixture.Delay.Attempts.Count);
     }
 
     /// <summary>
@@ -516,7 +629,16 @@ public sealed class JobExplorationServiceTests
             this.Candidates = new FakeCandidates(candidate ?? NewCandidate);
             this.Store = new FakeStore();
             this.Clock = new FixedClock { UtcNow = Now };
-            this.Service = new JobExplorationService(this.Candidates, new FakeJobs(this.jobs), this.Store, this.Store, this.Clock);
+            this.Time = new FakeTimeProvider();
+            this.Delay = new FakeRetryDelay(this.Candidates, this.Time);
+            this.Service = new JobExplorationService(
+                this.Candidates,
+                new FakeJobs(this.jobs),
+                this.Store,
+                this.Store,
+                this.Clock,
+                this.Time,
+                this.Delay);
         }
 
         public FakeCandidates Candidates { get; }
@@ -524,6 +646,10 @@ public sealed class JobExplorationServiceTests
         public FakeStore Store { get; }
 
         public FixedClock Clock { get; }
+
+        public FakeTimeProvider Time { get; }
+
+        public FakeRetryDelay Delay { get; }
 
         public JobExplorationService Service { get; }
 
@@ -629,6 +755,8 @@ public sealed class JobExplorationServiceTests
 
         public Queue<Exception> FailNextSaves { get; } = new();
 
+        public Exception? FailAlways { get; set; }
+
         public Action? OnDiscard { get; set; }
 
         public int Saves { get; private set; }
@@ -655,6 +783,11 @@ public sealed class JobExplorationServiceTests
                 throw failure;
             }
 
+            if (this.FailAlways is not null)
+            {
+                throw this.FailAlways;
+            }
+
             this.Saves++;
             this.SavedWith = cancellationToken;
             int saved = this.Pending.Count;
@@ -673,6 +806,55 @@ public sealed class JobExplorationServiceTests
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
+        }
+    }
+
+    private sealed class FakeTimeProvider : TimeProvider
+    {
+        private long ticks;
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public void Advance(TimeSpan time)
+        {
+            this.ticks += time.Ticks;
+        }
+
+        public override long GetTimestamp()
+        {
+            return this.ticks;
+        }
+    }
+
+    private sealed class FakeRetryDelay : IConflictRetryDelay
+    {
+        private readonly FakeCandidates candidates;
+        private readonly FakeTimeProvider time;
+
+        public FakeRetryDelay(FakeCandidates candidates, FakeTimeProvider time)
+        {
+            this.candidates = candidates;
+            this.time = time;
+        }
+
+        /// <summary>
+        /// Gets or sets the time that each wait makes pass on the fake time provider, without sleeping.
+        /// </summary>
+        public TimeSpan Step { get; set; } = TimeSpan.FromMilliseconds(10);
+
+        /// <summary>
+        /// Gets the number of reads of the candidate done when each wait was requested.
+        /// </summary>
+        public List<int> LoadsAtEachWait { get; } = [];
+
+        public List<int> Attempts { get; } = [];
+
+        public Task WaitAsync(int attempt, CancellationToken cancellationToken = default)
+        {
+            this.Attempts.Add(attempt);
+            this.LoadsAtEachWait.Add(this.candidates.Loads);
+            this.time.Advance(this.Step);
+            return Task.CompletedTask;
         }
     }
 
