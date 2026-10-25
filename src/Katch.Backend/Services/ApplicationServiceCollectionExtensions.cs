@@ -24,6 +24,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ICandidateRepository, CandidateRepository>();
         services.AddScoped<IReferenceDataRepository, ReferenceDataRepository>();
+        services.AddScoped<IJobRepository, JobRepository>();
+        services.AddScoped<IMatchRepository, MatchRepository>();
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddScoped<IAuthService, AuthService>();

@@ -195,6 +195,11 @@ public sealed class QuotaServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<Candidate?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<List<Candidate>> ListQuotaDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
         {
             this.QueriedAt = now;
@@ -221,6 +226,11 @@ public sealed class QuotaServiceTests
             this.Saves++;
             this.SavedWith = cancellationToken;
             return Task.FromResult(1);
+        }
+
+        public void DiscardChanges()
+        {
+            throw new NotSupportedException();
         }
 
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
