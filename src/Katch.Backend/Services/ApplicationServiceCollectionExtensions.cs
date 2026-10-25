@@ -28,6 +28,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IReferenceListService, ReferenceListService>();
+        services.AddScoped<IQuotaService, QuotaService>();
         return services;
     }
 }
