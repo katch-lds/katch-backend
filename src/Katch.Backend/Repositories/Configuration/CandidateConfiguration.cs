@@ -9,7 +9,9 @@ namespace Katch.Backend.Repositories.Configuration;
 
 /// <summary>
 /// Mapeamento da entidade <see cref="Candidate"/> para a tabela <c>candidate</c> (modelo de dados v02, secções 5.2, 5.3,
-/// 6.4 e 7.3). A chave primária é também chave estrangeira para <c>app_user</c>, na relação 1 : 0..1.
+/// 6.4 e 7.3). A chave primária é também chave estrangeira para <c>app_user</c>, na relação 1 : 0..1. Configura também as
+/// competências do Candidato (secção 6.8, DM-16): a associação N:M <c>candidate_skill</c> à lista pré-definida e as
+/// competências «Outro» de <c>candidate_custom_skill</c>.
 /// </summary>
 /// <remarks>
 /// As restrições escritas em SQL do PostgreSQL só são declaradas quando o fornecedor é o Npgsql (ver
@@ -128,6 +130,33 @@ public sealed class CandidateConfiguration : IEntityTypeConfiguration<Candidate>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(candidate => candidate.Links)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // candidate_custom_skill: competências «Outro», eliminadas com o Candidato.
+        builder.HasMany(candidate => candidate.CustomSkills)
+            .WithOne()
+            .HasForeignKey(customSkill => customSkill.CandidateId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(candidate => candidate.CustomSkills)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // candidate_skill: associação N:M pura à lista pré-definida, sem classe própria (DM-16, DC-09). A chave primária
+        // (candidate_id, skill_id) impede a mesma competência duas vezes; a linha é eliminada com o Candidato, mas uma
+        // competência associada não pode ser eliminada.
+        builder.HasMany(candidate => candidate.Skills)
+            .WithMany()
+            .UsingEntity<Dictionary<string, object>>(
+                "candidate_skill",
+                right => right.HasOne<Skill>().WithMany().HasForeignKey("SkillId").OnDelete(DeleteBehavior.NoAction),
+                left => left.HasOne<Candidate>().WithMany().HasForeignKey("CandidateId").OnDelete(DeleteBehavior.Cascade),
+                join =>
+                {
+                    join.ToTable("candidate_skill");
+                    join.HasKey("CandidateId", "SkillId");
+                });
+
+        builder.Navigation(candidate => candidate.Skills)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

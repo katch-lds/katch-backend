@@ -3,6 +3,7 @@
 using System.Text.Json;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
+using Katch.Backend.Services;
 
 namespace Katch.Backend.Infrastructure.Errors;
 
@@ -18,6 +19,11 @@ public static class ApiErrorResponse
     public const string InvalidSessionCode = "ERR-01";
 
     /// <summary>
+    /// Código do erro de credenciais erradas no início de sessão.
+    /// </summary>
+    public const string InvalidCredentialsCode = "ERR-02";
+
+    /// <summary>
     /// Código do erro de conta bloqueada.
     /// </summary>
     public const string AccountBlockedCode = "ERR-03";
@@ -26,6 +32,11 @@ public static class ApiErrorResponse
     /// Código do erro de conta suspensa.
     /// </summary>
     public const string AccountSuspendedCode = "ERR-04";
+
+    /// <summary>
+    /// Código do erro de tipo de conta que entra pelo ponto de acesso errado.
+    /// </summary>
+    public const string WrongAccessPointCode = "ERR-05";
 
     /// <summary>
     /// Código do erro de operação não disponível para o tipo de conta.
@@ -73,6 +84,11 @@ public static class ApiErrorResponse
     public const string InvalidSessionMessage = "A sessão expirou ou não é válida. Inicie sessão novamente.";
 
     /// <summary>
+    /// Mensagem do ERR-02, a mesma para o correio inexistente e para a palavra-passe errada (RNF009).
+    /// </summary>
+    public const string InvalidCredentialsMessage = "O endereço de correio eletrónico ou a palavra-passe estão incorretos.";
+
+    /// <summary>
     /// Mensagem do ERR-03.
     /// </summary>
     public const string AccountBlockedMessage = "A conta está bloqueada.";
@@ -81,6 +97,11 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-04.
     /// </summary>
     public const string AccountSuspendedMessage = "A conta está suspensa.";
+
+    /// <summary>
+    /// Mensagem do ERR-05.
+    /// </summary>
+    public const string WrongAccessPointMessage = "Esta conta não tem acesso por este ponto de acesso.";
 
     /// <summary>
     /// Mensagem do ERR-06.
@@ -163,6 +184,42 @@ public static class ApiErrorResponse
     public static Task WriteCompanyNotApprovedAsync(HttpContext context, string message)
     {
         return WriteAsync(context, StatusCodes.Status403Forbidden, CompanyNotApprovedCode, message);
+    }
+
+    /// <summary>
+    /// Cria o corpo do erro que corresponde ao motivo da recusa de um início de sessão: ERR-02 (401), ERR-03, ERR-04 ou
+    /// ERR-05 (403).
+    /// </summary>
+    /// <param name="reason">Motivo da recusa.</param>
+    /// <returns>O código de estado HTTP e o corpo da resposta.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Se o motivo não for conhecido.</exception>
+    public static (int StatusCode, ApiErrorDto Body) LoginRejected(LoginRejection reason)
+    {
+        return reason switch
+        {
+            LoginRejection.InvalidCredentials => (
+                StatusCodes.Status401Unauthorized,
+                new ApiErrorDto(InvalidCredentialsCode, InvalidCredentialsMessage)),
+            LoginRejection.AccountBlocked => (
+                StatusCodes.Status403Forbidden,
+                new ApiErrorDto(AccountBlockedCode, AccountBlockedMessage)),
+            LoginRejection.AccountSuspended => (
+                StatusCodes.Status403Forbidden,
+                new ApiErrorDto(AccountSuspendedCode, AccountSuspendedMessage)),
+            LoginRejection.WrongAccessPoint => (
+                StatusCodes.Status403Forbidden,
+                new ApiErrorDto(WrongAccessPointCode, WrongAccessPointMessage)),
+            _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Motivo de recusa desconhecido."),
+        };
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-01 (401): credencial em falta, inválida ou expirada, ou conta inexistente.
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto InvalidSession()
+    {
+        return new ApiErrorDto(InvalidSessionCode, InvalidSessionMessage);
     }
 
     /// <summary>
