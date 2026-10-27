@@ -199,14 +199,22 @@ public sealed partial class Candidate
     /// Se o período anterior já terminou, a quota é reposta antes de consumir (RF021).
     /// </summary>
     /// <param name="now">Instante do interesse, em UTC.</param>
-    /// <exception cref="InvalidOperationException">Se a quota estiver esgotada e o período de bloqueio não tiver terminado.</exception>
+    /// <exception cref="QuotaExhaustedException">
+    /// Se a quota estiver esgotada e o período de bloqueio não tiver terminado; a quota não é alterada.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">Se a quota estiver a 0 sem o fim do bloqueio preenchido (dados inválidos).</exception>
     public void ConsumeInterest(DateTimeOffset now)
     {
         this.RestoreQuotaIfDue(now);
 
         if (this.SwipeRightsRemaining == 0)
         {
-            throw new InvalidOperationException("A quota de interesses está esgotada até ao fim do período de bloqueio.");
+            // Só esta classe esgota a quota e preenche o fim do bloqueio na mesma operação. Uma linha a 0 sem esse
+            // instante (que o CHECK da tabela admite) é uma anomalia nos dados e não deve passar por «quota esgotada».
+            DateTimeOffset blockedUntil = this.NextSwipeAvailableAt
+                ?? throw new InvalidOperationException("A quota de interesses está a 0 sem o fim do período de bloqueio.");
+
+            throw new QuotaExhaustedException(blockedUntil, blockedUntil - now);
         }
 
         this.SwipeRightsRemaining--;

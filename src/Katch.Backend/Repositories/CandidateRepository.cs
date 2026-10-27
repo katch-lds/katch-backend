@@ -1,6 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Repositories;
 
@@ -26,5 +27,14 @@ public sealed class CandidateRepository : ICandidateRepository
         ArgumentNullException.ThrowIfNull(candidate);
 
         await this.context.Candidates.AddAsync(candidate, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<Candidate>> ListQuotaDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        // O CHECK da tabela só admite next_swipe_available_at preenchido com a quota a 0, por isso este filtro basta.
+        return this.context.Candidates
+            .Where(candidate => candidate.NextSwipeAvailableAt != null && candidate.NextSwipeAvailableAt <= now)
+            .ToListAsync(cancellationToken);
     }
 }

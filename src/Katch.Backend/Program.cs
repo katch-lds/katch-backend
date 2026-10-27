@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.BackgroundJobs;
 using Katch.Backend.Infrastructure.Api;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Persistence;
@@ -16,6 +17,7 @@ string connectionString = builder.Configuration.GetConnectionString("Katch")
 builder.Services.AddDbContext<KatchDbContext>(options => options.UseKatchPostgres(connectionString));
 builder.Services.AddKatchAuthentication();
 builder.Services.AddKatchApplicationServices();
+builder.Services.AddKatchBackgroundJobs();
 builder.Services.AddControllers().AddKatchApiConventions();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>

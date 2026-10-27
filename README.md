@@ -19,6 +19,7 @@ PowerShell (menu Iniciar, "Windows PowerShell") ou escreva `powershell` no termi
 9. [Autenticação JWT](#9-autenticação-jwt)
 10. [Regras a respeitar](#10-regras-a-respeitar)
 11. [Scripts da base de dados](#11-scripts-da-base-de-dados)
+12. [Quota de interesses e tarefa periódica](#12-quota-de-interesses-e-tarefa-periódica)
 
 ## 1. Estrutura do repositório
 
@@ -316,3 +317,21 @@ A pasta `database/` tem os scripts para criar, repor e preencher a base `katch` 
 esquema e a reposição, gerados a partir das migrations, e os dados iniciais fictícios (localidades, competências,
 benefícios e dados de demonstração do P18). As instruções de execução e de geração estão em
 [`database/README.md`](database/README.md).
+
+## 12. Quota de interesses e tarefa periódica
+
+O Candidato começa com **10 interesses**. O interesse que esgota a quota inicia um bloqueio de **24 horas contadas desse
+instante** (RF020, P11), e não por dia de calendário nem até à meia-noite. Terminado o bloqueio a quota volta
+**integralmente** a 10; com menos de 10 interesses consumidos a quota não aumenta com o tempo (RF021). A recusa de
+vagas não consome quota. A regra está em `Candidate.ConsumeInterest`, `RestoreQuotaIfDue` e `HasInterestAvailable`;
+um interesse durante o bloqueio lança `QuotaExhaustedException`, com o fim do bloqueio e o tempo em falta para o
+erro `ERR-31`. O instante vem sempre do relógio do servidor (`IClock`) e nunca do cliente.
+
+A tarefa periódica `QuotaRestoreWorker` repõe as quotas cujo bloqueio terminou a cada `BackgroundJobs:IntervalSeconds`
+(variável de ambiente `BackgroundJobs__IntervalSeconds`; **60 segundos por omissão**, de 1 a 86 400). Não é ela que
+garante a regra: o interesse (`ConsumeInterest`) e a consulta da quota (`RestoreQuotaIfDue`, a chamar pelo serviço
+dos endpoints de swipe, I057) verificam o fim do bloqueio no próprio pedido.
+Um valor inválido impede a API de arrancar, com uma mensagem a dizer como corrigir; uma execução que falhe é
+registada e repetida no intervalo seguinte. Se um interesse e a reposição gravarem ao mesmo tempo, a marca de
+concorrência `xmin` faz falhar o segundo, que repete com os valores atuais.
+

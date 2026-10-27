@@ -127,7 +127,7 @@ public sealed class CandidateTests
         ConsumeAll(candidate, Registered);
         DateTimeOffset almost = Registered.AddHours(24).AddTicks(-1);
 
-        Assert.Throws<InvalidOperationException>(() => candidate.ConsumeInterest(almost));
+        Assert.Throws<QuotaExhaustedException>(() => candidate.ConsumeInterest(almost));
 
         Assert.Equal(0, candidate.SwipeRightsRemaining);
         Assert.Equal(Registered.AddHours(24), candidate.NextSwipeAvailableAt);

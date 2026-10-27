@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using System.Globalization;
 using System.Security.Cryptography;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Repositories;
@@ -26,6 +27,12 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
     /// </summary>
     public FakeClock Clock { get; } = new();
 
+    /// <summary>
+    /// Gets the interval of the periodic tasks, in seconds. By default it is one day, so that the quota restore task
+    /// never runs during the tests that do not concern it; the tests of the task itself set it before the first use.
+    /// </summary>
+    public int BackgroundJobsIntervalSeconds { get; init; } = 86_400;
+
     /// <inheritdoc/>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -37,6 +44,9 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
 
         // O segredo JWT é gerado em cada execução; nunca existe um valor fixo no código.
         builder.UseSetting("Jwt:Secret", Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)));
+        builder.UseSetting(
+            "BackgroundJobs:IntervalSeconds",
+            this.BackgroundJobsIntervalSeconds.ToString(CultureInfo.InvariantCulture));
 
         builder.ConfigureServices(services =>
         {

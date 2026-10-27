@@ -31,6 +31,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IOperationLogger, OperationLogger>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IReferenceListService, ReferenceListService>();
+        services.AddScoped<IQuotaService, QuotaService>();
         services.AddScoped<ICompanyService, CompanyService>();
         return services;
     }

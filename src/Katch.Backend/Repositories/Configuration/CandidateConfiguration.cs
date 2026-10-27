@@ -3,6 +3,7 @@
 using Katch.Backend.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Katch.Backend.Repositories.Configuration;
 
@@ -112,6 +113,15 @@ public sealed class CandidateConfiguration : IEntityTypeConfiguration<Candidate>
         else
         {
             builder.Ignore(candidate => candidate.Version);
+
+            // O SQLite guarda o DateTimeOffset como texto e o EF Core não traduz comparações sobre ele, que a consulta das
+            // quotas a repor (ListQuotaDueAsync) usa. Guardado como ticks UTC, a ordem é a do instante, sem perder
+            // precisão (o DateTimeOffsetToBinaryConverter perde-a abaixo do milissegundo). Só vale para os testes sobre
+            // SQLite: no PostgreSQL a coluna é timestamptz, sem conversão.
+            builder.Property(candidate => candidate.NextSwipeAvailableAt)
+                .HasConversion(new ValueConverter<DateTimeOffset, long>(
+                    instant => instant.UtcTicks,
+                    ticks => new DateTimeOffset(ticks, TimeSpan.Zero)));
         }
 
         builder.HasMany(candidate => candidate.Links)

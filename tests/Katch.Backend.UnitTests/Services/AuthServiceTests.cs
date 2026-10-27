@@ -446,6 +446,11 @@ public sealed class AuthServiceTests
             this.Added.Add(candidate);
             return Task.CompletedTask;
         }
+
+        public Task<List<Candidate>> ListQuotaDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new List<Candidate>());
+        }
     }
 
     private sealed class FakeReferenceData : IReferenceDataRepository
