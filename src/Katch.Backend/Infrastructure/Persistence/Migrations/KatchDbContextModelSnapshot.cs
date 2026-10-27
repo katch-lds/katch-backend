@@ -109,6 +109,28 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Katch.Backend.Domain.Benefit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_benefit");
+
+                    b.ToTable("benefit", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_benefit_name", "btrim(name) <> ''");
+                        });
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.Candidate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -210,6 +232,32 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_candidate_quota_block", "next_swipe_available_at IS NULL OR swipe_rights_remaining = 0");
 
                             t.HasCheckConstraint("ck_candidate_swipe_rights_remaining", "swipe_rights_remaining BETWEEN 0 AND 10");
+                        });
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.CandidateCustomSkill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("candidate_id");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("label");
+
+                    b.HasKey("Id")
+                        .HasName("pk_candidate_custom_skill");
+
+                    b.ToTable("candidate_custom_skill", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_candidate_custom_skill_label", "char_length(label) BETWEEN 2 AND 40 AND btrim(label) <> '' AND label ~ '^[[:alnum:] +#.-]+$'");
                         });
                 });
 
@@ -545,6 +593,184 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Katch.Backend.Domain.Match", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTimeOffset>("CandidateActionAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("candidate_action_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("candidate_id");
+
+                    b.Property<ConversationCloseReason?>("ConversationCloseReason")
+                        .HasColumnType("conversation_close_reason")
+                        .HasColumnName("conversation_close_reason");
+
+                    b.Property<DateTimeOffset?>("ConversationClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("conversation_closed_at");
+
+                    b.Property<Guid?>("ConversationClosedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_closed_by");
+
+                    b.Property<ConversationStatus?>("ConversationStatus")
+                        .HasColumnType("conversation_status")
+                        .HasColumnName("conversation_status");
+
+                    b.Property<Guid?>("DecidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<DateTimeOffset?>("ProfileOpenedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("profile_opened_at");
+
+                    b.Property<DateTimeOffset?>("RecruiterActionAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recruiter_action_at");
+
+                    b.Property<MatchStatus>("Status")
+                        .HasColumnType("match_status")
+                        .HasColumnName("status");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_match");
+
+                    b.HasIndex("CandidateActionAt")
+                        .HasDatabaseName("ix_match_interest_at")
+                        .HasFilter("status <> 'DECLINED_BY_CANDIDATE'");
+
+                    b.HasIndex("CandidateId", "JobId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_match_candidate_job");
+
+                    b.HasIndex("JobId", "Status")
+                        .HasDatabaseName("ix_match_job_status");
+
+                    b.HasIndex("Status", "RecruiterActionAt")
+                        .HasDatabaseName("ix_match_matched");
+
+                    b.ToTable("match", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_match_closed_by", "(conversation_closed_by IS NOT NULL) = coalesce(conversation_close_reason = 'CLOSED_BY_PARTY', false)");
+
+                            t.HasCheckConstraint("ck_match_conversation", "(conversation_status IS NOT NULL) = (status = 'MATCHED')");
+
+                            t.HasCheckConstraint("ck_match_conversation_close", "coalesce(conversation_status = 'CLOSED', false) = (conversation_closed_at IS NOT NULL) AND coalesce(conversation_status = 'CLOSED', false) = (conversation_close_reason IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_match_decision", "(status IN ('MATCHED', 'REJECTED_BY_RECRUITER')) = (recruiter_action_at IS NOT NULL) AND (recruiter_action_at IS NOT NULL) = (decided_by IS NOT NULL) AND (recruiter_action_at IS NULL OR profile_opened_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_match_declined", "status <> 'DECLINED_BY_CANDIDATE' OR (profile_opened_at IS NULL AND recruiter_action_at IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.Message", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("content");
+
+                    b.Property<Guid>("MatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("match_id");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sender_id");
+
+                    b.Property<DateTimeOffset>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("Id")
+                        .HasName("pk_message");
+
+                    b.HasIndex("MatchId")
+                        .HasDatabaseName("ix_message_unread")
+                        .HasFilter("read_at IS NULL");
+
+                    b.HasIndex("MatchId", "SentAt")
+                        .HasDatabaseName("ix_message_match_sent");
+
+                    b.ToTable("message", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_message_content", "btrim(content) <> ''");
+
+                            t.HasCheckConstraint("ck_message_read", "read_at IS NULL OR read_at >= sent_at");
+                        });
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.OperationLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<OperationType>("Operation")
+                        .HasColumnType("operation_type")
+                        .HasColumnName("operation");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_operation_log");
+
+                    b.HasIndex("EntityId", "OccurredAt")
+                        .HasDatabaseName("ix_operation_log_entity");
+
+                    b.HasIndex("Operation", "OccurredAt")
+                        .HasDatabaseName("ix_operation_log_occurred");
+
+                    b.ToTable("operation_log", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_operation_log_author", "user_id IS NOT NULL OR operation = 'JOB_CLOSED'");
+                        });
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.Recruiter", b =>
                 {
                     b.Property<Guid>("Id")
@@ -555,6 +781,76 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         .HasName("pk_recruiter");
 
                     b.ToTable("recruiter", (string)null);
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.Skill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_skill");
+
+                    b.ToTable("skill", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_skill_name", "btrim(name) <> ''");
+                        });
+                });
+
+            modelBuilder.Entity("candidate_skill", b =>
+                {
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("candidate_id");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_id");
+
+                    b.HasKey("CandidateId", "SkillId")
+                        .HasName("pk_candidate_skill");
+
+                    b.ToTable("candidate_skill", (string)null);
+                });
+
+            modelBuilder.Entity("job_benefit", b =>
+                {
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<Guid>("BenefitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("benefit_id");
+
+                    b.HasKey("JobId", "BenefitId")
+                        .HasName("pk_job_benefit");
+
+                    b.ToTable("job_benefit", (string)null);
+                });
+
+            modelBuilder.Entity("job_skill", b =>
+                {
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_id");
+
+                    b.HasKey("JobId", "SkillId")
+                        .HasName("pk_job_skill");
+
+                    b.ToTable("job_skill", (string)null);
                 });
 
             modelBuilder.Entity("Katch.Backend.Domain.Admin", b =>
@@ -586,6 +882,16 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_candidate_location_location_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.CandidateCustomSkill", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Candidate", null)
+                        .WithMany("CustomSkills")
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_candidate_custom_skill_candidate_candidate_id");
                 });
 
             modelBuilder.Entity("Katch.Backend.Domain.CandidateLink", b =>
@@ -632,6 +938,61 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_job_location_location_id");
                 });
 
+            modelBuilder.Entity("Katch.Backend.Domain.Match", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Candidate", null)
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_match_candidate_candidate_id");
+
+                    b.HasOne("Katch.Backend.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationClosedById")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_match_app_user_conversation_closed_by");
+
+                    b.HasOne("Katch.Backend.Domain.Recruiter", null)
+                        .WithMany()
+                        .HasForeignKey("DecidedById")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_match_recruiter_decided_by");
+
+                    b.HasOne("Katch.Backend.Domain.Job", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_match_job_job_id");
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.Message", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Match", null)
+                        .WithMany()
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_message_match_match_id");
+
+                    b.HasOne("Katch.Backend.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_message_app_user_sender_id");
+                });
+
+            modelBuilder.Entity("Katch.Backend.Domain.OperationLog", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_operation_log_app_user_user_id");
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.Recruiter", b =>
                 {
                     b.HasOne("Katch.Backend.Domain.AppUser", "User")
@@ -644,8 +1005,61 @@ namespace Katch.Backend.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("candidate_skill", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Candidate", null)
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_candidate_skill_candidate_candidate_id");
+
+                    b.HasOne("Katch.Backend.Domain.Skill", null)
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_candidate_skill_skill_skill_id");
+                });
+
+            modelBuilder.Entity("job_benefit", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Benefit", null)
+                        .WithMany()
+                        .HasForeignKey("BenefitId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_job_benefit_benefit_benefit_id");
+
+                    b.HasOne("Katch.Backend.Domain.Job", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_job_benefit_job_job_id");
+                });
+
+            modelBuilder.Entity("job_skill", b =>
+                {
+                    b.HasOne("Katch.Backend.Domain.Job", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_job_skill_job_job_id");
+
+                    b.HasOne("Katch.Backend.Domain.Skill", null)
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_job_skill_skill_skill_id");
+                });
+
             modelBuilder.Entity("Katch.Backend.Domain.Candidate", b =>
                 {
+                    b.Navigation("CustomSkills");
+
                     b.Navigation("Links");
                 });
 #pragma warning restore 612, 618
