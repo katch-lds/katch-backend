@@ -18,12 +18,14 @@ PowerShell (menu Iniciar, "Windows PowerShell") ou escreva `powershell` no termi
 8. [Erros comuns](#8-erros-comuns)
 9. [Autenticação JWT](#9-autenticação-jwt)
 10. [Regras a respeitar](#10-regras-a-respeitar)
+11. [Scripts da base de dados](#11-scripts-da-base-de-dados)
 
 ## 1. Estrutura do repositório
 
 | Pasta ou ficheiro | O que é |
 | --- | --- |
 | `src/Katch.Backend/` | A API: controllers, serviços, repositórios, entidades e migrations |
+| `database/` | Scripts SQL de criação, reposição e dados iniciais da base de dados (ver secção 11) |
 | `tests/Katch.Backend.UnitTests/` | Testes unitários |
 | `tests/Katch.Backend.IntegrationTests/` | Testes de integração (usam SQLite em memória) |
 | `Katch.Backend.sln` | Solução .NET que junta os três projetos |
@@ -269,6 +271,35 @@ início de sessão, lista de localidades) têm de ter `[AllowAnonymous]`. Os err
 | 3 | 403 `ERR-06` | O tipo de conta não cumpre a política |
 | 4 | 403 `ERR-07` | Só em `ApprovedCompany`: a Empresa não está aprovada; a mensagem traz o estado atual (pendente, recusada, suspensa ou não registada), lido da base em cada pedido |
 
+### Início e fim de sessão e alteração da palavra-passe
+
+| Endpoint | Autorização | Sucesso | Erros |
+| --- | --- | --- | --- |
+| `POST /api/auth/login` | Anónimo; cabeçalho `X-Client-App` obrigatório | `200` com `LoginResponse` (`token`, `expiresAt`, `userType`, `userId`) | `400` `ERR-10`; `401` `ERR-02`; `403` `ERR-03`, `ERR-04`, `ERR-05` |
+| `POST /api/auth/logout` | Qualquer conta com a conta ativa | `204` | `401` `ERR-01`; `403` `ERR-03`, `ERR-04` |
+| `PUT /api/auth/password` | Qualquer conta com a conta ativa | `204` | `400` `ERR-10`; `401` `ERR-01`; `403` `ERR-03`, `ERR-04` |
+
+O cabeçalho `X-Client-App` indica o ponto de acesso: `mobile` para o Candidato, `web` para o Recrutador e o
+Administrador (exatamente estes valores, em minúsculas). Em falta ou com outro valor, o pedido é recusado com `400`.
+
+O início de sessão verifica, **por esta ordem**, as credenciais (`401` `ERR-02`), o estado da conta (`403`
+`ERR-03` bloqueada, `ERR-04` suspensa) e o ponto de acesso (`403` `ERR-05`). Por isso:
+
+- O correio inexistente e a palavra-passe errada recebem **a mesma resposta** e demoram o mesmo tempo (a palavra-passe
+  é verificada mesmo quando o correio não existe).
+- O estado da conta e o ponto de acesso só são revelados a quem apresenta a palavra-passe correta.
+- A situação da Empresa não conta: um Recrutador com a Empresa pendente, recusada ou suspensa inicia sessão; só as
+  operações `ApprovedCompany` lhe ficam vedadas (`ERR-07`).
+
+Na alteração da palavra-passe, a atual errada devolve `400` `ERR-10` no campo `currentPassword` (e não `401`, para o
+cliente não a confundir com uma sessão expirada) e a nova fora do P05 devolve `400` `ERR-10` em `newPassword`. A
+credencial usada continua válida até expirar, tal como a de um fim de sessão: a autenticação não guarda estado no
+servidor e o cliente é que descarta a credencial (API v02, secção 3.5).
+
+**Experimentar no Swagger** (`/swagger`): em `POST /api/auth/login` preencha `X-Client-App` (lista `mobile`/`web`) e o
+corpo, execute, copie o `token` da resposta, clique em **Authorize** e cole-o (sem o prefixo `Bearer`); os pedidos
+seguintes, incluindo o fim de sessão e a alteração da palavra-passe, passam a enviá-lo.
+
 ## 10. Regras a respeitar
 
 - **Nunca** pôr palavras-passe ou cadeias de ligação reais neste README nem em ficheiros versionados
@@ -278,3 +309,10 @@ início de sessão, lista de localidades) têm de ter `[AllowAnonymous]`. Os err
 - Dados de teste são sempre fictícios; é proibido importar dados reais de utilizadores.
 - Não fazer push direto para `main`: todas as alterações entram por Pull Request aprovado e com a pipeline verde.
 - Antes de acrescentar funcionalidades ou tabelas, confirmar que estão no âmbito aprovado (F001 a F010).
+
+## 11. Scripts da base de dados
+
+A pasta `database/` tem os scripts para criar, repor e preencher a base `katch` sem passar pelo `dotnet ef`: o
+esquema e a reposição, gerados a partir das migrations, e os dados iniciais fictícios (localidades, competências,
+benefícios e dados de demonstração do P18). As instruções de execução e de geração estão em
+[`database/README.md`](database/README.md).

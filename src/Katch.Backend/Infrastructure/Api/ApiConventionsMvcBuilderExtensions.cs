@@ -30,6 +30,7 @@ public static class ApiConventionsMvcBuilderExtensions
         {
             options.Filters.Add<ValidationFailedExceptionFilter>();
             options.Filters.Add<ServiceExceptionFilter>();
+            options.Filters.Add<LoginRejectedExceptionFilter>();
         });
         builder.AddJsonOptions(options =>
         {

@@ -53,6 +53,21 @@ public sealed class KatchDbContext : DbContext
     public DbSet<CandidateLink> CandidateLinks => this.Set<CandidateLink>();
 
     /// <summary>
+    /// Gets the skills of the pre-defined list (<c>skill</c>).
+    /// </summary>
+    public DbSet<Skill> Skills => this.Set<Skill>();
+
+    /// <summary>
+    /// Gets the benefits of the pre-defined list (<c>benefit</c>).
+    /// </summary>
+    public DbSet<Benefit> Benefits => this.Set<Benefit>();
+
+    /// <summary>
+    /// Gets the skills of the candidates from the «Other» option (<c>candidate_custom_skill</c>).
+    /// </summary>
+    public DbSet<CandidateCustomSkill> CandidateCustomSkills => this.Set<CandidateCustomSkill>();
+
+    /// <summary>
     /// Gets the companies (<c>company</c>).
     /// </summary>
     public DbSet<Company> Companies => this.Set<Company>();
@@ -107,8 +122,11 @@ public sealed class KatchDbContext : DbContext
         modelBuilder.ApplyConfiguration(new AdminConfiguration());
         modelBuilder.ApplyConfiguration(new RecruiterConfiguration());
         modelBuilder.ApplyConfiguration(new LocationConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new SkillConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new BenefitConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CandidateConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CandidateLinkConfiguration(usesPostgres));
+        modelBuilder.ApplyConfiguration(new CandidateCustomSkillConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new CompanyConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new JobConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new MatchConfiguration(usesPostgres));
