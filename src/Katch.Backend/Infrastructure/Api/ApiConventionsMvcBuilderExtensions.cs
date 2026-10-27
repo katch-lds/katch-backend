@@ -26,7 +26,11 @@ public static class ApiConventionsMvcBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.AddMvcOptions(options => options.Filters.Add<ValidationFailedExceptionFilter>());
+        builder.AddMvcOptions(options =>
+        {
+            options.Filters.Add<ValidationFailedExceptionFilter>();
+            options.Filters.Add<LoginRejectedExceptionFilter>();
+        });
         builder.AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper));

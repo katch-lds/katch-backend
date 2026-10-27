@@ -7,7 +7,8 @@ namespace Katch.Backend.Domain;
 
 /// <summary>
 /// Conta de Candidato e perfil profissional (tabela <c>candidate</c>): especialização de <see cref="AppUser"/> com a
-/// chave primária partilhada. Guarda as preferências de procura, a quota de interesses e as hiperligações profissionais.
+/// chave primária partilhada. Guarda as preferências de procura, a quota de interesses, as hiperligações profissionais e
+/// as competências, da lista pré-definida (<c>candidate_skill</c>) e da opção «Outro» (<c>candidate_custom_skill</c>).
 /// </summary>
 /// <remarks>
 /// Os formatos dos dados (telefone, distância, pretensão salarial, hiperligações) são validados pelos DTOs (P04, P06,
@@ -33,6 +34,10 @@ public sealed partial class Candidate
     public static readonly TimeSpan BlockPeriod = TimeSpan.FromHours(24);
 
     private readonly List<CandidateLink> links = [];
+
+    private readonly List<Skill> skills = [];
+
+    private readonly List<CandidateCustomSkill> customSkills = [];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Candidate"/> class com a quota de interesses completa.
@@ -169,6 +174,16 @@ public sealed partial class Candidate
     public IEnumerable<CandidateLink> Links => this.links.OrderBy(link => link.Position);
 
     /// <summary>
+    /// Gets the skills of the candidate from the pre-defined list (<c>candidate_skill</c>), each at most once.
+    /// </summary>
+    public IReadOnlyCollection<Skill> Skills => this.skills;
+
+    /// <summary>
+    /// Gets the skills of the candidate from the «Other» option (<c>candidate_custom_skill</c>).
+    /// </summary>
+    public IReadOnlyCollection<CandidateCustomSkill> CustomSkills => this.customSkills;
+
+    /// <summary>
     /// Indica se o Candidato pode manifestar um novo interesse: há interesses na quota ou o período de bloqueio terminou
     /// (RF020).
     /// </summary>
@@ -281,6 +296,72 @@ public sealed partial class Candidate
         }
 
         this.links.RemoveAll(link => link.Position > urls.Count);
+    }
+
+    /// <summary>
+    /// Associa ao perfil uma competência da lista pré-definida (RF008). As competências têm de estar carregadas.
+    /// </summary>
+    /// <param name="skill">Competência da lista pré-definida.</param>
+    /// <exception cref="ArgumentException">Se a competência já estiver associada ao perfil.</exception>
+    public void AddSkill(Skill skill)
+    {
+        ArgumentNullException.ThrowIfNull(skill);
+
+        if (this.skills.Exists(item => item.Id == skill.Id))
+        {
+            throw new ArgumentException("A competência já está associada ao perfil.", nameof(skill));
+        }
+
+        this.skills.Add(skill);
+    }
+
+    /// <summary>
+    /// Retira do perfil uma competência da lista pré-definida (RF008). As competências têm de estar carregadas.
+    /// </summary>
+    /// <param name="skillId">Identificador da competência associada ao perfil.</param>
+    /// <exception cref="KeyNotFoundException">Se a competência não estiver associada ao perfil.</exception>
+    public void RemoveSkill(Guid skillId)
+    {
+        if (this.skills.RemoveAll(item => item.Id == skillId) == 0)
+        {
+            throw new KeyNotFoundException("A competência não está associada ao perfil.");
+        }
+    }
+
+    /// <summary>
+    /// Acrescenta ao perfil uma competência da opção «Outro» (RF009, P07), guardada sem os espaços nas extremidades. As
+    /// competências «Outro» têm de estar carregadas.
+    /// </summary>
+    /// <param name="label">Designação com 2 a 40 caracteres, só letras, algarismos, espaços e os símbolos + # . -.</param>
+    /// <returns>A competência «Outro» criada.</returns>
+    /// <exception cref="ArgumentException">
+    /// Se a designação não cumprir o P07 ou já estiver indicada no perfil, sem distinção de maiúsculas.
+    /// </exception>
+    public CandidateCustomSkill AddCustomSkill(string label)
+    {
+        string normalized = CandidateCustomSkill.Normalize(label);
+
+        if (this.customSkills.Exists(item => string.Equals(item.Label, normalized, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new ArgumentException("A competência já está indicada no perfil.", nameof(label));
+        }
+
+        var customSkill = new CandidateCustomSkill(this.Id, normalized);
+        this.customSkills.Add(customSkill);
+        return customSkill;
+    }
+
+    /// <summary>
+    /// Retira do perfil uma competência da opção «Outro» (RF009). As competências «Outro» têm de estar carregadas.
+    /// </summary>
+    /// <param name="customSkillId">Identificador da competência «Outro».</param>
+    /// <exception cref="KeyNotFoundException">Se a competência «Outro» não existir no perfil.</exception>
+    public void RemoveCustomSkill(Guid customSkillId)
+    {
+        if (this.customSkills.RemoveAll(item => item.Id == customSkillId) == 0)
+        {
+            throw new KeyNotFoundException("A competência «Outro» não existe no perfil.");
+        }
     }
 
     [GeneratedRegex(@"^[0-9]{9}\z")]
