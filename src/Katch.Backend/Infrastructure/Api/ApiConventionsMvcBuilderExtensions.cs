@@ -29,6 +29,7 @@ public static class ApiConventionsMvcBuilderExtensions
         builder.AddMvcOptions(options =>
         {
             options.Filters.Add<ValidationFailedExceptionFilter>();
+            options.Filters.Add<ServiceExceptionFilter>();
             options.Filters.Add<LoginRejectedExceptionFilter>();
         });
         builder.AddJsonOptions(options =>
@@ -64,7 +65,7 @@ public static class ApiConventionsMvcBuilderExtensions
     {
         return field switch
         {
-            "locationId" => FieldReasons.NotInList,
+            "locationId" or "industry" => FieldReasons.NotInList,
             "acceptTerms" => FieldReasons.AcceptTerms,
             _ => FieldReasons.InvalidValue,
         };

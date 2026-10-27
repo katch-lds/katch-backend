@@ -24,11 +24,15 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ICandidateRepository, CandidateRepository>();
         services.AddScoped<IReferenceDataRepository, ReferenceDataRepository>();
+        services.AddScoped<ICompanyRepository, CompanyRepository>();
+        services.AddScoped<IOperationLogRepository, OperationLogRepository>();
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
+        services.AddScoped<IOperationLogger, OperationLogger>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IReferenceListService, ReferenceListService>();
         services.AddScoped<IQuotaService, QuotaService>();
+        services.AddScoped<ICompanyService, CompanyService>();
         return services;
     }
 }

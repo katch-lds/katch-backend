@@ -41,4 +41,13 @@ public interface IUserRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Tarefa que termina quando a conta foi acrescentada.</returns>
     public Task AddAsync(AppUser user, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Acrescenta a especialização de Recrutador de uma conta nova (tabela <c>recruiter</c>, chave partilhada com
+    /// <c>app_user</c>), gravada no <see cref="IUnitOfWork.SaveChangesAsync"/> seguinte (RF037).
+    /// </summary>
+    /// <param name="recruiter">Recrutador novo, com a conta do tipo Recrutador.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Tarefa que termina quando o Recrutador foi acrescentado.</returns>
+    public Task AddRecruiterAsync(Recruiter recruiter, CancellationToken cancellationToken = default);
 }
