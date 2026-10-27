@@ -552,6 +552,11 @@ public sealed class AuthServiceLoginTests
             return Task.CompletedTask;
         }
 
+        public Task<Candidate?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<List<Candidate>> ListQuotaDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new List<Candidate>());
@@ -582,6 +587,11 @@ public sealed class AuthServiceLoginTests
         }
 
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void DiscardChanges()
         {
             throw new NotSupportedException();
         }

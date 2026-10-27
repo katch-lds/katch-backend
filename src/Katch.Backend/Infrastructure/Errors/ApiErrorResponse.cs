@@ -64,9 +64,29 @@ public static class ApiErrorResponse
     public const string InvalidStateCode = "ERR-30";
 
     /// <summary>
+    /// Código do erro de quota de interesses esgotada.
+    /// </summary>
+    public const string QuotaExhaustedCode = "ERR-31";
+
+    /// <summary>
+    /// Código do erro de segunda resposta à mesma vaga.
+    /// </summary>
+    public const string AlreadyAnsweredCode = "ERR-32";
+
+    /// <summary>
+    /// Código do erro de vaga que já não está disponível.
+    /// </summary>
+    public const string JobUnavailableCode = "ERR-33";
+
+    /// <summary>
     /// Código do erro de segundo registo de Empresa pelo mesmo Recrutador.
     /// </summary>
     public const string CompanyAlreadyRegisteredCode = "ERR-40";
+
+    /// <summary>
+    /// Código do erro de alteração concorrente.
+    /// </summary>
+    public const string ConcurrencyConflictCode = "ERR-41";
 
     /// <summary>
     /// Mensagem do ERR-01.
@@ -109,9 +129,24 @@ public static class ApiErrorResponse
     public const string NotFoundMessage = "O elemento pedido não existe ou não está disponível.";
 
     /// <summary>
+    /// Mensagem do ERR-32.
+    /// </summary>
+    public const string AlreadyAnsweredMessage = "Já respondeu a esta vaga.";
+
+    /// <summary>
+    /// Mensagem do ERR-33.
+    /// </summary>
+    public const string JobUnavailableMessage = "A vaga já não está disponível.";
+
+    /// <summary>
     /// Mensagem do ERR-40.
     /// </summary>
     public const string CompanyAlreadyRegisteredMessage = "O Recrutador já registou uma Empresa.";
+
+    /// <summary>
+    /// Mensagem do ERR-41.
+    /// </summary>
+    public const string ConcurrencyConflictMessage = "O elemento foi alterado por outro pedido. Atualize e tente novamente.";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -236,12 +271,64 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Cria o corpo do ERR-31 (409): quota de interesses esgotada (RF020, P11), com o fim do bloqueio em
+    /// <see cref="ApiErrorDto.BlockedUntil"/>.
+    /// </summary>
+    /// <param name="blockedUntil">Instante em que termina o período de bloqueio.</param>
+    /// <param name="remaining">Tempo em falta até esse instante.</param>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto QuotaExhausted(DateTimeOffset blockedUntil, TimeSpan remaining)
+    {
+        return new ApiErrorDto(QuotaExhaustedCode, QuotaExhaustedMessage(remaining), BlockedUntil: blockedUntil);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-32 (409): segunda resposta do Candidato à mesma vaga (RF019).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto AlreadyAnswered()
+    {
+        return new ApiErrorDto(AlreadyAnsweredCode, AlreadyAnsweredMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-33 (409): a vaga deixou de cumprir o RF014 entre a apresentação do cartão e a ação.
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto JobUnavailable()
+    {
+        return new ApiErrorDto(JobUnavailableCode, JobUnavailableMessage);
+    }
+
+    /// <summary>
     /// Cria o corpo do ERR-40 (409): o Recrutador já registou uma Empresa.
     /// </summary>
     /// <returns>O corpo da resposta.</returns>
     public static ApiErrorDto CompanyAlreadyRegistered()
     {
         return new ApiErrorDto(CompanyAlreadyRegisteredCode, CompanyAlreadyRegisteredMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-41 (409): falha do controlo de concorrência otimista (<c>xmin</c>).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ConcurrencyConflict()
+    {
+        return new ApiErrorDto(ConcurrencyConflictCode, ConcurrencyConflictMessage);
+    }
+
+    /// <summary>
+    /// Compõe a mensagem do ERR-31 com o tempo em falta, em horas e minutos, arredondado para cima ao minuto e com o
+    /// mínimo de 1 minuto.
+    /// </summary>
+    /// <param name="remaining">Tempo em falta até ao fim do bloqueio.</param>
+    /// <returns>A mensagem, por exemplo «Esgotou a quota de interesses. Pode voltar a manifestar interesse dentro de 23 h 47 min.».</returns>
+    public static string QuotaExhaustedMessage(TimeSpan remaining)
+    {
+        long totalMinutes = Math.Max(1, (long)Math.Ceiling(remaining.TotalMinutes));
+
+        return $"Esgotou a quota de interesses. Pode voltar a manifestar interesse dentro de {totalMinutes / 60} h {totalMinutes % 60} min.";
     }
 
     /// <summary>

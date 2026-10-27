@@ -20,6 +20,7 @@ PowerShell (menu Iniciar, "Windows PowerShell") ou escreva `powershell` no termi
 10. [Regras a respeitar](#10-regras-a-respeitar)
 11. [Scripts da base de dados](#11-scripts-da-base-de-dados)
 12. [Quota de interesses e tarefa periódica](#12-quota-de-interesses-e-tarefa-periódica)
+13. [Recusa, interesse e quota do Candidato](#13-recusa-interesse-e-quota-do-candidato)
 
 ## 1. Estrutura do repositório
 
@@ -335,3 +336,116 @@ Um valor inválido impede a API de arrancar, com uma mensagem a dizer como corri
 registada e repetida no intervalo seguinte. Se um interesse e a reposição gravarem ao mesmo tempo, a marca de
 concorrência `xmin` faz falhar o segundo, que repete com os valores atuais.
 
+## 13. Recusa, interesse e quota do Candidato
+
+Três endpoints do `JobExplorationController` (`api/candidate/jobs`, API v02, secções 6.3.4 a 6.3.6), todos com a política
+`Candidate` (secção 9): uma conta de outro tipo recebe `ERR-06`. O Candidato é sempre o da claim `sub` da credencial,
+nunca o do pedido, e o instante vem sempre do relógio do servidor (`IClock`).
+
+| Endpoint | Sucesso | O que faz |
+| --- | --- | --- |
+| `POST /api/candidate/jobs/{jobId}/decline` | `204` sem corpo | Regista a recusa (`DECLINED_BY_CANDIDATE`) com a data. Não consome quota e não tem limite de recusas. |
+| `POST /api/candidate/jobs/{jobId}/interest` | `200` com `QuotaDto` | Numa só gravação, cria o `match` em `WAITING` e consome um interesse da quota. O décimo interesse traz `blockedUntil`, 24 horas depois. |
+| `GET /api/candidate/jobs/quota` | `200` com `QuotaDto` | Devolve a quota. Se o bloqueio já terminou, repõe-na e grava antes de responder (RF021). |
+
+O `QuotaDto` tem `available` (0 a 10), `total` (10) e `blockedUntil` (`null` fora do bloqueio):
+`{ "available": 9, "total": 10, "blockedUntil": null }`.
+
+### Ordem das verificações
+
+Na recusa e no interesse, a primeira que falhar decide o erro e nada fica registado:
+
+1. A vaga não existe, está eliminada ou nunca foi publicada: `404` `ERR-20`.
+2. O Candidato já respondeu a esta vaga (recusa ou interesse): `409` `ERR-32`. A violação do índice único
+   `uq_match_candidate_job`, por dois pedidos simultâneos, dá o mesmo erro.
+3. A vaga já não está disponível (não publicada, suspensa, encerrada, expirada ou com a Empresa não aprovada):
+   `409` `ERR-33`. É só a parte de estado do RF014; a distância, o salário e as preferências são do cartão de vaga.
+4. Só no interesse, a quota: esgotada e dentro do bloqueio é `409` `ERR-31`.
+
+A concorrência usa o `xmin` de `candidate`: se vários pedidos do mesmo Candidato chegam ao mesmo tempo, só um grava de
+cada vez; os que perdem descartam o contexto, esperam entre 2 e 25 ms (valor aleatório, para não colidirem outra vez) e
+repetem tudo desde a leitura (vaga, resposta existente e quota), enquanto houver conflito e **até 5 segundos no total**.
+Cada repetição lê a quota já atualizada pelos outros, por isso 20 interesses simultâneos com a quota a 10 dão 10 × `200` e
+10 × `ERR-31`, nunca `ERR-41`. O `ERR-41` só é devolvido se o conflito durar mais de 5 segundos, como último recurso. O
+mesmo mecanismo serve a consulta da quota quando repõe e grava.
+
+### Erros
+
+| Erro | HTTP | Mensagem | Quando |
+| --- | --- | --- | --- |
+| `ERR-01` | 401 | A sessão expirou ou não é válida. Inicie sessão novamente. | Sem credencial, ou inválida ou expirada |
+| `ERR-06` | 403 | A operação não está disponível para este tipo de conta. | Conta que não é de Candidato |
+| `ERR-10` | 400 | Os dados enviados não cumprem a validação automática. | `jobId` que não é um `Guid` |
+| `ERR-20` | 404 | O elemento pedido não existe ou não está disponível. | Vaga inexistente, eliminada ou nunca publicada |
+| `ERR-31` | 409 | Esgotou a quota de interesses. Pode voltar a manifestar interesse dentro de {h} h {min} min. | Interesse com a quota esgotada; `blockedUntil` vem no corpo e os minutos são arredondados para cima (mínimo 1) |
+| `ERR-32` | 409 | Já respondeu a esta vaga. | Segunda resposta à mesma vaga |
+| `ERR-33` | 409 | A vaga já não está disponível. | A vaga deixou de cumprir o estado do RF014 |
+| `ERR-41` | 409 | O elemento foi alterado por outro pedido. Atualize e tente novamente. | Conflito de concorrência que dura mais de 5 segundos (último recurso) |
+
+### Como experimentar
+
+Precisa da API a correr (secção 3.6), de uma credencial de Candidato e do identificador de uma vaga publicada de uma
+Empresa aprovada (`<jobId>`). A credencial obtém-se em `POST /api/auth/login` com o cabeçalho `X-Client-App: mobile`,
+que é o do Candidato (secção 9). No Swagger (`/swagger`, em `Development`), cole o `token` em **Authorize** e execute os
+três endpoints; os passos estão em "Experimentar no Swagger", na secção 9. Com `curl.exe` envie a credencial
+(`<credencial>`) no cabeçalho `Authorization: Bearer`. Nunca guarde credenciais em ficheiros versionados. No
+PowerShell use `curl.exe`, porque `curl` é um alias de outro comando.
+
+```powershell
+$api = "http://localhost:5180"
+$h = "Authorization: Bearer <credencial>"
+
+curl.exe -i -H $h "$api/api/candidate/jobs/quota"
+curl.exe -i -X POST -H $h "$api/api/candidate/jobs/<jobId>/interest"
+curl.exe -i -X POST -H $h "$api/api/candidate/jobs/<jobId>/decline"
+```
+
+Exemplos de pedido e de resposta (cabeçalhos omitidos; os identificadores e as datas são fictícios):
+
+```http
+POST /api/candidate/jobs/5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a805/decline
+HTTP/1.1 204 No Content
+
+POST /api/candidate/jobs/5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a805/interest
+HTTP/1.1 200 OK
+{"available":9,"total":10,"blockedUntil":null}
+
+GET /api/candidate/jobs/quota        (depois do décimo interesse)
+HTTP/1.1 200 OK
+{"available":0,"total":10,"blockedUntil":"2026-10-26T12:00:00Z"}
+
+POST /api/candidate/jobs/5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a805/interest      (ERR-31)
+HTTP/1.1 409 Conflict
+{"code":"ERR-31","message":"Esgotou a quota de interesses. Pode voltar a manifestar interesse dentro de 23 h 47 min.","fields":[],"blockedUntil":"2026-10-26T12:00:00Z"}
+
+POST /api/candidate/jobs/<jobId já respondida>/interest                      (ERR-32)
+HTTP/1.1 409 Conflict
+{"code":"ERR-32","message":"Já respondeu a esta vaga.","fields":[],"blockedUntil":null}
+
+POST /api/candidate/jobs/<vaga suspensa>/interest                            (ERR-33)
+HTTP/1.1 409 Conflict
+{"code":"ERR-33","message":"A vaga já não está disponível.","fields":[],"blockedUntil":null}
+
+POST /api/candidate/jobs/<Guid inexistente>/interest                         (ERR-20)
+HTTP/1.1 404 Not Found
+{"code":"ERR-20","message":"O elemento pedido não existe ou não está disponível.","fields":[],"blockedUntil":null}
+
+POST /api/candidate/jobs/nao-e-um-guid/interest                              (ERR-10)
+HTTP/1.1 400 Bad Request
+{"code":"ERR-10","message":"Os dados enviados não cumprem a validação automática.","fields":[],"blockedUntil":null}
+
+GET /api/candidate/jobs/quota        (sem credencial)                        (ERR-01)
+HTTP/1.1 401 Unauthorized
+{"code":"ERR-01","message":"A sessão expirou ou não é válida. Inicie sessão novamente.","fields":[],"blockedUntil":null}
+
+GET /api/candidate/jobs/quota        (credencial de Recrutador)              (ERR-06)
+HTTP/1.1 403 Forbidden
+{"code":"ERR-06","message":"A operação não está disponível para este tipo de conta.","fields":[],"blockedUntil":null}
+
+POST /api/candidate/jobs/<jobId>/interest       (conflito de concorrência durante mais de 5 s)   (ERR-41)
+HTTP/1.1 409 Conflict
+{"code":"ERR-41","message":"O elemento foi alterado por outro pedido. Atualize e tente novamente.","fields":[],"blockedUntil":null}
+```
+
+Os testes estão em `JobExplorationServiceTests` (unitários, com a concorrência e o índice único) e em
+`JobExplorationTests` (integração, sobre SQLite).

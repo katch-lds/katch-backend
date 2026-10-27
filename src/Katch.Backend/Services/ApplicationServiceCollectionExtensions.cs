@@ -26,13 +26,18 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IReferenceDataRepository, ReferenceDataRepository>();
         services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<IOperationLogRepository, OperationLogRepository>();
+        services.AddScoped<IJobRepository, JobRepository>();
+        services.AddScoped<IMatchRepository, MatchRepository>();
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddScoped<IOperationLogger, OperationLogger>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IReferenceListService, ReferenceListService>();
-        services.AddScoped<IQuotaService, QuotaService>();
         services.AddScoped<ICompanyService, CompanyService>();
+        services.AddScoped<IQuotaService, QuotaService>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IConflictRetryDelay, RandomConflictRetryDelay>();
+        services.AddScoped<IJobExplorationService, JobExplorationService>();
         return services;
     }
 }

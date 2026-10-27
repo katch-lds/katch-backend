@@ -530,6 +530,11 @@ public sealed class CompanyServiceTests
             return Task.FromResult(2);
         }
 
+        public void DiscardChanges()
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

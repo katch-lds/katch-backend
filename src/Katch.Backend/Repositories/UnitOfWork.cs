@@ -31,11 +31,21 @@ public sealed class UnitOfWork : IUnitOfWork
         {
             return await this.context.SaveChangesAsync(cancellationToken);
         }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw new ConcurrencyConflictException(exception);
+        }
         catch (DbUpdateException exception)
             when (exception.InnerException is PostgresException { SqlState: UniqueViolation } postgres)
         {
             throw new UniqueConstraintViolationException(postgres.ConstraintName ?? string.Empty, exception);
         }
+    }
+
+    /// <inheritdoc/>
+    public void DiscardChanges()
+    {
+        this.context.ChangeTracker.Clear();
     }
 
     /// <inheritdoc/>

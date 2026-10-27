@@ -30,6 +30,12 @@ public sealed class CandidateRepository : ICandidateRepository
     }
 
     /// <inheritdoc/>
+    public Task<Candidate?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Candidates.FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<List<Candidate>> ListQuotaDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         // O CHECK da tabela só admite next_swipe_available_at preenchido com a quota a 0, por isso este filtro basta.

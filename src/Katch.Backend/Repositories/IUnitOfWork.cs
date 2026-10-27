@@ -16,7 +16,14 @@ public interface IUnitOfWork
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>O número de linhas gravadas.</returns>
     /// <exception cref="UniqueConstraintViolationException">Se a gravação violar um índice único.</exception>
+    /// <exception cref="ConcurrencyConflictException">Se outro pedido alterou entretanto uma linha lida (<c>xmin</c>).</exception>
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Descarta tudo o que o contexto do pedido tem em memória, lido ou por gravar, para repetir uma operação desde a
+    /// leitura depois de um <see cref="ConcurrencyConflictException"/>.
+    /// </summary>
+    public void DiscardChanges();
 
     /// <summary>
     /// Inicia uma transação explícita, para operações com várias gravações.
