@@ -1,0 +1,27 @@
+// Copyright (c) Grupo G11. Katch, LDS 2026/2027.
+
+using Katch.Backend.Domain;
+
+namespace Katch.Backend.Repositories;
+
+/// <summary>
+/// Acesso às listas pré-definidas (modelo de classes do backend v02, secção 4). As operações das competências e dos
+/// benefícios são acrescentadas pela Issue dessas listas (I049).
+/// </summary>
+public interface IReferenceDataRepository
+{
+    /// <summary>
+    /// Lista as localidades da lista pré-definida, só para leitura (DA, F002).
+    /// </summary>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>As localidades, sem ordem garantida.</returns>
+    public Task<List<Location>> ListLocationsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Indica se a localidade existe na lista pré-definida (RF003, RF041, RF050).
+    /// </summary>
+    /// <param name="id">Identificador da localidade.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><see langword="true"/> se a localidade existir.</returns>
+    public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default);
+}
