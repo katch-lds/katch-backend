@@ -538,6 +538,11 @@ public sealed class AuthServiceLoginTests
             this.Accounts.Add(user);
             return Task.CompletedTask;
         }
+
+        public Task AddRecruiterAsync(Recruiter recruiter, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeCandidates : ICandidateRepository

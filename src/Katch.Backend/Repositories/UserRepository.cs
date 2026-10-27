@@ -53,6 +53,14 @@ public sealed class UserRepository : IUserRepository
         await this.context.Users.AddAsync(user, cancellationToken);
     }
 
+    /// <inheritdoc/>
+    public async Task AddRecruiterAsync(Recruiter recruiter, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(recruiter);
+
+        await this.context.Recruiters.AddAsync(recruiter, cancellationToken);
+    }
+
     /// <summary>
     /// Condição <c>lower(email) = @email</c>, sem distinção de maiúsculas e servida pelo índice <c>uq_app_user_email</c>.
     /// </summary>

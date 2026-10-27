@@ -12,8 +12,8 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 namespace Katch.Backend.Controllers;
 
 /// <summary>
-/// Registo, início e fim de sessão e alteração da palavra-passe (documentação da API v02, secção 6.1; modelo de classes
-/// do backend v02, secção 6). A criação de conta de Recrutador é acrescentada pela Issue I053.
+/// Registo, criação de conta de Recrutador, início e fim de sessão e alteração da palavra-passe (documentação da
+/// API v02, secção 6.1; modelo de classes do backend v02, secção 6).
 /// </summary>
 [ApiController]
 [Route("api/auth")]
@@ -64,6 +64,31 @@ public sealed class AuthController : ControllerBase
             request ?? RegisterCandidateRequest.Empty,
             cancellationToken);
         return this.Created(CandidateProfileRoute, response);
+    }
+
+    /// <summary>
+    /// Cria a conta de Recrutador (UC07): a conta fica ativa e sem Empresa, com a sessão iniciada (RF037). As operações
+    /// que exigem a Empresa aprovada devolvem ERR-07 até à aprovação. Todos os campos em erro são indicados na mesma
+    /// resposta.
+    /// </summary>
+    /// <param name="request">Dados da conta.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><c>201</c> com a credencial de sessão, sem <c>Location</c>, ou <c>400</c> (ERR-10) com os campos em erro.</returns>
+    [HttpPost("recruiters")]
+    [AllowAnonymous]
+    [Consumes("application/json")]
+    [ProducesResponseType<LoginResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<LoginResponse>> CreateRecruiterAccount(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CreateRecruiterAccountRequest? request,
+        CancellationToken cancellationToken)
+    {
+        LoginResponse response = await this.authService.CreateRecruiterAccountAsync(
+            request ?? CreateRecruiterAccountRequest.Empty,
+            cancellationToken);
+
+        // Sem Location: o estado da Empresa (6.4.3) só existe depois do registo da Empresa (API v02, secção 4.2).
+        return this.StatusCode(StatusCodes.Status201Created, response);
     }
 
     /// <summary>

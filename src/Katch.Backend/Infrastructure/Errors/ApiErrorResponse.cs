@@ -59,6 +59,11 @@ public static class ApiErrorResponse
     public const string NotFoundCode = "ERR-20";
 
     /// <summary>
+    /// Código do erro de transição de estado inválida.
+    /// </summary>
+    public const string InvalidStateCode = "ERR-30";
+
+    /// <summary>
     /// Código do erro de quota de interesses esgotada.
     /// </summary>
     public const string QuotaExhaustedCode = "ERR-31";
@@ -72,6 +77,11 @@ public static class ApiErrorResponse
     /// Código do erro de vaga que já não está disponível.
     /// </summary>
     public const string JobUnavailableCode = "ERR-33";
+
+    /// <summary>
+    /// Código do erro de segundo registo de Empresa pelo mesmo Recrutador.
+    /// </summary>
+    public const string CompanyAlreadyRegisteredCode = "ERR-40";
 
     /// <summary>
     /// Código do erro de alteração concorrente.
@@ -127,6 +137,11 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-33.
     /// </summary>
     public const string JobUnavailableMessage = "A vaga já não está disponível.";
+
+    /// <summary>
+    /// Mensagem do ERR-40.
+    /// </summary>
+    public const string CompanyAlreadyRegisteredMessage = "O Recrutador já registou uma Empresa.";
 
     /// <summary>
     /// Mensagem do ERR-41.
@@ -235,12 +250,24 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
-    /// Cria o corpo do ERR-20 (404): elemento inexistente, eliminado ou não visível para o utilizador.
+    /// Cria o corpo do ERR-20 (404): o elemento pedido não existe ou não está disponível.
     /// </summary>
     /// <returns>O corpo da resposta.</returns>
     public static ApiErrorDto NotFound()
     {
         return new ApiErrorDto(NotFoundCode, NotFoundMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-30 (409): a operação não é permitida no estado atual do elemento.
+    /// </summary>
+    /// <param name="stateLabel">Estado atual, como é apresentado ao utilizador (por exemplo «pendente»).</param>
+    /// <returns>O corpo da resposta, por exemplo «A operação não é permitida no estado atual: pendente.».</returns>
+    public static ApiErrorDto InvalidState(string stateLabel)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(stateLabel);
+
+        return new ApiErrorDto(InvalidStateCode, $"A operação não é permitida no estado atual: {stateLabel}.");
     }
 
     /// <summary>
@@ -274,6 +301,15 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Cria o corpo do ERR-40 (409): o Recrutador já registou uma Empresa.
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto CompanyAlreadyRegistered()
+    {
+        return new ApiErrorDto(CompanyAlreadyRegisteredCode, CompanyAlreadyRegisteredMessage);
+    }
+
+    /// <summary>
     /// Cria o corpo do ERR-41 (409): falha do controlo de concorrência otimista (<c>xmin</c>).
     /// </summary>
     /// <returns>O corpo da resposta.</returns>
@@ -303,7 +339,18 @@ public static class ApiErrorResponse
     /// <exception cref="ArgumentOutOfRangeException">Se o estado não for conhecido.</exception>
     public static string CompanyNotApprovedMessage(CompanyStatus? status)
     {
-        string label = status switch
+        return $"A operação exige a Empresa aprovada. Estado atual da Empresa: {CompanyStatusLabel(status)}.";
+    }
+
+    /// <summary>
+    /// Designação do estado da Empresa nas mensagens do catálogo (ERR-07 e ERR-30).
+    /// </summary>
+    /// <param name="status">Estado da Empresa, ou <see langword="null"/> se o Recrutador não tem Empresa.</param>
+    /// <returns>«pendente», «aprovada», «recusada», «suspensa» ou «não registada».</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Se o estado não for conhecido.</exception>
+    public static string CompanyStatusLabel(CompanyStatus? status)
+    {
+        return status switch
         {
             null => "não registada",
             CompanyStatus.Pending => "pendente",
@@ -312,8 +359,6 @@ public static class ApiErrorResponse
             CompanyStatus.Suspended => "suspensa",
             _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Estado de Empresa desconhecido."),
         };
-
-        return $"A operação exige a Empresa aprovada. Estado atual da Empresa: {label}.";
     }
 
     private static Task WriteAsync(HttpContext context, int statusCode, string code, string message)

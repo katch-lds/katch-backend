@@ -1,6 +1,5 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using System.Text.RegularExpressions;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
@@ -13,7 +12,7 @@ namespace Katch.Backend.Services;
 /// <summary>
 /// Implementação de <see cref="IAuthService"/> (modelo de classes do backend v02, secções 5.1 e 5.3).
 /// </summary>
-public sealed partial class AuthService : IAuthService
+public sealed class AuthService : IAuthService
 {
     /// <summary>
     /// Nome do índice único sobre <c>lower(email)</c> (modelo de dados v02, secção 5.3).
@@ -103,16 +102,44 @@ public sealed partial class AuthService : IAuthService
 
         await this.users.AddAsync(user, cancellationToken);
         await this.candidates.AddAsync(candidate, cancellationToken);
+        await this.SaveAccountAsync(cancellationToken);
 
-        try
+        return this.tokenService.CreateToken(user);
+    }
+
+    /// <inheritdoc/>
+    public async Task<LoginResponse> CreateRecruiterAccountAsync(
+        CreateRecruiterAccountRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        // Os espaços no início e no fim são retirados antes da validação (documentação da API v02, secção 2.3).
+        string email = request.Email?.Trim() ?? string.Empty;
+        string password = request.Password ?? string.Empty;
+
+        var errors = new List<FieldErrorDto>();
+        await this.ValidateEmailAsync(email, errors, cancellationToken);
+        ValidatePassword(password, errors, "password");
+
+        if (!request.AcceptTerms)
         {
-            await this.unitOfWork.SaveChangesAsync(cancellationToken);
+            errors.Add(new FieldErrorDto("acceptTerms", FieldReasons.AcceptTerms));
         }
-        catch (UniqueConstraintViolationException exception) when (exception.ConstraintName == EmailUniqueIndex)
+
+        if (errors.Count > 0)
         {
-            // Outro pedido registou o mesmo correio entre a verificação e a gravação.
-            throw new ValidationFailedException([new FieldErrorDto("email", FieldReasons.EmailTaken)]);
+            throw new ValidationFailedException(errors);
         }
+
+        // A conta fica ativa e sem Empresa; as operações ApprovedCompany devolvem ERR-07 até à aprovação (RF037, RF039).
+        DateTimeOffset now = this.clock.UtcNow;
+        var user = new AppUser(email, this.passwordHasher.Hash(password), UserType.Recruiter, termsAcceptedAt: now, now);
+        var recruiter = new Recruiter(user);
+
+        await this.users.AddAsync(user, cancellationToken);
+        await this.users.AddRecruiterAsync(recruiter, cancellationToken);
+        await this.SaveAccountAsync(cancellationToken);
 
         return this.tokenService.CreateToken(user);
     }
@@ -239,7 +266,7 @@ public sealed partial class AuthService : IAuthService
         {
             errors.Add(new FieldErrorDto("phoneNumber", FieldReasons.Required));
         }
-        else if (!PhoneNumberPattern().IsMatch(phoneNumber))
+        else if (!FieldFormats.IsNineDigits(phoneNumber))
         {
             errors.Add(new FieldErrorDto("phoneNumber", FieldReasons.PhoneNumberFormat));
         }
@@ -261,22 +288,6 @@ public sealed partial class AuthService : IAuthService
         }
     }
 
-    /// <summary>
-    /// Mesma regra do <c>CHECK ck_app_user_email</c> e do <see cref="AppUser"/>: exatamente um <c>@</c>, com texto sem
-    /// espaços de cada lado (P04).
-    /// </summary>
-    private static bool HasEmailFormat(string email)
-    {
-        int at = email.IndexOf('@', StringComparison.Ordinal);
-        return at > 0
-            && at == email.LastIndexOf('@')
-            && at < email.Length - 1
-            && !email.Any(char.IsWhiteSpace);
-    }
-
-    [GeneratedRegex(@"^[0-9]{9}\z")]
-    private static partial Regex PhoneNumberPattern();
-
     private async Task ValidateEmailAsync(string email, List<FieldErrorDto> errors, CancellationToken cancellationToken)
     {
         if (email.Length == 0)
@@ -287,13 +298,29 @@ public sealed partial class AuthService : IAuthService
         {
             errors.Add(new FieldErrorDto("email", FieldReasons.EmailTooLong));
         }
-        else if (!HasEmailFormat(email))
+        else if (!FieldFormats.IsEmail(email))
         {
             errors.Add(new FieldErrorDto("email", FieldReasons.EmailFormat));
         }
         else if (await this.users.EmailExistsAsync(email, cancellationToken))
         {
             errors.Add(new FieldErrorDto("email", FieldReasons.EmailTaken));
+        }
+    }
+
+    /// <summary>
+    /// Grava a conta nova. Se outro pedido registou o mesmo correio entre a verificação e a gravação, o índice único
+    /// <c>uq_app_user_email</c> rejeita a segunda e a resposta é o mesmo ERR-10 do campo <c>email</c>.
+    /// </summary>
+    private async Task SaveAccountAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await this.unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (UniqueConstraintViolationException exception) when (exception.ConstraintName == EmailUniqueIndex)
+        {
+            throw new ValidationFailedException([new FieldErrorDto("email", FieldReasons.EmailTaken)]);
         }
     }
 
