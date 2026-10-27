@@ -15,8 +15,9 @@ namespace Katch.Backend.Domain;
 /// primeira publicação registada antes de a vaga ficar publicada ou suspensa. Uma vaga eliminada
 /// (<see cref="DeletedAt"/>) deixa de poder ser gerida (DM-09) e é excluída das consultas pelo filtro global do
 /// <c>KatchDbContext</c>. A condição de eliminação (sem interesses registados), a autoria e a data das operações
-/// dependem de outras linhas e ficam nos serviços e no <c>OperationLog</c> (DM-23). As competências e os benefícios
-/// (<c>job_skill</c> e <c>job_benefit</c>) são acrescentados pela Issue das listas pré-definidas.
+/// dependem de outras linhas e ficam nos serviços e no <c>OperationLog</c> (DM-23). As competências pretendidas e os
+/// benefícios são as navegações N:M <see cref="Skills"/> e <see cref="Benefits"/>, sobre <c>job_skill</c> e
+/// <c>job_benefit</c>; a exigência de pelo menos uma competência (RF050) é verificada pelo serviço.
 /// </remarks>
 public sealed class Job
 {
@@ -160,6 +161,16 @@ public sealed class Job
     /// Gets the instant of the logical deletion by the recruiter (<c>deleted_at</c>).
     /// </summary>
     public DateTimeOffset? DeletedAt { get; private set; }
+
+    /// <summary>
+    /// Gets the skills required by the job, from the pre-defined list (<c>job_skill</c>); at least one (RF050).
+    /// </summary>
+    public ICollection<Skill> Skills { get; private set; } = [];
+
+    /// <summary>
+    /// Gets the benefits offered by the job, from the pre-defined list (<c>job_benefit</c>).
+    /// </summary>
+    public ICollection<Benefit> Benefits { get; private set; } = [];
 
     /// <summary>
     /// Altera os dados da vaga (RF054). O estado não muda.
