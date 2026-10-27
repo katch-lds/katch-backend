@@ -51,6 +51,11 @@ public sealed class AuthControllerTests
             throw new NotSupportedException();
         }
 
+        public Task<LoginResponse> CreateRecruiterAccountAsync(CreateRecruiterAccountRequest request, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<LoginResponse> LoginAsync(LoginRequest request, ClientApp app, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

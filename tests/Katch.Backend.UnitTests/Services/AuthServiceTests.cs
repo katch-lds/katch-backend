@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace Katch.Backend.UnitTests.Services;
 
 /// <summary>
-/// Testes do registo do Candidato em <see cref="AuthService"/> (documentação da API v02, secção 6.1.1; RF003 a RF005,
-/// RNF003, P04, P05), com repositórios em memória.
+/// Testes do registo do Candidato e da criação da conta de Recrutador em <see cref="AuthService"/> (documentação da
+/// API v02, secções 6.1.1 e 6.1.2; RF003 a RF005, RF037, RNF003, P04, P05), com repositórios em memória.
 /// </summary>
 public sealed class AuthServiceTests
 {
@@ -271,6 +271,117 @@ public sealed class AuthServiceTests
         Assert.Null(this.tokens.IssuedFor);
     }
 
+    /// <summary>
+    /// Com dados válidos, a conta de Recrutador fica ativa, com as condições aceites, a especialização de Recrutador,
+    /// a palavra-passe só como resumo e a sessão iniciada (RF037).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task ValidRecruiterRequestCreatesAnActiveRecruiterAndReturnsToken()
+    {
+        LoginResponse response = await this.service.CreateRecruiterAccountAsync(
+            new CreateRecruiterAccountRequest(" Recrutamento@Lumen-Exemplo.pt ", "Lumen2026rh", AcceptTerms: true),
+            TestContext.Current.CancellationToken);
+
+        AppUser user = Assert.Single(this.users.Added);
+        Recruiter recruiter = Assert.Single(this.users.AddedRecruiters);
+        Assert.Empty(this.candidates.Added);
+        Assert.Equal(1, this.unitOfWork.Saves);
+        Assert.Equal(UserType.Recruiter, user.UserType);
+        Assert.Equal(AccountStatus.Active, user.Status);
+        Assert.Equal(Now, user.TermsAcceptedAt);
+        Assert.Equal("Recrutamento@Lumen-Exemplo.pt", user.Email);
+        Assert.NotEqual("Lumen2026rh", user.PasswordHash);
+        Assert.True(new IdentityPasswordHasher().Verify(user.PasswordHash, "Lumen2026rh"));
+        Assert.Equal(user.Id, recruiter.Id);
+        Assert.Same(user, this.tokens.IssuedFor);
+        Assert.Equal(UserType.Recruiter, response.UserType);
+        Assert.Equal(user.Id, response.UserId);
+    }
+
+    /// <summary>
+    /// Na conta de Recrutador, todos os campos em erro são indicados na mesma resposta e nada é gravado (RF037).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task InvalidRecruiterRequestReportsEveryFieldTogether()
+    {
+        ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
+            () => this.service.CreateRecruiterAccountAsync(
+                new CreateRecruiterAccountRequest("recrutamento", "curta", AcceptTerms: false),
+                TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            [
+                new FieldErrorDto("email", FieldReasons.EmailFormat),
+                new FieldErrorDto("password", FieldReasons.PasswordPolicy),
+                new FieldErrorDto("acceptTerms", FieldReasons.AcceptTerms),
+            ],
+            exception.Fields);
+        Assert.Empty(this.users.Added);
+        Assert.Empty(this.users.AddedRecruiters);
+        Assert.Equal(0, this.unitOfWork.Saves);
+    }
+
+    /// <summary>
+    /// Sem nenhum campo, a conta de Recrutador indica o correio e a palavra-passe como obrigatórios e as condições como
+    /// não aceites.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task EmptyRecruiterRequestReportsEveryField()
+    {
+        ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
+            () => this.service.CreateRecruiterAccountAsync(
+                CreateRecruiterAccountRequest.Empty,
+                TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            [
+                new FieldErrorDto("email", FieldReasons.Required),
+                new FieldErrorDto("password", FieldReasons.Required),
+                new FieldErrorDto("acceptTerms", FieldReasons.AcceptTerms),
+            ],
+            exception.Fields);
+    }
+
+    /// <summary>
+    /// O correio já registado noutra conta, de qualquer tipo e com maiúsculas diferentes, é recusado na conta de
+    /// Recrutador (RF037).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task RecruiterEmailAlreadyRegisteredIsRejected()
+    {
+        this.users.Existing.Add("recrutamento@lumen-exemplo.pt");
+
+        ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
+            () => this.service.CreateRecruiterAccountAsync(
+                new CreateRecruiterAccountRequest("RECRUTAMENTO@lumen-exemplo.pt", "Lumen2026rh", AcceptTerms: true),
+                TestContext.Current.CancellationToken));
+
+        Assert.Equal(new FieldErrorDto("email", FieldReasons.EmailTaken), Assert.Single(exception.Fields));
+    }
+
+    /// <summary>
+    /// Se outro pedido gravar o mesmo correio entre a verificação e a gravação, a conta de Recrutador recebe o mesmo
+    /// erro de campo.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task ConcurrentRecruiterAccountWithTheSameEmailIsReportedAsEmailTaken()
+    {
+        this.unitOfWork.FailWith = new UniqueConstraintViolationException(AuthService.EmailUniqueIndex, new InvalidOperationException());
+
+        ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
+            () => this.service.CreateRecruiterAccountAsync(
+                new CreateRecruiterAccountRequest("recrutamento@lumen-exemplo.pt", "Lumen2026rh", AcceptTerms: true),
+                TestContext.Current.CancellationToken));
+
+        Assert.Equal(new FieldErrorDto("email", FieldReasons.EmailTaken), Assert.Single(exception.Fields));
+        Assert.Null(this.tokens.IssuedFor);
+    }
+
     private static RegisterCandidateRequest Valid()
     {
         return new RegisterCandidateRequest(
@@ -295,6 +406,8 @@ public sealed class AuthServiceTests
 
         public List<AppUser> Added { get; } = [];
 
+        public List<Recruiter> AddedRecruiters { get; } = [];
+
         public Task<AppUser?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Added.SingleOrDefault(user => user.Id == id));
@@ -314,6 +427,12 @@ public sealed class AuthServiceTests
         public Task AddAsync(AppUser user, CancellationToken cancellationToken = default)
         {
             this.Added.Add(user);
+            return Task.CompletedTask;
+        }
+
+        public Task AddRecruiterAsync(Recruiter recruiter, CancellationToken cancellationToken = default)
+        {
+            this.AddedRecruiters.Add(recruiter);
             return Task.CompletedTask;
         }
     }

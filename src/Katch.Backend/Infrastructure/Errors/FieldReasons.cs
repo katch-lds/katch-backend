@@ -66,4 +66,25 @@ public static class FieldReasons
     /// Valor que não pode ser lido no tipo do campo (por exemplo, texto num campo booleano).
     /// </summary>
     public const string InvalidValue = "O valor não é válido.";
+
+    /// <summary>
+    /// Número de identificação fiscal sem exatamente 9 algarismos (P04).
+    /// </summary>
+    public const string TaxIdFormat = "O número de identificação fiscal tem de ter 9 algarismos.";
+
+    /// <summary>
+    /// Número de identificação fiscal já registado noutra Empresa (RF042).
+    /// </summary>
+    public const string TaxIdTaken = "O número de identificação fiscal já está registado.";
+
+    /// <summary>
+    /// Compõe o motivo de um texto acima do comprimento máximo da coluna, no formato do catálogo («O texto não pode
+    /// exceder 1000 caracteres.», P08).
+    /// </summary>
+    /// <param name="maxLength">Comprimento máximo do campo.</param>
+    /// <returns>O motivo, por exemplo «O texto não pode exceder 200 caracteres.».</returns>
+    public static string TextTooLong(int maxLength)
+    {
+        return $"O texto não pode exceder {maxLength} caracteres.";
+    }
 }
