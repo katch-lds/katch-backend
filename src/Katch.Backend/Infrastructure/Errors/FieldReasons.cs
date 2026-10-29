@@ -78,6 +78,11 @@ public static class FieldReasons
     public const string TaxIdTaken = "O número de identificação fiscal já está registado.";
 
     /// <summary>
+    /// Motivo da recusa do registo da Empresa fora dos 10 a 500 caracteres, sem os espaços nas extremidades (P12).
+    /// </summary>
+    public const string RejectionReasonLength = "O motivo tem de ter entre 10 e 500 caracteres.";
+
+    /// <summary>
     /// Compõe o motivo de um texto acima do comprimento máximo da coluna, no formato do catálogo («O texto não pode
     /// exceder 1000 caracteres.», P08).
     /// </summary>
