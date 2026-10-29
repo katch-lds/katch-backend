@@ -78,6 +78,31 @@ public static class FieldReasons
     public const string TaxIdTaken = "O número de identificação fiscal já está registado.";
 
     /// <summary>
+    /// Valor salarial nulo ou negativo (documentação da API v02, secção 4.3; RF051).
+    /// </summary>
+    public const string SalaryNotPositive = "O valor tem de ser um número positivo em euros.";
+
+    /// <summary>
+    /// Valor mínimo superior ao máximo (documentação da API v02, secção 4.3; RF051).
+    /// </summary>
+    public const string SalaryRange = "O valor mínimo não pode ser superior ao valor máximo.";
+
+    /// <summary>
+    /// Valor salarial acima do que a coluna <c>numeric(10,2)</c> guarda (documentação da API v02, secção 8.3).
+    /// </summary>
+    public const string SalaryTooHigh = "O valor não pode exceder 99 999 999,99 euros.";
+
+    /// <summary>
+    /// Data-limite da vaga igual ou anterior ao instante do pedido (documentação da API v02, secções 6.5.2 e 8.3).
+    /// </summary>
+    public const string ExpiresAtNotFuture = "A data-limite tem de ser posterior ao momento atual.";
+
+    /// <summary>
+    /// Identificador repetido numa lista de competências ou de benefícios (documentação da API v02, secção 8.3).
+    /// </summary>
+    public const string RepeatedInList = "O valor está repetido na lista.";
+
+    /// <summary>
     /// Compõe o motivo de um texto acima do comprimento máximo da coluna, no formato do catálogo («O texto não pode
     /// exceder 1000 caracteres.», P08).
     /// </summary>

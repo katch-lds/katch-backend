@@ -66,7 +66,7 @@ public static class ApiConventionsMvcBuilderExtensions
     {
         return field switch
         {
-            "locationId" or "industry" => FieldReasons.NotInList,
+            "locationId" or "industry" or "contractType" or "workMode" => FieldReasons.NotInList,
             "acceptTerms" => FieldReasons.AcceptTerms,
             _ => FieldReasons.InvalidValue,
         };
