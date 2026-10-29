@@ -543,6 +543,11 @@ public sealed class AuthServiceLoginTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<int> CountActiveCandidatesAtAsync(DateTimeOffset at, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeCandidates : ICandidateRepository
@@ -573,6 +578,41 @@ public sealed class AuthServiceLoginTests
         public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(false);
+        }
+
+        public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> SkillNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> BenefitNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddSkillAsync(Skill skill, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 
