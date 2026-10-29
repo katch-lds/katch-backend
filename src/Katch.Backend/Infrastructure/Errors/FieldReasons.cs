@@ -78,6 +78,11 @@ public static class FieldReasons
     public const string TaxIdTaken = "O número de identificação fiscal já está registado.";
 
     /// <summary>
+    /// Número de identificação fiscal diferente do registado, na alteração dos dados da Empresa aprovada (RF049).
+    /// </summary>
+    public const string TaxIdImmutable = "O número de identificação fiscal não pode ser alterado depois da aprovação.";
+
+    /// <summary>
     /// Motivo da recusa do registo da Empresa fora dos 10 a 500 caracteres, sem os espaços nas extremidades (P12).
     /// </summary>
     public const string RejectionReasonLength = "O motivo tem de ter entre 10 e 500 caracteres.";
