@@ -1,6 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain;
+using Katch.Backend.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Repositories;
@@ -43,5 +44,23 @@ public sealed class CompanyRepository : ICompanyRepository
         ArgumentNullException.ThrowIfNull(company);
 
         await this.context.Companies.AddAsync(company, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Companies.SingleOrDefaultAsync(company => company.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
+    {
+        // O filtro global das vagas exclui as eliminadas (DM-09) também nesta contagem.
+        return this.context.Companies
+            .AsNoTracking()
+            .Select(company => new CompanyWithCount(
+                company,
+                this.context.Jobs.Count(job => job.CompanyId == company.Id && job.Status == JobStatus.Published)))
+            .ToListAsync(cancellationToken);
     }
 }

@@ -35,4 +35,11 @@ public interface ICandidateRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Os Candidatos cujo <c>next_swipe_available_at</c> é anterior ou igual a <paramref name="now"/>.</returns>
     public Task<List<Candidate>> ListQuotaDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista todos os Candidatos com a conta, só para leitura, para a lista do Administrador (RF088).
+    /// </summary>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Os Candidatos, com <see cref="Candidate.User"/> carregado e sem ordem garantida.</returns>
+    public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default);
 }

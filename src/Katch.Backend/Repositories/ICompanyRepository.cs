@@ -35,4 +35,20 @@ public interface ICompanyRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Tarefa que termina quando a Empresa foi acrescentada.</returns>
     public Task AddAsync(Company company, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém uma Empresa, acompanhada pelo contexto: as alterações são gravadas no
+    /// <see cref="IUnitOfWork.SaveChangesAsync"/> seguinte.
+    /// </summary>
+    /// <param name="id">Identificador da Empresa.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>A Empresa, ou <see langword="null"/> se não existir.</returns>
+    public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista todas as Empresas, em qualquer estado, com o número das suas vagas publicadas, só para leitura (RF097).
+    /// </summary>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>As Empresas com a contagem, sem ordem garantida.</returns>
+    public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default);
 }

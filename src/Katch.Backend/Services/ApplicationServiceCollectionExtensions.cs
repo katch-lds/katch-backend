@@ -34,6 +34,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IReferenceListService, ReferenceListService>();
         services.AddScoped<ICompanyService, CompanyService>();
+        services.AddScoped<IAccountAdminService, AccountAdminService>();
+        services.AddScoped<ICompanyAdminService, CompanyAdminService>();
         services.AddScoped<IQuotaService, QuotaService>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IConflictRetryDelay, RandomConflictRetryDelay>();
