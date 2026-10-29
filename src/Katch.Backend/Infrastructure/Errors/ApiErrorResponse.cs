@@ -54,6 +54,21 @@ public static class ApiErrorResponse
     public const string ValidationFailedCode = "ERR-10";
 
     /// <summary>
+    /// Código do erro de ficheiro não aceite.
+    /// </summary>
+    public const string FileRejectedCode = "ERR-11";
+
+    /// <summary>
+    /// Código do erro de pedido acima da dimensão máxima.
+    /// </summary>
+    public const string RequestTooLargeCode = "ERR-12";
+
+    /// <summary>
+    /// Código do erro de tipo de conteúdo do pedido não suportado.
+    /// </summary>
+    public const string UnsupportedContentTypeCode = "ERR-13";
+
+    /// <summary>
     /// Código do erro de elemento inexistente ou não disponível.
     /// </summary>
     public const string NotFoundCode = "ERR-20";
@@ -77,6 +92,11 @@ public static class ApiErrorResponse
     /// Código do erro de vaga que já não está disponível.
     /// </summary>
     public const string JobUnavailableCode = "ERR-33";
+
+    /// <summary>
+    /// Código do erro de fotografia acima do número máximo da galeria ou da vaga.
+    /// </summary>
+    public const string PhotoLimitReachedCode = "ERR-39";
 
     /// <summary>
     /// Código do erro de segundo registo de Empresa pelo mesmo Recrutador.
@@ -122,6 +142,21 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-10.
     /// </summary>
     public const string ValidationFailedMessage = "Os dados enviados não cumprem a validação automática.";
+
+    /// <summary>
+    /// Mensagem do ERR-11.
+    /// </summary>
+    public const string FileRejectedMessage = "O ficheiro não é aceite.";
+
+    /// <summary>
+    /// Mensagem do ERR-12.
+    /// </summary>
+    public const string RequestTooLargeMessage = "O pedido excede a dimensão máxima permitida.";
+
+    /// <summary>
+    /// Mensagem do ERR-13.
+    /// </summary>
+    public const string UnsupportedContentTypeMessage = "O tipo de conteúdo do pedido não é suportado.";
 
     /// <summary>
     /// Mensagem do ERR-20.
@@ -250,6 +285,36 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Cria o corpo do ERR-11 (400): o ficheiro enviado não é aceite (RNF015, RNF016).
+    /// </summary>
+    /// <param name="reason">Motivo da recusa, indicado no campo <c>file</c>.</param>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto FileRejected(string reason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+
+        return new ApiErrorDto(FileRejectedCode, FileRejectedMessage, [new FieldErrorDto("file", reason)]);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-12 (413): o pedido excede a dimensão máxima permitida.
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto RequestTooLarge()
+    {
+        return new ApiErrorDto(RequestTooLargeCode, RequestTooLargeMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-13 (415): o tipo de conteúdo do pedido não é suportado.
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto UnsupportedContentType()
+    {
+        return new ApiErrorDto(UnsupportedContentTypeCode, UnsupportedContentTypeMessage);
+    }
+
+    /// <summary>
     /// Cria o corpo do ERR-20 (404): o elemento pedido não existe ou não está disponível.
     /// </summary>
     /// <returns>O corpo da resposta.</returns>
@@ -298,6 +363,16 @@ public static class ApiErrorResponse
     public static ApiErrorDto JobUnavailable()
     {
         return new ApiErrorDto(JobUnavailableCode, JobUnavailableMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-39 (409): a galeria ou a vaga já tem o número máximo de fotografias (RF048, RF052, P13).
+    /// </summary>
+    /// <param name="maxPhotos">Número máximo de fotografias, indicado na mensagem.</param>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto PhotoLimitReached(int maxPhotos)
+    {
+        return new ApiErrorDto(PhotoLimitReachedCode, $"Foi atingido o número máximo de fotografias ({maxPhotos}).");
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain;
+using Katch.Backend.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Repositories;
@@ -43,5 +44,20 @@ public sealed class CompanyRepository : ICompanyRepository
         ArgumentNullException.ThrowIfNull(company);
 
         await this.context.Companies.AddAsync(company, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Companies.SingleOrDefaultAsync(company => company.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
+    {
+        return this.context.Companies
+            .AsNoTracking()
+            .Where(company => company.Status == CompanyStatus.Pending)
+            .ToListAsync(cancellationToken);
     }
 }
