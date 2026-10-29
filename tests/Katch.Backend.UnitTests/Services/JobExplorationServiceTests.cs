@@ -4,6 +4,7 @@ using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -579,6 +580,63 @@ public sealed class JobExplorationServiceTests
             () => fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// A página de uma Empresa aprovada traz a designação, a descrição, o sítio na Internet, o logótipo e a galeria, com
+    /// os URL da API, e nunca os contactos (RF017, RF025).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task CompanyPageOfAnApprovedCompanyIsReturned()
+    {
+        Fixture fixture = new();
+        Company company = fixture.AddCompany(CompanyStatus.Approved);
+        company.UpdatePage("Software de gestão de frotas.", "https://www.lumen-exemplo.pt");
+        company.SetLogo("company_logo/0123456789abcdef0123456789abcdef.png");
+        company.AddGalleryPhoto("company_photo/11111111111111111111111111111111.jpg");
+
+        CompanyPageDto page = await fixture.Service.GetCompanyPageAsync(company.Id, TestContext.Current.CancellationToken);
+
+        Assert.Equal(company.Id, page.CompanyId);
+        Assert.Equal("Lumen Software, Lda.", page.CompanyName);
+        Assert.Equal("Software de gestão de frotas.", page.Description);
+        Assert.Equal("https://www.lumen-exemplo.pt", page.Website);
+        Assert.Equal("/api/files/COMPANY_LOGO/0123456789abcdef0123456789abcdef.png", page.LogoUrl);
+        Assert.Equal(["/api/files/COMPANY_PHOTO/11111111111111111111111111111111.jpg"], page.PhotoUrls);
+        Assert.Equal(0, fixture.Store.Saves);
+    }
+
+    /// <summary>
+    /// A página de uma Empresa pendente, recusada ou suspensa não é visível ao Candidato: o mesmo ERR-20 que a
+    /// Empresa inexistente (6.3.3).
+    /// </summary>
+    /// <param name="status">Estado da Empresa.</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData(CompanyStatus.Pending)]
+    [InlineData(CompanyStatus.Rejected)]
+    [InlineData(CompanyStatus.Suspended)]
+    public async Task CompanyPageOfACompanyThatIsNotApprovedReturnsErr20(CompanyStatus status)
+    {
+        Fixture fixture = new();
+        Company company = fixture.AddCompany(status);
+
+        await Assert.ThrowsAsync<ElementNotFoundException>(
+            () => fixture.Service.GetCompanyPageAsync(company.Id, TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>
+    /// A página de uma Empresa inexistente dá o ERR-20.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task CompanyPageOfAnUnknownCompanyReturnsErr20()
+    {
+        Fixture fixture = new();
+
+        await Assert.ThrowsAsync<ElementNotFoundException>(
+            () => fixture.Service.GetCompanyPageAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
+    }
+
     private static async Task AssertRejectedAsync(Fixture fixture, bool interest, Guid jobId, JobAnswerRejection expected)
     {
         int committed = fixture.Store.Committed.Count;
@@ -638,8 +696,12 @@ public sealed class JobExplorationServiceTests
                 this.Store,
                 this.Clock,
                 this.Time,
-                this.Delay);
+                this.Delay,
+                this.Companies,
+                new FileUrlBuilder());
         }
+
+        public FakeCompanies Companies { get; } = new();
 
         public FakeCandidates Candidates { get; }
 
@@ -683,6 +745,72 @@ public sealed class JobExplorationServiceTests
             configure?.Invoke(job);
             this.jobs[job.Id] = new JobWithCompanyStatus(job, company);
             return job.Id;
+        }
+
+        public Company AddCompany(CompanyStatus status)
+        {
+            var company = new Company(
+                Guid.NewGuid(),
+                new CompanyRegistration
+                {
+                    CompanyName = "Lumen Software, Lda.",
+                    TaxId = "509123456",
+                    Industry = Industry.Technology,
+                    Address = "Avenida da Liberdade, 100, 4710-000 Braga",
+                    LocationId = Guid.NewGuid(),
+                    ContactEmail = "geral@lumen-exemplo.pt",
+                    ContactPhone = "253000111",
+                    ResponsibleName = "Rui Matos",
+                },
+                Now);
+
+            if (status is CompanyStatus.Approved or CompanyStatus.Suspended)
+            {
+                company.Approve();
+            }
+
+            if (status == CompanyStatus.Suspended)
+            {
+                company.Suspend();
+            }
+
+            if (status == CompanyStatus.Rejected)
+            {
+                company.Reject("A morada indicada não corresponde à certidão permanente.");
+            }
+
+            this.Companies.All.Add(company);
+            return company;
+        }
+    }
+
+    private sealed class FakeCompanies : ICompanyRepository
+    {
+        public List<Company> All { get; } = [];
+
+        public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(this.All.SingleOrDefault(company => company.Id == id));
+        }
+
+        public Task<Company?> GetByRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> TaxIdExistsAsync(string taxId, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddAsync(Company company, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 
