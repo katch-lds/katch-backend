@@ -58,6 +58,7 @@ public sealed class CandidateProfileServiceTests
         "C++ e .NET",
         "Programação",
         "Sistemas-embebidos 2",
+        "Análise de dados",
     };
 
     /// <summary>
@@ -70,6 +71,7 @@ public sealed class CandidateProfileServiceTests
         "ana@exemplo",
         "C/C++",
         "R&D",
+        "abc\u0663",
         "   ",
         "  a  ",
     };
@@ -316,6 +318,43 @@ public sealed class CandidateProfileServiceTests
                 TestContext.Current.CancellationToken));
 
         AssertField(error, "label", AlreadyAdded);
+    }
+
+    /// <summary>
+    /// Se o CHECK <c>ck_candidate_custom_skill_label</c> recusar a designação (a classe <c>[[:alnum:]]</c> depende da
+    /// locale da base), o pedido é recusado com o motivo do P07, e não com um erro inesperado.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task LabelRejectedByTheDatabaseCheckIsReportedAsFormatError()
+    {
+        this.unitOfWork.Failure = new CheckConstraintViolationException("ck_candidate_custom_skill_label", new InvalidOperationException());
+
+        ValidationFailedException error = await Assert.ThrowsAsync<ValidationFailedException>(() =>
+            this.service.AddCustomSkillAsync(
+                this.candidate.Id,
+                new AddCustomSkillRequest("Gestão de equipas"),
+                TestContext.Current.CancellationToken));
+
+        AssertField(error, "label", LabelFormat);
+    }
+
+    /// <summary>
+    /// A violação de outro CHECK não é confundida com a designação e chega ao filtro global sem alteração.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task OtherCheckViolationIsNotConverted()
+    {
+        this.unitOfWork.Failure = new CheckConstraintViolationException("ck_outra_restricao", new InvalidOperationException());
+
+        CheckConstraintViolationException error = await Assert.ThrowsAsync<CheckConstraintViolationException>(() =>
+            this.service.AddCustomSkillAsync(
+                this.candidate.Id,
+                new AddCustomSkillRequest("Blazor"),
+                TestContext.Current.CancellationToken));
+
+        Assert.Equal("ck_outra_restricao", error.ConstraintName);
     }
 
     /// <summary>

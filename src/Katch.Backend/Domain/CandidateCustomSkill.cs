@@ -86,7 +86,8 @@ public sealed partial class CandidateCustomSkill
         return trimmed;
     }
 
-    // Letras (incluindo as acentuadas), algarismos decimais, espaços e + # . -, como a classe [[:alnum:] +#.-] do CHECK.
-    [GeneratedRegex(@"^[\p{L}\p{Nd} +#.\-]+\z")]
+    // Letras (incluindo as acentuadas), algarismos de 0 a 9, espaços e + # . - (P07). Os algarismos de outras escritas
+    // (por exemplo, «٣») ficam de fora: a classe [[:alnum:]] do CHECK só os aceita em algumas locales da base.
+    [GeneratedRegex(@"^[\p{L}0-9 +#.\-]+\z")]
     private static partial Regex LabelPattern();
 }

@@ -62,9 +62,8 @@ public sealed class CandidateProfileController : ControllerBase
     /// <param name="skillId">Identificador da competência associada ao perfil.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><c>204</c>, ou <c>404</c> (ERR-20) se a competência não estiver associada ao perfil.</returns>
-    [HttpDelete("skills/{skillId}")]
+    [HttpDelete("skills/{skillId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
@@ -105,9 +104,8 @@ public sealed class CandidateProfileController : ControllerBase
     /// <param name="customSkillId">Identificador da competência «Outro».</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><c>204</c>, ou <c>404</c> (ERR-20) se a competência «Outro» não existir no perfil.</returns>
-    [HttpDelete("custom-skills/{customSkillId}")]
+    [HttpDelete("custom-skills/{customSkillId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]

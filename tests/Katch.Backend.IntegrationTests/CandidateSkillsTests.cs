@@ -63,6 +63,7 @@ public sealed class CandidateSkillsTests : IClassFixture<KatchWebApplicationFact
         "C",
         new string('a', 41),
         "ana@exemplo",
+        "abc\u0663",
         "   ",
     };
 
@@ -208,6 +209,43 @@ public sealed class CandidateSkillsTests : IClassFixture<KatchWebApplicationFact
         Assert.Equal(
             ["Blazor", "C#", "Go", forty],
             (await this.ReadCustomSkillsAsync(candidate.Id)).Select(item => item.Label).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// As designações com letras acentuadas cumprem o P07 e são aceites com 201.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task AddCustomSkillAcceptsAccentedLetters()
+    {
+        (Candidate candidate, string token) = await this.SeedCandidateAsync();
+
+        foreach (string label in new[] { "Gestão de equipas", "Análise" })
+        {
+            using HttpResponseMessage response = await this.SendAsync(HttpMethod.Post, CustomSkillsRoute, token, new { label });
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        }
+
+        Assert.Equal(
+            ["Análise", "Gestão de equipas"],
+            (await this.ReadCustomSkillsAsync(candidate.Id)).Select(item => item.Label).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Um identificador que não é um GUID não corresponde às rotas de remoção (restrição <c>:guid</c>, documentação da
+    /// API v02, secção 2) e dá 404.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task RemoveWithAnIdentifierThatIsNotAGuidReturns404()
+    {
+        (_, string token) = await this.SeedCandidateAsync();
+
+        using HttpResponseMessage skill = await this.SendAsync(HttpMethod.Delete, $"{ProfileSkillsRoute}/abc", token);
+        using HttpResponseMessage custom = await this.SendAsync(HttpMethod.Delete, $"{CustomSkillsRoute}/abc", token);
+
+        Assert.Equal(HttpStatusCode.NotFound, skill.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, custom.StatusCode);
     }
 
     /// <summary>

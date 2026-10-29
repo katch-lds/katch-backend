@@ -18,6 +18,7 @@ public sealed class CandidateProfileService : ICandidateProfileService
     // Índices que impedem a mesma competência duas vezes no perfil quando dois pedidos chegam ao mesmo tempo.
     private const string SkillPrimaryKey = "pk_candidate_skill";
     private const string CustomSkillUniqueIndex = "uq_candidate_custom_skill";
+    private const string CustomSkillLabelCheck = "ck_candidate_custom_skill_label";
 
     private static readonly StringComparer Alphabetical = StringComparer.Create(CultureInfo.GetCultureInfo("pt-PT"), ignoreCase: true);
 
@@ -135,6 +136,12 @@ public sealed class CandidateProfileService : ICandidateProfileService
         catch (UniqueConstraintViolationException exception) when (exception.ConstraintName == CustomSkillUniqueIndex)
         {
             throw Invalid("label", FieldReasons.SkillAlreadyAdded);
+        }
+        catch (CheckConstraintViolationException exception) when (exception.ConstraintName == CustomSkillLabelCheck)
+        {
+            // O CHECK usa a classe [[:alnum:]], que depende da locale da base: com a locale C, por exemplo, recusa as
+            // letras acentuadas que o P07 admite. A recusa chega ao cliente como ERR-10 no campo, e não como ERR-50.
+            throw Invalid("label", FieldReasons.CustomSkillFormat);
         }
 
         return await this.ToDtoAsync(candidate, cancellationToken);
