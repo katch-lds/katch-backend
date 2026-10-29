@@ -77,8 +77,15 @@ public sealed partial class LocalFileStorage : IFileStorage
             throw new FileNotFoundException("O ficheiro não existe.");
         }
 
-        Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
-        return Task.FromResult(stream);
+        try
+        {
+            Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+            return Task.FromResult(stream);
+        }
+        catch (DirectoryNotFoundException)
+        {
+            throw new FileNotFoundException("O ficheiro não existe.");
+        }
     }
 
     /// <inheritdoc/>
