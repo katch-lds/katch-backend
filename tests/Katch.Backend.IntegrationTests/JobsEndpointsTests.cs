@@ -47,6 +47,8 @@ public sealed class JobsEndpointsTests : IClassFixture<KatchWebApplicationFactor
         { "maxSalary", "-10", "maxSalary:O valor tem de ser um número positivo em euros." },
         { "minSalary", "2200", "minSalary:O valor mínimo não pode ser superior ao valor máximo." },
         { "maxSalary", "100000000", "maxSalary:O valor não pode exceder 99 999 999,99 euros." },
+        { "minSalary", "1600.005", "minSalary:O valor tem de ter no máximo 2 casas decimais." },
+        { "maxSalary", "2100.999", "maxSalary:O valor tem de ter no máximo 2 casas decimais." },
         { "skillIds", "[]", "skillIds:O campo é obrigatório." },
         { "skillIds", "null", "skillIds:O campo é obrigatório." },
         { "skillIds", "[\"{skill}\", \"{skill}\"]", "skillIds[1]:O valor está repetido na lista." },
@@ -313,6 +315,34 @@ public sealed class JobsEndpointsTests : IClassFixture<KatchWebApplicationFactor
     }
 
     /// <summary>
+    /// Uma vaga suspensa cuja data-limite já foi atingida não volta a ser publicada: <c>409</c> (ERR-30) com o estado
+    /// suspensa, sem registar nada (6.5.6, como a publicação em 6.5.4).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task SuspendedJobPastItsDeadlineIsNotRepublished()
+    {
+        Fixture fixture = await this.SeedCompanyAsync();
+        Guid jobId = await this.SeedJobAsync(fixture, JobStatus.Suspended, expiresAt: DateTimeOffset.UtcNow.AddHours(1));
+        this.factory.Clock.Fixed = DateTimeOffset.UtcNow.AddHours(2);
+
+        try
+        {
+            using HttpResponseMessage response = await this.SendAsync(HttpMethod.Post, $"{Route}/{jobId}/republish", fixture.Recruiter);
+
+            JsonElement error = await AssertErrorAsync(response, HttpStatusCode.Conflict, "ERR-30");
+            Assert.Equal("A operação não é permitida no estado atual: suspensa.", error.GetProperty("message").GetString());
+        }
+        finally
+        {
+            this.factory.Clock.Fixed = null;
+        }
+
+        Assert.Equal(JobStatus.Suspended, (await this.ReadJobAsync(jobId)).Status);
+        Assert.Empty(await this.ReadLogAsync(jobId));
+    }
+
+    /// <summary>
     /// A alteração substitui os dados e as listas, não muda o estado e regista <c>JOB_UPDATED</c> (RF054, RF112).
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
@@ -443,7 +473,8 @@ public sealed class JobsEndpointsTests : IClassFixture<KatchWebApplicationFactor
 
     /// <summary>
     /// A lista tem só as vagas da própria Empresa, sem as eliminadas, da mais recente para a mais antiga, com os
-    /// interesses em espera de cada uma (RF059, RF060).
+    /// interesses em espera de cada uma (RF059, RF060). Uma vaga sem o registo <c>JOB_CREATED</c> (inserida por SQL)
+    /// fica no fim.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
@@ -454,6 +485,7 @@ public sealed class JobsEndpointsTests : IClassFixture<KatchWebApplicationFactor
         Guid first = await this.CreateJobAsync(fixture);
         Guid second = await this.CreateJobAsync(fixture);
         Guid deleted = await this.SeedJobAsync(fixture, JobStatus.Unpublished, deleted: true);
+        Guid withoutLog = await this.SeedJobAsync(fixture, JobStatus.Unpublished);
         await this.CreateJobAsync(other);
         await this.SeedAnswerAsync(fixture, first, MatchStatus.Waiting);
         await this.SeedAnswerAsync(fixture, first, MatchStatus.Waiting);
@@ -463,9 +495,9 @@ public sealed class JobsEndpointsTests : IClassFixture<KatchWebApplicationFactor
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         List<JsonElement> jobs = (await AuthTestAccounts.ReadJsonAsync(response)).EnumerateArray().ToList();
-        Assert.Equal([second, first], jobs.Select(job => job.GetProperty("jobId").GetGuid()));
+        Assert.Equal([second, first, withoutLog], jobs.Select(job => job.GetProperty("jobId").GetGuid()));
         Assert.DoesNotContain(deleted, jobs.Select(job => job.GetProperty("jobId").GetGuid()));
-        Assert.Equal([0, 2], jobs.Select(job => job.GetProperty("waitingCandidates").GetInt32()));
+        Assert.Equal([0, 2, 0], jobs.Select(job => job.GetProperty("waitingCandidates").GetInt32()));
     }
 
     private static async Task<JsonElement> AssertErrorAsync(HttpResponseMessage response, HttpStatusCode status, string code)

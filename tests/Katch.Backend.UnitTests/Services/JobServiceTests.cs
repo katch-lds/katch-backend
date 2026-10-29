@@ -141,6 +141,88 @@ public sealed class JobServiceTests
     }
 
     /// <summary>
+    /// Valores com até 2 casas decimais são aceites e guardados como foram enviados (documentação da API v02, secção
+    /// 2.3).
+    /// </summary>
+    /// <param name="amount">Valor mínimo enviado.</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData("1600")]
+    [InlineData("1600.5")]
+    [InlineData("1600.50")]
+    [InlineData("1600.99")]
+    public async Task SalaryWithUpToTwoDecimalsIsAccepted(string amount)
+    {
+        decimal min = decimal.Parse(amount, System.Globalization.CultureInfo.InvariantCulture);
+
+        JobDto job = await this.Service().CreateAsync(
+            this.recruiterId,
+            this.Valid() with { MinSalary = min },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(min, job.MinSalary);
+    }
+
+    /// <summary>
+    /// Valores com mais de 2 casas decimais são recusados com o campo, em vez de arredondados em silêncio.
+    /// </summary>
+    /// <param name="field">Campo alterado.</param>
+    /// <param name="amount">Valor enviado.</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData("minSalary", "1600.005")]
+    [InlineData("minSalary", "1600.001")]
+    [InlineData("maxSalary", "2100.999")]
+    public async Task SalaryWithMoreThanTwoDecimalsIsRejected(string field, string amount)
+    {
+        decimal value = decimal.Parse(amount, System.Globalization.CultureInfo.InvariantCulture);
+        JobRequest request = field == "minSalary"
+            ? this.Valid() with { MinSalary = value }
+            : this.Valid() with { MaxSalary = value };
+
+        ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
+            () => this.Service().CreateAsync(this.recruiterId, request, TestContext.Current.CancellationToken));
+
+        Assert.Equal([new FieldErrorDto(field, FieldReasons.SalaryDecimals)], exception.Fields);
+        Assert.Empty(this.store.Jobs);
+    }
+
+    /// <summary>
+    /// Voltar a publicar uma vaga suspensa com a data-limite já atingida dá ERR-30 com o estado atual, sem gravar nem
+    /// registar nada.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task SuspendedJobPastItsDeadlineIsNotRepublished()
+    {
+        var job = new Job(
+            this.company.Id,
+            new JobData
+            {
+                Title = "Programador",
+                Description = "Descrição.",
+                MinSalary = 1000m,
+                MaxSalary = 2000m,
+                LocationId = this.location.Id,
+                ContractType = ContractType.Permanent,
+                WorkMode = WorkMode.Remote,
+                ExpiresAt = Now.AddDays(1),
+            });
+        job.Publish(Now);
+        job.Suspend(Now.AddHours(1));
+        this.store.Jobs.Add(job);
+
+        OperationConflictException exception = await Assert.ThrowsAsync<OperationConflictException>(
+            () => this.Service(new FixedClock(Now.AddDays(2))).RepublishAsync(this.recruiterId, job.Id, TestContext.Current.CancellationToken));
+
+        Assert.Equal(ApiErrorResponse.InvalidStateCode, exception.Error.Code);
+        Assert.Equal("A operação não é permitida no estado atual: suspensa.", exception.Error.Message);
+        Assert.Equal(JobStatus.Suspended, job.Status);
+        Assert.Empty(this.operationLogger.Entries);
+        Assert.Equal(0, this.unitOfWork.Saves);
+    }
+
+    /// <summary>
     /// Limites recusados: título com 151 caracteres, valor acima do máximo da coluna e intervalo incoerente.
     /// </summary>
     /// <param name="title">Função.</param>
