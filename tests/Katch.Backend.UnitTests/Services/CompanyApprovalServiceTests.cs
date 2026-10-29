@@ -412,6 +412,11 @@ public sealed class CompanyApprovalServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeOperationLogger : IOperationLogger
