@@ -745,6 +745,11 @@ public sealed class JobExplorationServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeStore : IMatchRepository, IUnitOfWork
