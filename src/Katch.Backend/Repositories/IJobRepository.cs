@@ -37,7 +37,7 @@ public interface IJobRepository
 
     /// <summary>
     /// Lista as vagas da Empresa, só para leitura, com as competências e os benefícios, sem as eliminadas, da mais
-    /// recente para a mais antiga (RF059, RF060). A data de criação é a do registo <c>JOB_CREATED</c>, porque a
+    /// recente para a mais antiga (RF059, RF060). A ordem de criação é a do registo <c>JOB_CREATED</c>, porque a
     /// <c>job</c> não tem <c>created_at</c> (DM-22); as vagas sem esse registo (inseridas por SQL) ficam no fim.
     /// </summary>
     /// <param name="companyId">Identificador da Empresa.</param>

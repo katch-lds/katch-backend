@@ -83,6 +83,11 @@ public static class FieldReasons
     public const string SalaryNotPositive = "O valor tem de ser um número positivo em euros.";
 
     /// <summary>
+    /// Valor salarial com mais de 2 casas decimais (documentação da API v02, secção 2.3).
+    /// </summary>
+    public const string SalaryDecimals = "O valor tem de ter no máximo 2 casas decimais.";
+
+    /// <summary>
     /// Valor mínimo superior ao máximo (documentação da API v02, secção 4.3; RF051).
     /// </summary>
     public const string SalaryRange = "O valor mínimo não pode ser superior ao valor máximo.";

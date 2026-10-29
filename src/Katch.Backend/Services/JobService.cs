@@ -247,6 +247,7 @@ public sealed class JobService : IJobService
             null => FieldReasons.Required,
             <= 0 => FieldReasons.SalaryNotPositive,
             > Job.MaxSalaryValue => FieldReasons.SalaryTooHigh,
+            decimal amount when decimal.Round(amount, 2) != amount => FieldReasons.SalaryDecimals,
             _ => null,
         };
 

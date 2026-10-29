@@ -53,29 +53,19 @@ public sealed class JobRepository : IJobRepository
     /// <inheritdoc/>
     public async Task<List<Job>> ListByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
     {
-        var jobs = await this.context.Jobs
+        // O operation_log só recebe inserções e o seu identificador é sequencial, por isso a ordem do registo
+        // JOB_CREATED é a da data de criação (DM-22) e ordena na base de dados em qualquer fornecedor, sem ordenar por
+        // DateTimeOffset. As vagas sem esse registo (inseridas por SQL) ficam no fim.
+        return await this.context.Jobs
             .AsNoTracking()
             .Include(job => job.Skills)
             .Include(job => job.Benefits)
             .Where(job => job.CompanyId == companyId)
-            .Select(job => new
-            {
-                Job = job,
-                CreatedAt = this.context.OperationLogs
-                    .Where(log => log.EntityId == job.Id && log.Operation == OperationType.JobCreated)
-                    .OrderBy(log => log.Id)
-                    .Select(log => (DateTimeOffset?)log.OccurredAt)
-                    .FirstOrDefault(),
-            })
+            .OrderByDescending(job => this.context.OperationLogs
+                .Where(log => log.EntityId == job.Id && log.Operation == OperationType.JobCreated)
+                .Min(log => (long?)log.Id) ?? 0)
+            .ThenBy(job => job.Id)
             .ToListAsync(cancellationToken);
-
-        // A ordenação é feita aqui porque o SQLite dos testes não ordena por DateTimeOffset; as listas não têm
-        // paginação e têm a dimensão das vagas de uma Empresa (L-02).
-        return jobs
-            .OrderByDescending(item => item.CreatedAt ?? DateTimeOffset.MinValue)
-            .ThenBy(item => item.Job.Id)
-            .Select(item => item.Job)
-            .ToList();
     }
 
     /// <inheritdoc/>
