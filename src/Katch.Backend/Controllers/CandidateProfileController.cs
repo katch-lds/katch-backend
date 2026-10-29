@@ -1,8 +1,8 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Dtos;
+using Katch.Backend.Infrastructure.Api;
 using Katch.Backend.Infrastructure.Authentication;
-using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -85,12 +85,12 @@ public sealed class CandidateProfileController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<SearchPreferencesDto>> UpdatePreferences(
-        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] SearchPreferencesDto? request,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] UpdatePreferencesRequest? request,
         CancellationToken cancellationToken)
     {
         return await this.profileService.UpdatePreferencesAsync(
             this.GetCandidateId(),
-            request ?? new SearchPreferencesDto(null, null, [], []),
+            (request ?? UpdatePreferencesRequest.Empty).ToPreferences(),
             cancellationToken);
     }
 
@@ -125,6 +125,7 @@ public sealed class CandidateProfileController : ControllerBase
     /// <c>415</c> (ERR-13).
     /// </returns>
     [HttpPut("photo")]
+    [UploadRequestFilter(MaxUploadRequestBytes)]
     [RequestSizeLimit(MaxUploadRequestBytes)]
     [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadRequestBytes)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -135,12 +136,7 @@ public sealed class CandidateProfileController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status415UnsupportedMediaType)]
     public async Task<IActionResult> UploadPhoto(CancellationToken cancellationToken)
     {
-        (IFormFile? file, IActionResult? error) = await this.ReadUploadAsync(cancellationToken);
-        if (error is not null)
-        {
-            return error;
-        }
-
+        IFormFile? file = await this.ReadUploadAsync(cancellationToken);
         string url = await this.profileService.UploadPhotoAsync(this.GetCandidateId(), file, cancellationToken);
         this.Response.Headers[HeaderNames.Location] = url;
         return this.NoContent();
@@ -153,6 +149,7 @@ public sealed class CandidateProfileController : ControllerBase
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><c>204</c> sem <c>Location</c>, <c>400</c> (ERR-11), <c>413</c> (ERR-12) ou <c>415</c> (ERR-13).</returns>
     [HttpPut("cv")]
+    [UploadRequestFilter(MaxUploadRequestBytes)]
     [RequestSizeLimit(MaxUploadRequestBytes)]
     [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadRequestBytes)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -163,12 +160,7 @@ public sealed class CandidateProfileController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status415UnsupportedMediaType)]
     public async Task<IActionResult> UploadCv(CancellationToken cancellationToken)
     {
-        (IFormFile? file, IActionResult? error) = await this.ReadUploadAsync(cancellationToken);
-        if (error is not null)
-        {
-            return error;
-        }
-
+        IFormFile? file = await this.ReadUploadAsync(cancellationToken);
         await this.profileService.UploadCvAsync(this.GetCandidateId(), file, cancellationToken);
         return this.NoContent();
     }
@@ -191,38 +183,13 @@ public sealed class CandidateProfileController : ControllerBase
     }
 
     /// <summary>
-    /// Lê o campo <c>file</c> do pedido <c>multipart/form-data</c>. Um tipo de conteúdo diferente dá o ERR-13 e um pedido
-    /// acima do limite dá o ERR-12; a falta do ficheiro é tratada pelo serviço (ERR-11).
+    /// Lê o campo <c>file</c> do pedido <c>multipart/form-data</c>; o tipo de conteúdo e a dimensão já foram verificados
+    /// pelo <see cref="UploadRequestFilterAttribute"/> e a falta do ficheiro é tratada pelo serviço (ERR-11).
     /// </summary>
-    private async Task<(IFormFile? File, IActionResult? Error)> ReadUploadAsync(CancellationToken cancellationToken)
+    private async Task<IFormFile?> ReadUploadAsync(CancellationToken cancellationToken)
     {
-        if (!MediaTypeHeaderValue.TryParse(this.Request.ContentType, out MediaTypeHeaderValue? mediaType)
-            || !mediaType.MediaType.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase))
-        {
-            return (null, new ObjectResult(ApiErrorResponse.UnsupportedContentType())
-            {
-                StatusCode = StatusCodes.Status415UnsupportedMediaType,
-            });
-        }
-
-        if (this.Request.ContentLength > MaxUploadRequestBytes)
-        {
-            return (null, new ObjectResult(ApiErrorResponse.RequestTooLarge())
-            {
-                StatusCode = StatusCodes.Status413PayloadTooLarge,
-            });
-        }
-
-        try
-        {
-            IFormCollection form = await this.Request.ReadFormAsync(cancellationToken);
-            return (form.Files.GetFile(UploadFileField), null);
-        }
-        catch (InvalidDataException)
-        {
-            // Corpo multipart mal formado: nenhum ficheiro pôde ser lido.
-            return (null, null);
-        }
+        IFormCollection form = await this.Request.ReadFormAsync(cancellationToken);
+        return form.Files.GetFile(UploadFileField);
     }
 
     private Guid GetCandidateId()

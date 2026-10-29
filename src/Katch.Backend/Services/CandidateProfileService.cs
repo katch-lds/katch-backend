@@ -133,8 +133,8 @@ public sealed class CandidateProfileService : ICandidateProfileService
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        IReadOnlyList<WorkMode> workModes = request.WorkModes ?? [];
-        IReadOnlyList<ContractType> contractTypes = request.ContractTypes ?? [];
+        IReadOnlyList<WorkMode> workModes = request.WorkModes;
+        IReadOnlyList<ContractType> contractTypes = request.ContractTypes;
         List<FieldErrorDto> errors = [];
 
         if (request.MaxDistanceKm is < 1 or > 500)
