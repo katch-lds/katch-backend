@@ -33,6 +33,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IOperationLogger, OperationLogger>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IReferenceListService, ReferenceListService>();
+        services.AddScoped<ICandidateProfileService, CandidateProfileService>();
         services.AddScoped<ICompanyService, CompanyService>();
         services.AddScoped<IQuotaService, QuotaService>();
         services.AddSingleton(TimeProvider.System);

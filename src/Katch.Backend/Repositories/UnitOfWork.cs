@@ -13,6 +13,8 @@ public sealed class UnitOfWork : IUnitOfWork
 {
     private const string UniqueViolation = "23505";
 
+    private const string CheckViolation = "23514";
+
     private readonly KatchDbContext context;
 
     /// <summary>
@@ -39,6 +41,11 @@ public sealed class UnitOfWork : IUnitOfWork
             when (exception.InnerException is PostgresException { SqlState: UniqueViolation } postgres)
         {
             throw new UniqueConstraintViolationException(postgres.ConstraintName ?? string.Empty, exception);
+        }
+        catch (DbUpdateException exception)
+            when (exception.InnerException is PostgresException { SqlState: CheckViolation } postgres)
+        {
+            throw new CheckConstraintViolationException(postgres.ConstraintName ?? string.Empty, exception);
         }
     }
 

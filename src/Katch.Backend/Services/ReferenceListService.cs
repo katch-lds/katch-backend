@@ -48,4 +48,14 @@ public sealed class ReferenceListService : IReferenceListService
             .OrderBy(item => item.Name, Alphabetical)
             .ToList();
     }
+
+    /// <inheritdoc/>
+    public async Task<List<ReferenceItemDto>> ListSkillsAsync(CancellationToken cancellationToken = default)
+    {
+        List<Skill> skills = await this.referenceData.ListSkillsAsync(cancellationToken);
+        return skills
+            .Select(skill => new ReferenceItemDto(skill.Id, skill.Name))
+            .OrderBy(item => item.Name, Alphabetical)
+            .ToList();
+    }
 }

@@ -8,7 +8,8 @@ using Katch.Backend.Services;
 namespace Katch.Backend.UnitTests.Services;
 
 /// <summary>
-/// Testes da consulta das localidades em <see cref="ReferenceListService"/> (documentação da API v02, secção 6.13.1).
+/// Testes da consulta das localidades e das competências em <see cref="ReferenceListService"/> (documentação da API v02,
+/// secções 6.13.1 e 6.13.2).
 /// </summary>
 public sealed class ReferenceListServiceTests
 {
@@ -46,6 +47,34 @@ public sealed class ReferenceListServiceTests
         Assert.Equal("Almada (Setúbal)", ReferenceListService.DisplayName(new Location("Almada", "Setúbal", 38.68m, -9.16m)));
     }
 
+    /// <summary>
+    /// As competências vêm só com o identificador e a designação, por ordem alfabética portuguesa e sem distinção de
+    /// maiúsculas (RF008).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task SkillsAreSortedAlphabetically()
+    {
+        var sql = new Skill("SQL");
+        var csharp = new Skill("C#");
+        var angular = new Skill("angular");
+        var ethics = new Skill("Éticas de engenharia");
+        var docker = new Skill("Docker");
+        var service = new ReferenceListService(new Locations { Skills = [sql, csharp, ethics, angular, docker] });
+
+        List<ReferenceItemDto> items = await service.ListSkillsAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            [
+                new ReferenceItemDto(angular.Id, "angular"),
+                new ReferenceItemDto(csharp.Id, "C#"),
+                new ReferenceItemDto(docker.Id, "Docker"),
+                new ReferenceItemDto(ethics.Id, "Éticas de engenharia"),
+                new ReferenceItemDto(sql.Id, "SQL"),
+            ],
+            items);
+    }
+
     private sealed class Locations : IReferenceDataRepository
     {
         private readonly Location[] locations;
@@ -55,6 +84,8 @@ public sealed class ReferenceListServiceTests
             this.locations = locations;
         }
 
+        public List<Skill> Skills { get; init; } = [];
+
         public Task<List<Location>> ListLocationsAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.locations.ToList());
@@ -63,6 +94,21 @@ public sealed class ReferenceListServiceTests
         public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.locations.Any(location => location.Id == id));
+        }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(this.Skills.ToList());
+        }
+
+        public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 }
