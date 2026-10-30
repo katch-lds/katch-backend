@@ -49,6 +49,11 @@ public static class ApiErrorResponse
     public const string CompanyNotApprovedCode = "ERR-07";
 
     /// <summary>
+    /// Código do erro de elemento de outro utilizador ou de outra Empresa.
+    /// </summary>
+    public const string ElementForbiddenCode = "ERR-08";
+
+    /// <summary>
     /// Código do erro de validação automática dos campos.
     /// </summary>
     public const string ValidationFailedCode = "ERR-10";
@@ -94,6 +99,16 @@ public static class ApiErrorResponse
     public const string JobUnavailableCode = "ERR-33";
 
     /// <summary>
+    /// Código do erro de conversa em modo apenas de consulta.
+    /// </summary>
+    public const string ConversationReadOnlyCode = "ERR-36";
+
+    /// <summary>
+    /// Código do erro de conversa sem match.
+    /// </summary>
+    public const string ConversationWithoutMatchCode = "ERR-37";
+
+    /// <summary>
     /// Código do erro de segundo registo de Empresa pelo mesmo Recrutador.
     /// </summary>
     public const string CompanyAlreadyRegisteredCode = "ERR-40";
@@ -134,6 +149,11 @@ public static class ApiErrorResponse
     public const string AccountTypeNotAllowedMessage = "A operação não está disponível para este tipo de conta.";
 
     /// <summary>
+    /// Mensagem do ERR-08.
+    /// </summary>
+    public const string ElementForbiddenMessage = "Não tem autorização para aceder a este elemento.";
+
+    /// <summary>
     /// Mensagem do ERR-10.
     /// </summary>
     public const string ValidationFailedMessage = "Os dados enviados não cumprem a validação automática.";
@@ -167,6 +187,16 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-33.
     /// </summary>
     public const string JobUnavailableMessage = "A vaga já não está disponível.";
+
+    /// <summary>
+    /// Mensagem do ERR-36.
+    /// </summary>
+    public const string ConversationReadOnlyMessage = "A conversa está em modo apenas de consulta.";
+
+    /// <summary>
+    /// Mensagem do ERR-37.
+    /// </summary>
+    public const string ConversationWithoutMatchMessage = "Não existe match para esta conversa.";
 
     /// <summary>
     /// Mensagem do ERR-40.
@@ -268,6 +298,15 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Cria o corpo do ERR-08 (403): o elemento é de outro utilizador ou de outra Empresa (RF059, RNF006).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ElementForbidden()
+    {
+        return new ApiErrorDto(ElementForbiddenCode, ElementForbiddenMessage);
+    }
+
+    /// <summary>
     /// Cria o corpo do ERR-10 (400): um ou mais campos não cumprem a validação automática (RF004, RF042, RNF008).
     /// </summary>
     /// <param name="fields">Um erro por campo em causa.</param>
@@ -358,6 +397,24 @@ public static class ApiErrorResponse
     public static ApiErrorDto JobUnavailable()
     {
         return new ApiErrorDto(JobUnavailableCode, JobUnavailableMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-36 (409): a conversa está em modo apenas de consulta (RF028, RF075).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ConversationReadOnly()
+    {
+        return new ApiErrorDto(ConversationReadOnlyCode, ConversationReadOnlyMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-37 (409): o identificador não corresponde a um match confirmado (RF026).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ConversationWithoutMatch()
+    {
+        return new ApiErrorDto(ConversationWithoutMatchCode, ConversationWithoutMatchMessage);
     }
 
     /// <summary>
