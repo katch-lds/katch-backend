@@ -1,4 +1,4 @@
-﻿// Copyright (c) Grupo G11. Katch, LDS 2026/2027.
+// Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
