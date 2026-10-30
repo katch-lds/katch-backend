@@ -422,6 +422,100 @@ public sealed class JobServiceTests
         Assert.Equal(url, JobService.PhotoUrl(path));
     }
 
+    /// <summary>
+    /// O encerramento automático passa a encerradas só as vagas publicadas com a data-limite atingida, incluindo a que
+    /// expira no próprio instante, e regista cada uma como <c>JOB_CLOSED</c> sem autor, numa só gravação (RF057, RF112).
+    /// As vagas com a data futura, sem data-limite, suspensas, não publicadas ou já encerradas não mudam.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task CloseExpiredClosesOnlyPublishedJobsPastTheirDeadline()
+    {
+        Job past = this.AddJobWithDeadline(Now.AddMinutes(-1), JobStatus.Published);
+        Job atTheLimit = this.AddJobWithDeadline(Now, JobStatus.Published);
+        Job future = this.AddJobWithDeadline(Now.AddTicks(1), JobStatus.Published);
+        Job withoutDeadline = this.AddJobWithDeadline(null, JobStatus.Published);
+        Job suspended = this.AddJobWithDeadline(Now.AddDays(-1), JobStatus.Suspended);
+        Job unpublished = this.AddJobWithDeadline(Now.AddDays(-1), JobStatus.Unpublished);
+        Job closed = this.AddJobWithDeadline(Now.AddDays(-1), JobStatus.Closed);
+
+        int count = await this.Service().CloseExpiredAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, count);
+        Assert.Equal(JobStatus.Closed, past.Status);
+        Assert.Equal(JobStatus.Closed, atTheLimit.Status);
+        Assert.Equal(JobStatus.Published, future.Status);
+        Assert.Equal(JobStatus.Published, withoutDeadline.Status);
+        Assert.Equal(JobStatus.Suspended, suspended.Status);
+        Assert.Equal(JobStatus.Unpublished, unpublished.Status);
+        Assert.Equal(JobStatus.Closed, closed.Status);
+        Assert.Equal(
+            new List<(Guid?, OperationType, Guid)>
+            {
+                (null, OperationType.JobClosed, past.Id),
+                (null, OperationType.JobClosed, atTheLimit.Id),
+            },
+            this.operationLogger.Entries);
+        Assert.Equal(1, this.unitOfWork.Saves);
+    }
+
+    /// <summary>
+    /// Sem vagas por encerrar, nada é gravado nem registado.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task CloseExpiredWithNothingToCloseDoesNotSave()
+    {
+        this.AddJobWithDeadline(Now.AddDays(1), JobStatus.Published);
+        this.AddJobWithDeadline(null, JobStatus.Published);
+
+        int count = await this.Service().CloseExpiredAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, count);
+        Assert.Empty(this.operationLogger.Entries);
+        Assert.Equal(0, this.unitOfWork.Saves);
+    }
+
+    /// <summary>
+    /// A comparação é entre instantes, em UTC: uma data-limite indicada com outro fuso horário conta pelo instante que
+    /// representa, e não pela hora escrita.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task CloseExpiredComparesInstantsInUtc()
+    {
+        // Now = 15:00 UTC. 15:30 em UTC+1 é 14:30 UTC (já passou); 14:30 em UTC-1 é 15:30 UTC (ainda não chegou).
+        Job passed = this.AddJobWithDeadline(new DateTimeOffset(2026, 10, 29, 15, 30, 0, TimeSpan.FromHours(1)), JobStatus.Published);
+        Job notYet = this.AddJobWithDeadline(new DateTimeOffset(2026, 10, 29, 14, 30, 0, TimeSpan.FromHours(-1)), JobStatus.Published);
+
+        int count = await this.Service().CloseExpiredAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, count);
+        Assert.Equal(JobStatus.Closed, passed.Status);
+        Assert.Equal(JobStatus.Published, notYet.Status);
+    }
+
+    /// <summary>
+    /// O instante vem do relógio do servidor: com o relógio antes da data-limite, a vaga não é encerrada; uma execução
+    /// seguinte, depois da data-limite, encerra-a.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task CloseExpiredClosesTheJobOnTheFirstRunAfterTheDeadline()
+    {
+        Job job = this.AddJobWithDeadline(Now.AddMinutes(1), JobStatus.Published);
+        var clock = new FixedClock(Now);
+
+        Assert.Equal(0, await this.Service(clock).CloseExpiredAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(JobStatus.Published, job.Status);
+
+        clock.UtcNow = Now.AddMinutes(2);
+        Assert.Equal(1, await this.Service(clock).CloseExpiredAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(JobStatus.Closed, job.Status);
+        Assert.Equal(0, await this.Service(clock).CloseExpiredAsync(TestContext.Current.CancellationToken));
+        Assert.Single(this.operationLogger.Entries);
+    }
+
     private static Company NewApprovedCompany(Guid recruiterId, Guid locationId)
     {
         var company = new Company(
@@ -456,6 +550,41 @@ public sealed class JobServiceTests
             [this.health.Id],
             true,
             Now.AddDays(30));
+    }
+
+    private Job AddJobWithDeadline(DateTimeOffset? expiresAt, JobStatus status)
+    {
+        var job = new Job(
+            this.company.Id,
+            new JobData
+            {
+                Title = "Programador",
+                Description = "Descrição.",
+                MinSalary = 1000m,
+                MaxSalary = 2000m,
+                LocationId = this.location.Id,
+                ContractType = ContractType.Permanent,
+                WorkMode = WorkMode.Remote,
+                ExpiresAt = expiresAt,
+            });
+
+        // A vaga é publicada antes da data-limite, como na API; depois o relógio do teste passa a data-limite.
+        if (status != JobStatus.Unpublished)
+        {
+            job.Publish(Now.AddDays(-10));
+        }
+
+        if (status == JobStatus.Suspended)
+        {
+            job.Suspend(Now.AddDays(-9));
+        }
+        else if (status == JobStatus.Closed)
+        {
+            job.Close();
+        }
+
+        this.store.Jobs.Add(job);
+        return job;
     }
 
     private Job AddJob(Guid companyId)
@@ -534,6 +663,13 @@ public sealed class JobServiceTests
         public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.JobsWithInterests.Contains(jobId));
+        }
+
+        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(this.Jobs
+                .Where(job => job.Status == JobStatus.Published && job.DeletedAt is null && job.IsExpired(now))
+                .ToList());
         }
 
         public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)

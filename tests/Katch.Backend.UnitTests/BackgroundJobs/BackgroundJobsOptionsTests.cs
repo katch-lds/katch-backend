@@ -79,15 +79,17 @@ public sealed class BackgroundJobsOptionsTests
     }
 
     /// <summary>
-    /// O intervalo é lido da configuração e a tarefa de reposição fica registada como serviço de fundo.
+    /// O intervalo é lido da configuração e as tarefas de reposição da quota e de encerramento das vagas expiradas ficam
+    /// registadas como serviços de fundo.
     /// </summary>
     [Fact]
-    public void RegistrationBindsTheConfigurationAndAddsTheQuotaRestoreWorker()
+    public void RegistrationBindsTheConfigurationAndAddsTheWorkers()
     {
         using ServiceProvider provider = BuildProvider("5");
 
         Assert.Equal(5, provider.GetRequiredService<IOptions<BackgroundJobsOptions>>().Value.IntervalSeconds);
         Assert.Contains(provider.GetServices<IHostedService>(), service => service is QuotaRestoreWorker);
+        Assert.Contains(provider.GetServices<IHostedService>(), service => service is JobExpirationWorker);
     }
 
     /// <summary>

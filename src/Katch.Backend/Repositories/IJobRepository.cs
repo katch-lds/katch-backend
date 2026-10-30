@@ -53,4 +53,14 @@ public interface IJobRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><see langword="true"/> se houver interesses.</returns>
     public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista, com acompanhamento de alterações, as vagas publicadas e não eliminadas cuja data-limite foi atingida no
+    /// instante indicado (<c>expires_at &lt;= now</c>), para o encerramento automático (RF057; modelo de classes do
+    /// backend v02, secção 4). A regra é a de <see cref="Job.IsExpired(DateTimeOffset)"/>.
+    /// </summary>
+    /// <param name="now">Instante da verificação, em UTC.</param>
+    /// <param name="cancellationToken">Cancelamento da execução.</param>
+    /// <returns>As vagas a encerrar.</returns>
+    public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default);
 }

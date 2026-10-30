@@ -192,6 +192,29 @@ public sealed class JobService : IJobService
         await this.unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
+    /// <inheritdoc/>
+    public async Task<int> CloseExpiredAsync(CancellationToken cancellationToken = default)
+    {
+        // Um único instante para toda a execução, do relógio do servidor (UTC); o mesmo é usado pela entidade.
+        DateTimeOffset now = this.clock.UtcNow;
+
+        List<Job> expired = await this.jobs.ListExpiredAsync(now, cancellationToken);
+
+        foreach (Job job in expired)
+        {
+            job.Expire(now);
+            await this.operationLogger.LogAsync(null, OperationType.JobClosed, job.Id, cancellationToken);
+        }
+
+        // Uma só gravação: as vagas encerradas e os registos ficam todos gravados ou nenhum.
+        if (expired.Count > 0)
+        {
+            await this.unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        return expired.Count;
+    }
+
     private static JobDto ToDto(Job job, string locationName, int waitingCandidates)
     {
         return new JobDto(

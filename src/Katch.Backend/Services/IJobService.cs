@@ -8,8 +8,8 @@ namespace Katch.Backend.Services;
 /// Gestão das vagas pelo Recrutador da Empresa aprovada (modelo de classes do backend v02, secção 5.1; UC09, UC10). A
 /// Empresa é sempre a do Recrutador da credencial de sessão; uma vaga de outra Empresa dá
 /// <see cref="ElementForbiddenException"/> (RF059) e uma vaga inexistente ou eliminada dá
-/// <see cref="ElementNotFoundException"/>. O carregamento das fotografias (<c>AddPhotoAsync</c>) e o encerramento
-/// automático (<c>CloseExpiredAsync</c>) são acrescentados pelas Issues que os implementam (I105, I115).
+/// <see cref="ElementNotFoundException"/>. O carregamento das fotografias (<c>AddPhotoAsync</c>) é acrescentado pela
+/// I105; o encerramento automático (<see cref="CloseExpiredAsync"/>) é chamado pela tarefa periódica.
 /// </summary>
 public interface IJobService
 {
@@ -96,4 +96,14 @@ public interface IJobService
     /// <returns>Tarefa que termina quando a vaga foi eliminada.</returns>
     /// <exception cref="OperationConflictException">ERR-38, se a vaga tiver pelo menos um interesse.</exception>
     public Task DeleteAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Encerra as vagas publicadas cuja data-limite foi atingida (RF057; documentação da API v02, secção 6.5, tarefa
+    /// periódica), com <see cref="Katch.Backend.Domain.Job.Expire(DateTimeOffset)"/>, e regista cada uma no
+    /// <c>operation_log</c> como <c>JOB_CLOSED</c> sem autor (RF112). As vagas sem data-limite, com a data futura, suspensas, não publicadas,
+    /// encerradas ou eliminadas não são alteradas. O instante é o do relógio do servidor, em UTC.
+    /// </summary>
+    /// <param name="cancellationToken">Cancelamento da execução.</param>
+    /// <returns>O número de vagas encerradas.</returns>
+    public Task<int> CloseExpiredAsync(CancellationToken cancellationToken = default);
 }
