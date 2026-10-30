@@ -206,6 +206,11 @@ public sealed class QuotaServiceTests
             this.QueriedWith = cancellationToken;
             return Task.FromResult(this.due);
         }
+
+        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

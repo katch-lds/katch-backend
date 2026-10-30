@@ -92,4 +92,38 @@ public sealed class AppUserPersistenceTests : IClassFixture<KatchWebApplicationF
             Assert.Equal(blockedAt, saved.UpdatedAt);
         }
     }
+
+    /// <summary>
+    /// <see cref="UserRepository.ListAsync"/> aplica o critério: sem restrições devolve todas as contas, e com o tipo ou
+    /// o estado preenchidos devolve só as que coincidem (modelo de classes do backend v02, secção 4).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task ListAsyncAppliesTheAccountFilter()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        var candidate = new AppUser("filtro.candidato@katch.pt", "hash", UserType.Candidate, Registered, Registered);
+        var blocked = new AppUser("filtro.bloqueado@katch.pt", "hash", UserType.Candidate, Registered, Registered);
+        var recruiter = new AppUser("filtro.recrutador@katch.pt", "hash", UserType.Recruiter, Registered, Registered);
+        blocked.Block(Registered.AddHours(1));
+        Guid[] ids = [candidate.Id, blocked.Id, recruiter.Id];
+
+        using IServiceScope scope = this.factory.Services.CreateScope();
+        KatchDbContext context = scope.ServiceProvider.GetRequiredService<KatchDbContext>();
+        await context.Database.EnsureCreatedAsync(cancellationToken);
+        context.Users.AddRange(candidate, blocked, recruiter);
+        await context.SaveChangesAsync(cancellationToken);
+        var repository = new UserRepository(context);
+
+        List<AppUser> all = await repository.ListAsync(AccountFilter.All, cancellationToken);
+        List<AppUser> candidates = await repository.ListAsync(new AccountFilter(UserType: UserType.Candidate), cancellationToken);
+        List<AppUser> activeCandidates = await repository.ListAsync(
+            new AccountFilter(UserType.Candidate, AccountStatus.Active), cancellationToken);
+
+        Assert.Equal(3, all.Count(user => ids.Contains(user.Id)));
+        Assert.All(candidates, user => Assert.Equal(UserType.Candidate, user.UserType));
+        Assert.Equal(new[] { blocked.Id, candidate.Id }.Order(), candidates.Where(user => ids.Contains(user.Id)).Select(user => user.Id).Order());
+        Assert.All(activeCandidates, user => Assert.Equal(AccountStatus.Active, user.Status));
+        Assert.Equal([candidate.Id], activeCandidates.Where(user => ids.Contains(user.Id)).Select(user => user.Id));
+    }
 }

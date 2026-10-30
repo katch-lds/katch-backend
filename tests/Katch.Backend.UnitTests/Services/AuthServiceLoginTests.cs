@@ -543,6 +543,11 @@ public sealed class AuthServiceLoginTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeCandidates : ICandidateRepository
@@ -560,6 +565,11 @@ public sealed class AuthServiceLoginTests
         public Task<List<Candidate>> ListQuotaDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new List<Candidate>());
+        }
+
+        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 

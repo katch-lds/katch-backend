@@ -476,6 +476,16 @@ public sealed class CompanyServiceTests
             this.Added.Add(company);
             return Task.CompletedTask;
         }
+
+        public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeOperationLogger : IOperationLogger
