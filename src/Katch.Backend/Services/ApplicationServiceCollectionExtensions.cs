@@ -47,6 +47,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IFileUrlBuilder, FileUrlBuilder>();
         services.AddScoped<IFileAccessService, FileAccessService>();
         services.AddScoped<IJobService, JobService>();
+        services.AddScoped<IJobPhotoService, JobPhotoService>();
         return services;
     }
 }

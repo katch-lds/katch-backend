@@ -99,6 +99,11 @@ public static class ApiErrorResponse
     public const string JobUnavailableCode = "ERR-33";
 
     /// <summary>
+    /// Código do erro de fotografia acima do número máximo da galeria ou da vaga.
+    /// </summary>
+    public const string PhotoLimitReachedCode = "ERR-39";
+
+    /// <summary>
     /// Código do erro de eliminação de uma vaga com interesses registados.
     /// </summary>
     public const string JobHasInterestsCode = "ERR-38";
@@ -378,6 +383,16 @@ public static class ApiErrorResponse
     public static ApiErrorDto JobUnavailable()
     {
         return new ApiErrorDto(JobUnavailableCode, JobUnavailableMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-39 (409): a galeria ou a vaga já tem o número máximo de fotografias (RF048, RF052, P13).
+    /// </summary>
+    /// <param name="maxPhotos">Número máximo de fotografias, indicado na mensagem.</param>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto PhotoLimitReached(int maxPhotos)
+    {
+        return new ApiErrorDto(PhotoLimitReachedCode, $"Foi atingido o número máximo de fotografias ({maxPhotos}).");
     }
 
     /// <summary>

@@ -1,11 +1,13 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Dtos;
+using Katch.Backend.Infrastructure.Api;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Net.Http.Headers;
 
 namespace Katch.Backend.Controllers;
 
@@ -13,7 +15,7 @@ namespace Katch.Backend.Controllers;
 /// Gestão das vagas pelo Recrutador da Empresa aprovada (documentação da API v02, secção 6.5; modelo de classes do
 /// backend v02, secção 6; UC09, UC10). A Empresa é sempre a do Recrutador da credencial de sessão (RNF006, DC-05); uma
 /// vaga de outra Empresa dá <c>403</c> (ERR-08, RF059) e uma vaga eliminada <c>404</c> (ERR-20). O carregamento das
-/// fotografias (6.5.9) é acrescentado pela Issue que o implementa (I105).
+/// fotografias (6.5.9) é feito pelo <see cref="IJobPhotoService"/>.
 /// </summary>
 [ApiController]
 [Route("api/recruiter/jobs")]
@@ -23,15 +25,22 @@ namespace Katch.Backend.Controllers;
 [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
 public sealed class JobsController : ControllerBase
 {
+    private const long MaxUploadRequestBytes = (6L * 1024 * 1024) + (4 * 1024);
+
+    private const string UploadFileField = "file";
+
     private readonly IJobService jobService;
+    private readonly IJobPhotoService jobPhotoService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JobsController"/> class.
     /// </summary>
     /// <param name="jobService">Serviço da gestão das vagas.</param>
-    public JobsController(IJobService jobService)
+    /// <param name="jobPhotoService">Serviço do carregamento das fotografias das vagas.</param>
+    public JobsController(IJobService jobService, IJobPhotoService jobPhotoService)
     {
         this.jobService = jobService;
+        this.jobPhotoService = jobPhotoService;
     }
 
     /// <summary>
@@ -172,6 +181,39 @@ public sealed class JobsController : ControllerBase
     {
         await this.jobService.DeleteAsync(this.RecruiterId(), jobId, cancellationToken);
         return this.NoContent();
+    }
+
+    /// <summary>
+    /// Acrescenta uma fotografia à vaga, em JPEG ou PNG até 5 MB, com o máximo de 5 por vaga (6.5.9; RF052; RNF015,
+    /// RNF016; P01, P13). O pedido é <c>multipart/form-data</c> com o campo <c>file</c>.
+    /// </summary>
+    /// <param name="jobId">Identificador da vaga.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>
+    /// <c>201</c> sem corpo, com o URL da fotografia no cabeçalho <c>Location</c>; <c>400</c> (ERR-11), <c>403</c>
+    /// (ERR-08), <c>404</c> (ERR-20), <c>409</c> (ERR-30 se a vaga estiver encerrada, ERR-39 se já tiver 5 fotografias),
+    /// <c>413</c> (ERR-12) ou <c>415</c> (ERR-13).
+    /// </returns>
+    [HttpPost("{jobId:guid}/photos")]
+    [UploadRequestFilter(MaxUploadRequestBytes)]
+    [RequestSizeLimit(MaxUploadRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadRequestBytes)]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status413PayloadTooLarge)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status415UnsupportedMediaType)]
+    public async Task<IActionResult> AddPhoto(Guid jobId, CancellationToken cancellationToken)
+    {
+        IFormCollection form = await this.Request.ReadFormAsync(cancellationToken);
+        string url = await this.jobPhotoService.AddPhotoAsync(
+            this.RecruiterId(),
+            jobId,
+            form.Files.GetFile(UploadFileField),
+            cancellationToken);
+        this.Response.Headers[HeaderNames.Location] = url;
+        return this.StatusCode(StatusCodes.Status201Created);
     }
 
     /// <summary>
