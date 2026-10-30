@@ -217,6 +217,27 @@ public sealed class CandidateDecisionEndpointsTests : IClassFixture<KatchWebAppl
     }
 
     /// <summary>
+    /// Um identificador que não é um GUID não chega ao serviço: a rota não corresponde e a resposta é 404, e não
+    /// 400 ERR-10 (documentação da API v02, secção 2).
+    /// </summary>
+    /// <param name="action">Decisão pedida.</param>
+    /// <param name="identifier">Identificador pedido.</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData("accept", "abc")]
+    [InlineData("reject", "abc")]
+    [InlineData("accept", "123")]
+    [InlineData("reject", "9d8c7b6a-5f4e-4d3c-b2a1")]
+    public async Task ANonGuidIdentifierReturns404(string action, string identifier)
+    {
+        (_, _, string token) = await CandidateEvaluationTestData.SeedRecruiterAsync(this.factory);
+
+        using HttpResponseMessage response = await this.PostAsync($"interests/{identifier}/{action}", token);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    /// <summary>
     /// O Recrutador de outra Empresa dá 403 ERR-08, mesmo com o perfil aberto pelo da Empresa da vaga, e nada é alterado.
     /// </summary>
     /// <param name="action">Decisão pedida.</param>

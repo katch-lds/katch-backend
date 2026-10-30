@@ -96,7 +96,7 @@ public sealed class CandidateEvaluationController : ControllerBase
     /// <param name="matchId">Identificador do interesse.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><c>200</c> com o match confirmado e o contacto do Candidato.</returns>
-    [HttpPost("interests/{matchId}/accept")]
+    [HttpPost("interests/{matchId:guid}/accept")]
     [ProducesResponseType<MatchDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
@@ -114,7 +114,7 @@ public sealed class CandidateEvaluationController : ControllerBase
     /// <param name="matchId">Identificador do interesse.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><c>204</c> sem corpo.</returns>
-    [HttpPost("interests/{matchId}/reject")]
+    [HttpPost("interests/{matchId:guid}/reject")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
