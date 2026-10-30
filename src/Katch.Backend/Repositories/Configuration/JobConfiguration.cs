@@ -4,6 +4,7 @@ using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Katch.Backend.Repositories.Configuration;
 
@@ -88,6 +89,17 @@ public sealed class JobConfiguration : IEntityTypeConfiguration<Job>
             companyStatus.HasFilter("deleted_at IS NULL");
             location.HasFilter("deleted_at IS NULL");
             expiry.HasFilter("status = 'PUBLISHED'");
+        }
+        else
+        {
+            // O SQLite guarda o DateTimeOffset como texto e o EF Core não traduz comparações sobre ele, que a consulta das
+            // vagas a encerrar (ListExpiredAsync) usa. Guardado como ticks UTC, a ordem é a do instante, como na coluna
+            // next_swipe_available_at (CandidateConfiguration). Só vale para os testes sobre SQLite: no PostgreSQL a
+            // coluna é timestamptz, sem conversão.
+            builder.Property(job => job.ExpiresAt)
+                .HasConversion(new ValueConverter<DateTimeOffset, long>(
+                    instant => instant.UtcTicks,
+                    ticks => new DateTimeOffset(ticks, TimeSpan.Zero)));
         }
 
         builder.Property(job => job.Title)

@@ -1,6 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain;
+using Katch.Backend.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Repositories;
@@ -34,5 +35,19 @@ public sealed class MatchRepository : IMatchRepository
         ArgumentNullException.ThrowIfNull(match);
 
         await this.context.Matches.AddAsync(match, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(
+        IReadOnlyCollection<Guid> jobIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(jobIds);
+
+        return this.context.Matches
+            .Where(match => jobIds.Contains(match.JobId) && match.Status == MatchStatus.Waiting)
+            .GroupBy(match => match.JobId)
+            .Select(group => new { JobId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.JobId, item => item.Count, cancellationToken);
     }
 }
