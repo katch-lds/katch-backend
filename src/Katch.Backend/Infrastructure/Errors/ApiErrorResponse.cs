@@ -49,6 +49,11 @@ public static class ApiErrorResponse
     public const string CompanyNotApprovedCode = "ERR-07";
 
     /// <summary>
+    /// Código do erro de elemento de outro utilizador ou de outra Empresa.
+    /// </summary>
+    public const string ElementForbiddenCode = "ERR-08";
+
+    /// <summary>
     /// Código do erro de validação automática dos campos.
     /// </summary>
     public const string ValidationFailedCode = "ERR-10";
@@ -92,6 +97,11 @@ public static class ApiErrorResponse
     /// Código do erro de vaga que já não está disponível.
     /// </summary>
     public const string JobUnavailableCode = "ERR-33";
+
+    /// <summary>
+    /// Código do erro de eliminação de uma vaga com interesses registados.
+    /// </summary>
+    public const string JobHasInterestsCode = "ERR-38";
 
     /// <summary>
     /// Código do erro de segundo registo de Empresa pelo mesmo Recrutador.
@@ -157,6 +167,16 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-20.
     /// </summary>
     public const string NotFoundMessage = "O elemento pedido não existe ou não está disponível.";
+
+    /// <summary>
+    /// Mensagem do ERR-08.
+    /// </summary>
+    public const string ElementForbiddenMessage = "Não tem autorização para aceder a este elemento.";
+
+    /// <summary>
+    /// Mensagem do ERR-38.
+    /// </summary>
+    public const string JobHasInterestsMessage = "A vaga tem interesses registados e só pode ser encerrada.";
 
     /// <summary>
     /// Mensagem do ERR-32.
@@ -361,6 +381,24 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Cria o corpo do ERR-08 (403): o elemento é de outro utilizador ou de outra Empresa (RF059, RNF006).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ElementForbidden()
+    {
+        return new ApiErrorDto(ElementForbiddenCode, ElementForbiddenMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-38 (409): a vaga tem pelo menos um interesse registado e só pode ser encerrada (RF058).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto JobHasInterests()
+    {
+        return new ApiErrorDto(JobHasInterestsCode, JobHasInterestsMessage);
+    }
+
+    /// <summary>
     /// Cria o corpo do ERR-40 (409): o Recrutador já registou uma Empresa.
     /// </summary>
     /// <returns>O corpo da resposta.</returns>
@@ -418,6 +456,24 @@ public static class ApiErrorResponse
             CompanyStatus.Rejected => "recusada",
             CompanyStatus.Suspended => "suspensa",
             _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Estado de Empresa desconhecido."),
+        };
+    }
+
+    /// <summary>
+    /// Designação do estado da vaga nas mensagens do ERR-30 (documentação da API v02, secção 2.4).
+    /// </summary>
+    /// <param name="status">Estado da vaga.</param>
+    /// <returns>«não publicada», «publicada», «suspensa» ou «encerrada».</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Se o estado não for conhecido.</exception>
+    public static string JobStatusLabel(JobStatus status)
+    {
+        return status switch
+        {
+            JobStatus.Unpublished => "não publicada",
+            JobStatus.Published => "publicada",
+            JobStatus.Suspended => "suspensa",
+            JobStatus.Closed => "encerrada",
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Estado de vaga desconhecido."),
         };
     }
 

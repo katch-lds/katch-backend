@@ -49,4 +49,18 @@ public sealed class MatchRepository : IMatchRepository
                 select match.Id)
             .AnyAsync(cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(
+        IReadOnlyCollection<Guid> jobIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(jobIds);
+
+        return this.context.Matches
+            .Where(match => jobIds.Contains(match.JobId) && match.Status == MatchStatus.Waiting)
+            .GroupBy(match => match.JobId)
+            .Select(group => new { JobId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.JobId, item => item.Count, cancellationToken);
+    }
 }

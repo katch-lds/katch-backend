@@ -108,6 +108,36 @@ public static class FieldReasons
     public const string FileMustBePdf = "O ficheiro tem de estar no formato PDF.";
 
     /// <summary>
+    /// Valor salarial nulo ou negativo (documentação da API v02, secção 4.3; RF051).
+    /// </summary>
+    public const string SalaryNotPositive = "O valor tem de ser um número positivo em euros.";
+
+    /// <summary>
+    /// Valor salarial com mais de 2 casas decimais (documentação da API v02, secção 2.3).
+    /// </summary>
+    public const string SalaryDecimals = "O valor tem de ter no máximo 2 casas decimais.";
+
+    /// <summary>
+    /// Valor mínimo superior ao máximo (documentação da API v02, secção 4.3; RF051).
+    /// </summary>
+    public const string SalaryRange = "O valor mínimo não pode ser superior ao valor máximo.";
+
+    /// <summary>
+    /// Valor salarial acima do que a coluna <c>numeric(10,2)</c> guarda (documentação da API v02, secção 8.3).
+    /// </summary>
+    public const string SalaryTooHigh = "O valor não pode exceder 99 999 999,99 euros.";
+
+    /// <summary>
+    /// Data-limite da vaga igual ou anterior ao instante do pedido (documentação da API v02, secções 6.5.2 e 8.3).
+    /// </summary>
+    public const string ExpiresAtNotFuture = "A data-limite tem de ser posterior ao momento atual.";
+
+    /// <summary>
+    /// Identificador repetido numa lista de competências ou de benefícios (documentação da API v02, secção 8.3).
+    /// </summary>
+    public const string RepeatedInList = "O valor está repetido na lista.";
+
+    /// <summary>
     /// Compõe o motivo de um ficheiro acima da dimensão máxima do tipo («O ficheiro excede 5 MB.»).
     /// </summary>
     /// <param name="megabytes">Dimensão máxima, em megabytes.</param>
