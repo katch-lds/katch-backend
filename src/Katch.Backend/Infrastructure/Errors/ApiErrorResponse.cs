@@ -49,9 +49,29 @@ public static class ApiErrorResponse
     public const string CompanyNotApprovedCode = "ERR-07";
 
     /// <summary>
+    /// Código do erro de elemento de outro utilizador ou de outra Empresa.
+    /// </summary>
+    public const string ElementForbiddenCode = "ERR-08";
+
+    /// <summary>
     /// Código do erro de validação automática dos campos.
     /// </summary>
     public const string ValidationFailedCode = "ERR-10";
+
+    /// <summary>
+    /// Código do erro de ficheiro não aceite.
+    /// </summary>
+    public const string FileRejectedCode = "ERR-11";
+
+    /// <summary>
+    /// Código do erro de pedido acima da dimensão máxima.
+    /// </summary>
+    public const string RequestTooLargeCode = "ERR-12";
+
+    /// <summary>
+    /// Código do erro de tipo de conteúdo do pedido não suportado.
+    /// </summary>
+    public const string UnsupportedContentTypeCode = "ERR-13";
 
     /// <summary>
     /// Código do erro de elemento inexistente ou não disponível.
@@ -77,6 +97,11 @@ public static class ApiErrorResponse
     /// Código do erro de vaga que já não está disponível.
     /// </summary>
     public const string JobUnavailableCode = "ERR-33";
+
+    /// <summary>
+    /// Código do erro de Candidato que já não está em espera na vaga.
+    /// </summary>
+    public const string CandidateAlreadyEvaluatedCode = "ERR-35";
 
     /// <summary>
     /// Código do erro de segundo registo de Empresa pelo mesmo Recrutador.
@@ -124,9 +149,29 @@ public static class ApiErrorResponse
     public const string ValidationFailedMessage = "Os dados enviados não cumprem a validação automática.";
 
     /// <summary>
+    /// Mensagem do ERR-11.
+    /// </summary>
+    public const string FileRejectedMessage = "O ficheiro não é aceite.";
+
+    /// <summary>
+    /// Mensagem do ERR-12.
+    /// </summary>
+    public const string RequestTooLargeMessage = "O pedido excede a dimensão máxima permitida.";
+
+    /// <summary>
+    /// Mensagem do ERR-13.
+    /// </summary>
+    public const string UnsupportedContentTypeMessage = "O tipo de conteúdo do pedido não é suportado.";
+
+    /// <summary>
     /// Mensagem do ERR-20.
     /// </summary>
     public const string NotFoundMessage = "O elemento pedido não existe ou não está disponível.";
+
+    /// <summary>
+    /// Mensagem do ERR-08.
+    /// </summary>
+    public const string ElementForbiddenMessage = "Não tem autorização para aceder a este elemento.";
 
     /// <summary>
     /// Mensagem do ERR-32.
@@ -137,6 +182,11 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-33.
     /// </summary>
     public const string JobUnavailableMessage = "A vaga já não está disponível.";
+
+    /// <summary>
+    /// Mensagem do ERR-35.
+    /// </summary>
+    public const string CandidateAlreadyEvaluatedMessage = "O Candidato já foi avaliado nesta vaga.";
 
     /// <summary>
     /// Mensagem do ERR-40.
@@ -250,6 +300,36 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Cria o corpo do ERR-11 (400): o ficheiro enviado não é aceite (RNF015, RNF016).
+    /// </summary>
+    /// <param name="reason">Motivo da recusa, indicado no campo <c>file</c>.</param>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto FileRejected(string reason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+
+        return new ApiErrorDto(FileRejectedCode, FileRejectedMessage, [new FieldErrorDto("file", reason)]);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-12 (413): o pedido excede a dimensão máxima permitida.
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto RequestTooLarge()
+    {
+        return new ApiErrorDto(RequestTooLargeCode, RequestTooLargeMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-13 (415): o tipo de conteúdo do pedido não é suportado.
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto UnsupportedContentType()
+    {
+        return new ApiErrorDto(UnsupportedContentTypeCode, UnsupportedContentTypeMessage);
+    }
+
+    /// <summary>
     /// Cria o corpo do ERR-20 (404): o elemento pedido não existe ou não está disponível.
     /// </summary>
     /// <returns>O corpo da resposta.</returns>
@@ -298,6 +378,25 @@ public static class ApiErrorResponse
     public static ApiErrorDto JobUnavailable()
     {
         return new ApiErrorDto(JobUnavailableCode, JobUnavailableMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-08 (403): o elemento é de outro utilizador ou de outra Empresa (RF059, RNF006).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ElementForbidden()
+    {
+        return new ApiErrorDto(ElementForbiddenCode, ElementForbiddenMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-35 (409): o interesse já não está em espera, porque o Recrutador já registou a decisão
+    /// (RF117; UC12, E4), na abertura do perfil, na obtenção do curriculum vitae ou na decisão.
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto CandidateAlreadyEvaluated()
+    {
+        return new ApiErrorDto(CandidateAlreadyEvaluatedCode, CandidateAlreadyEvaluatedMessage);
     }
 
     /// <summary>

@@ -511,6 +511,11 @@ public sealed class CompanyServiceTests
         {
             return Task.FromResult(id == this.locationId);
         }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

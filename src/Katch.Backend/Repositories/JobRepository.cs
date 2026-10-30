@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Repositories;
@@ -29,5 +30,15 @@ public sealed class JobRepository : IJobRepository
                 where job.Id == jobId
                 select new JobWithCompanyStatus(job, company.Status))
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        // O filtro global das vagas exclui as eliminadas (DM-09).
+        return this.context.Jobs
+            .AsNoTracking()
+            .Include(job => job.Skills)
+            .FirstOrDefaultAsync(job => job.Id == jobId, cancellationToken);
     }
 }
