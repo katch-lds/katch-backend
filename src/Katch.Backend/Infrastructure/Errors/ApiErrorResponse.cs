@@ -49,6 +49,11 @@ public static class ApiErrorResponse
     public const string CompanyNotApprovedCode = "ERR-07";
 
     /// <summary>
+    /// Código do erro de elemento de outro utilizador ou de outra Empresa.
+    /// </summary>
+    public const string ElementForbiddenCode = "ERR-08";
+
+    /// <summary>
     /// Código do erro de validação automática dos campos.
     /// </summary>
     public const string ValidationFailedCode = "ERR-10";
@@ -92,6 +97,11 @@ public static class ApiErrorResponse
     /// Código do erro de vaga que já não está disponível.
     /// </summary>
     public const string JobUnavailableCode = "ERR-33";
+
+    /// <summary>
+    /// Código do erro de Candidato que já não está em espera na vaga.
+    /// </summary>
+    public const string CandidateAlreadyEvaluatedCode = "ERR-35";
 
     /// <summary>
     /// Código do erro de segundo registo de Empresa pelo mesmo Recrutador.
@@ -159,6 +169,11 @@ public static class ApiErrorResponse
     public const string NotFoundMessage = "O elemento pedido não existe ou não está disponível.";
 
     /// <summary>
+    /// Mensagem do ERR-08.
+    /// </summary>
+    public const string ElementForbiddenMessage = "Não tem autorização para aceder a este elemento.";
+
+    /// <summary>
     /// Mensagem do ERR-32.
     /// </summary>
     public const string AlreadyAnsweredMessage = "Já respondeu a esta vaga.";
@@ -167,6 +182,11 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-33.
     /// </summary>
     public const string JobUnavailableMessage = "A vaga já não está disponível.";
+
+    /// <summary>
+    /// Mensagem do ERR-35.
+    /// </summary>
+    public const string CandidateAlreadyEvaluatedMessage = "O Candidato já foi avaliado nesta vaga.";
 
     /// <summary>
     /// Mensagem do ERR-40.
@@ -358,6 +378,25 @@ public static class ApiErrorResponse
     public static ApiErrorDto JobUnavailable()
     {
         return new ApiErrorDto(JobUnavailableCode, JobUnavailableMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-08 (403): o elemento é de outro utilizador ou de outra Empresa (RF059, RNF006).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ElementForbidden()
+    {
+        return new ApiErrorDto(ElementForbiddenCode, ElementForbiddenMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-35 (409): o interesse já não está em espera, porque o Recrutador já registou a decisão
+    /// (RF117; UC12, E4), na abertura do perfil, na obtenção do curriculum vitae ou na decisão.
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto CandidateAlreadyEvaluated()
+    {
+        return new ApiErrorDto(CandidateAlreadyEvaluatedCode, CandidateAlreadyEvaluatedMessage);
     }
 
     /// <summary>

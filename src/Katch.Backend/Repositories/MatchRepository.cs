@@ -38,6 +38,34 @@ public sealed class MatchRepository : IMatchRepository
     }
 
     /// <inheritdoc/>
+    public Task<Match?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.FirstOrDefaultAsync(match => match.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        List<WaitingInterest> waiting = await (
+                from match in this.context.Matches.AsNoTracking()
+                join candidate in this.context.Candidates.AsNoTracking() on match.CandidateId equals candidate.Id
+                join location in this.context.Locations.AsNoTracking() on candidate.LocationId equals location.Id
+                where match.JobId == jobId && match.Status == MatchStatus.Waiting
+                select new WaitingInterest(
+                    match.Id,
+                    candidate.Id,
+                    candidate.FullName,
+                    candidate.DesiredRole,
+                    location,
+                    match.CandidateActionAt))
+            .ToListAsync(cancellationToken);
+
+        // A ordenação é feita depois da leitura porque o SQLite dos testes de integração guarda o DateTimeOffset como
+        // texto e o EF Core não a traduz; as listas são curtas (sem paginação, documentação da API v02, L-02).
+        return waiting.OrderBy(interest => interest.InterestAt).ToList();
+    }
+
+    /// <inheritdoc/>
     public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
     {
         return (from match in this.context.Matches
