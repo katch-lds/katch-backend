@@ -57,5 +57,9 @@ Thumbs.db
 .idea/
 *.sln.iml
 
+# Ficheiros enviados (fotografias e curricula); a raiz é configurada em FileStorage:RootPath
+/storage/
+/uploads/
+
 # Notas locais pessoais
 LOCAL-NOTAS.md

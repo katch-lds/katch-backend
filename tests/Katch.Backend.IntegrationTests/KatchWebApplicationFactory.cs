@@ -22,6 +22,8 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection connection = new("DataSource=:memory:");
 
+    private readonly string fileStorageRoot = Path.Combine(Path.GetTempPath(), "katch-tests-" + Guid.NewGuid().ToString("N"));
+
     /// <summary>
     /// Gets the clock injected in place of the system clock, so that tests can control the issue time of tokens.
     /// </summary>
@@ -32,6 +34,12 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
     /// never runs during the tests that do not concern it; the tests of the task itself set it before the first use.
     /// </summary>
     public int BackgroundJobsIntervalSeconds { get; init; } = 86_400;
+
+    /// <summary>
+    /// Gets the folder where the application stores the uploaded files, a temporary folder of this instance that is
+    /// deleted when the factory is disposed, so that no test file is left in the repository.
+    /// </summary>
+    public string FileStorageRoot => this.fileStorageRoot;
 
     /// <inheritdoc/>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -44,6 +52,7 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
 
         // O segredo JWT é gerado em cada execução; nunca existe um valor fixo no código.
         builder.UseSetting("Jwt:Secret", Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)));
+        builder.UseSetting("FileStorage:RootPath", this.fileStorageRoot);
         builder.UseSetting(
             "BackgroundJobs:IntervalSeconds",
             this.BackgroundJobsIntervalSeconds.ToString(CultureInfo.InvariantCulture));
@@ -69,6 +78,10 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
         if (disposing)
         {
             this.connection.Dispose();
+            if (Directory.Exists(this.fileStorageRoot))
+            {
+                Directory.Delete(this.fileStorageRoot, recursive: true);
+            }
         }
     }
 }

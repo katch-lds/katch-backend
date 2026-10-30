@@ -5,8 +5,8 @@ using Katch.Backend.Domain;
 namespace Katch.Backend.Repositories;
 
 /// <summary>
-/// Acesso às listas pré-definidas (modelo de classes do backend v02, secção 4). As operações das competências e dos
-/// benefícios são acrescentadas pela Issue dessas listas (I049).
+/// Acesso às listas pré-definidas (modelo de classes do backend v02, secção 4). As operações dos benefícios e da
+/// manutenção das listas são acrescentadas pelas Issues que as usam.
 /// </summary>
 public interface IReferenceDataRepository
 {
@@ -24,4 +24,12 @@ public interface IReferenceDataRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><see langword="true"/> se a localidade existir.</returns>
     public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém uma localidade da lista pré-definida, só para leitura, para apresentar a designação no perfil.
+    /// </summary>
+    /// <param name="id">Identificador da localidade.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>A localidade, ou <see langword="null"/> se não existir.</returns>
+    public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default);
 }
