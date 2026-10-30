@@ -10,8 +10,8 @@ using Microsoft.Net.Http.Headers;
 namespace Katch.Backend.Controllers;
 
 /// <summary>
-/// Avaliação dos Candidatos interessados nas vagas da Empresa (documentação da API v02, secções 6.6.1 a 6.6.3; modelo de
-/// classes do backend v02, secção 5.1; UC11). Só para Recrutadores de Empresas aprovadas (ERR-07); o Recrutador é sempre
+/// Avaliação dos Candidatos interessados nas vagas da Empresa (documentação da API v02, secções 6.6.1 a 6.6.5; modelo de
+/// classes do backend v02, secção 5.1; UC11 e UC12). Só para Recrutadores de Empresas aprovadas (ERR-07); o Recrutador é sempre
 /// o da credencial de sessão (claim <c>sub</c>).
 /// </summary>
 [ApiController]
@@ -87,6 +87,43 @@ public sealed class CandidateEvaluationController : ControllerBase
         FileContent cv = await this.evaluationService.GetCvAsync(this.GetRecruiterId(), matchId, cancellationToken);
         this.Response.Headers[HeaderNames.CacheControl] = NoStore;
         return this.File(cv.Content, cv.ContentType, cv.FileName);
+    }
+
+    /// <summary>
+    /// Aceita o Candidato do interesse: confirma o match e abre a conversa numa só transação (6.6.4; RF063, RF065, RF066,
+    /// RF068, RF117). O perfil completo tem de ter sido aberto antes.
+    /// </summary>
+    /// <param name="matchId">Identificador do interesse.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><c>200</c> com o match confirmado e o contacto do Candidato.</returns>
+    [HttpPost("interests/{matchId:guid}/accept")]
+    [ProducesResponseType<MatchDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<MatchDto>> Accept(Guid matchId, CancellationToken cancellationToken)
+    {
+        return await this.evaluationService.AcceptAsync(this.GetRecruiterId(), matchId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Recusa o Candidato do interesse, que deixa de ser apresentado para a vaga (6.6.5; RF064, RF065, RF117). Não há
+    /// conversa, contacto nem notificação. O perfil completo tem de ter sido aberto antes.
+    /// </summary>
+    /// <param name="matchId">Identificador do interesse.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><c>204</c> sem corpo.</returns>
+    [HttpPost("interests/{matchId:guid}/reject")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Reject(Guid matchId, CancellationToken cancellationToken)
+    {
+        await this.evaluationService.RejectAsync(this.GetRecruiterId(), matchId, cancellationToken);
+        return this.NoContent();
     }
 
     private Guid GetRecruiterId()

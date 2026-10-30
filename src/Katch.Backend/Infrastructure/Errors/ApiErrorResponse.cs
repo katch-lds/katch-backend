@@ -99,6 +99,11 @@ public static class ApiErrorResponse
     public const string JobUnavailableCode = "ERR-33";
 
     /// <summary>
+    /// Código do erro de decisão sobre um Candidato cujo perfil completo ainda não foi aberto.
+    /// </summary>
+    public const string ProfileNotOpenedCode = "ERR-34";
+
+    /// <summary>
     /// Código do erro de Candidato que já não está em espera na vaga.
     /// </summary>
     public const string CandidateAlreadyEvaluatedCode = "ERR-35";
@@ -182,6 +187,11 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-33.
     /// </summary>
     public const string JobUnavailableMessage = "A vaga já não está disponível.";
+
+    /// <summary>
+    /// Mensagem do ERR-34.
+    /// </summary>
+    public const string ProfileNotOpenedMessage = "Abra o perfil completo do Candidato antes de registar a decisão.";
 
     /// <summary>
     /// Mensagem do ERR-35.
@@ -387,6 +397,16 @@ public static class ApiErrorResponse
     public static ApiErrorDto ElementForbidden()
     {
         return new ApiErrorDto(ElementForbiddenCode, ElementForbiddenMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-34 (409): a aceitação ou a recusa foi pedida sem a abertura do perfil completo do Candidato
+    /// registada para a vaga (RF063, RF064; UC12, E1).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ProfileNotOpened()
+    {
+        return new ApiErrorDto(ProfileNotOpenedCode, ProfileNotOpenedMessage);
     }
 
     /// <summary>

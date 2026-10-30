@@ -60,6 +60,7 @@ public sealed class CandidateEvaluationServiceTests
             this.store,
             this.store,
             this.store,
+            new FakeUserRepository(),
             this.store,
             this.store,
             this.store,
