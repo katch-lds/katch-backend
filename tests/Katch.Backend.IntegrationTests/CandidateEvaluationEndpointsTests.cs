@@ -394,6 +394,25 @@ public sealed class CandidateEvaluationEndpointsTests : IClassFixture<KatchWebAp
         await AuthenticationTests.AssertErrorAsync(response, HttpStatusCode.Unauthorized, "ERR-01", InvalidSessionMessage);
     }
 
+    /// <summary>
+    /// Um identificador que não é um <see cref="Guid"/> não corresponde a nenhuma rota e responde <c>404</c>
+    /// (documentação da API v02, secção 2.5), e não ERR-10.
+    /// </summary>
+    /// <param name="path">Rota com o identificador mal formado.</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData("jobs/abc/waiting-candidates")]
+    [InlineData("interests/abc/profile")]
+    [InlineData("interests/abc/cv")]
+    public async Task MalformedIdReturns404(string path)
+    {
+        (_, _, string token) = await CandidateEvaluationTestData.SeedRecruiterAsync(this.factory);
+
+        using HttpResponseMessage response = await this.GetAsync(path, token);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private static string Path(string resource)
     {
         return resource == "waiting-candidates"

@@ -40,7 +40,7 @@ public sealed class CandidateEvaluationController : ControllerBase
     /// <param name="jobId">Identificador da vaga.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><c>200</c> com a lista, eventualmente vazia.</returns>
-    [HttpGet("jobs/{jobId}/waiting-candidates")]
+    [HttpGet("jobs/{jobId:guid}/waiting-candidates")]
     [ProducesResponseType<List<WaitingCandidateDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
@@ -57,7 +57,7 @@ public sealed class CandidateEvaluationController : ControllerBase
     /// <param name="matchId">Identificador do interesse.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><c>200</c> com o perfil completo.</returns>
-    [HttpGet("interests/{matchId}/profile")]
+    [HttpGet("interests/{matchId:guid}/profile")]
     [ProducesResponseType<CandidateFullProfileDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
@@ -75,7 +75,7 @@ public sealed class CandidateEvaluationController : ControllerBase
     /// <param name="matchId">Identificador do interesse.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><c>200</c> com o PDF, ou <c>404</c> (ERR-20) se o Candidato não tiver curriculum vitae.</returns>
-    [HttpGet("interests/{matchId}/cv")]
+    [HttpGet("interests/{matchId:guid}/cv")]
     [Produces("application/pdf")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
