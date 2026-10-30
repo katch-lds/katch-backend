@@ -29,6 +29,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IOperationLogRepository, OperationLogRepository>();
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IMatchRepository, MatchRepository>();
+        services.AddScoped<IMessageRepository, MessageRepository>();
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddScoped<IOperationLogger, OperationLogger>();
@@ -40,6 +41,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IConflictRetryDelay, RandomConflictRetryDelay>();
         services.AddScoped<IJobExplorationService, JobExplorationService>();
+        services.AddScoped<IMatchService, MatchService>();
+        services.AddScoped<IConversationService, ConversationService>();
 
         services.AddOptions<FileStorageOptions>().BindConfiguration(FileStorageOptions.SectionName);
         services.AddSingleton<IFileStorage, LocalFileStorage>();
