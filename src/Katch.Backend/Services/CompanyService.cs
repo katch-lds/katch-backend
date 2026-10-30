@@ -36,6 +36,7 @@ public sealed class CompanyService : ICompanyService
     /// </summary>
     internal const string RecruiterUniqueIndex = "uq_company_recruiter";
 
+    private const string PhotoPathsCheck = "ck_company_photo_paths";
     private const int MaxCompanyNameLength = 200;
     private const int MaxAddressLength = 255;
     private const int MaxContactEmailLength = 255;
@@ -172,7 +173,7 @@ public sealed class CompanyService : ICompanyService
         ArgumentNullException.ThrowIfNull(request);
 
         // A política ApprovedCompany já garantiu que o Recrutador tem uma Empresa aprovada.
-        Company company = await this.LoadAsync(recruiterId, cancellationToken);
+        Company company = await this.LoadApprovedAsync(recruiterId, cancellationToken);
 
         // O NIF não pode ser alterado depois da aprovação (RF049): tem de ser igual ao registado.
         CompanyRegistration data = await this.ValidateAsync(request, company.Id, company.TaxId, cancellationToken);
@@ -219,7 +220,7 @@ public sealed class CompanyService : ICompanyService
             throw new ValidationFailedException(errors);
         }
 
-        Company company = await this.LoadAsync(recruiterId, cancellationToken);
+        Company company = await this.LoadApprovedAsync(recruiterId, cancellationToken);
         company.UpdatePage(description, website);
         await this.unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -231,7 +232,7 @@ public sealed class CompanyService : ICompanyService
     {
         this.EnsureAccepted(file, FileKind.CompanyLogo);
 
-        Company company = await this.LoadAsync(recruiterId, cancellationToken);
+        Company company = await this.LoadApprovedAsync(recruiterId, cancellationToken);
         string? previousPath = company.LogoPath;
 
         string newPath = await this.StoreAsync(file!, FileKind.CompanyLogo, company.SetLogo, cancellationToken);
@@ -248,7 +249,7 @@ public sealed class CompanyService : ICompanyService
     {
         this.EnsureAccepted(file, FileKind.CompanyPhoto);
 
-        Company company = await this.LoadAsync(recruiterId, cancellationToken);
+        Company company = await this.LoadApprovedAsync(recruiterId, cancellationToken);
 
         // Verificado antes de guardar o ficheiro, para que a sétima fotografia não chegue ao armazenamento (P13).
         if (company.PhotoPaths.Count >= Company.MaxGalleryPhotos)
@@ -432,6 +433,16 @@ public sealed class CompanyService : ICompanyService
             ?? throw new ElementNotFoundException();
     }
 
+    /// <summary>
+    /// Carrega a Empresa e confirma que continua aprovada. A política <c>ApprovedCompany</c> já o verificou, mas a Empresa
+    /// pode ser suspensa entre essa leitura e a operação: nesse caso a resposta é o ERR-07, e não um erro interno.
+    /// </summary>
+    private async Task<Company> LoadApprovedAsync(Guid recruiterId, CancellationToken cancellationToken)
+    {
+        Company company = await this.LoadAsync(recruiterId, cancellationToken);
+        return company.IsApproved() ? company : throw new CompanyNotApprovedException(company.Status);
+    }
+
     private void EnsureAccepted(IFormFile? file, FileKind kind)
     {
         ValidationResult validation = this.fileValidator.Validate(file, kind);
@@ -461,6 +472,12 @@ public sealed class CompanyService : ICompanyService
         {
             attach(newPath);
             await this.unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (CheckConstraintViolationException exception) when (exception.ConstraintName == PhotoPathsCheck)
+        {
+            // Dois pedidos simultâneos com 5 fotografias passaram a verificação do limite; a restrição rejeita o segundo.
+            await this.fileStorage.DeleteAsync(newPath, CancellationToken.None);
+            throw new OperationConflictException(ApiErrorResponse.PhotoLimitReached(Company.MaxGalleryPhotos));
         }
         catch
         {

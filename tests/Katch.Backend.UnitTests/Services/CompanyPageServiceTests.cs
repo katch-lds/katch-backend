@@ -472,6 +472,69 @@ public sealed class CompanyPageServiceTests
         Assert.Equal([created], this.store.Deleted);
     }
 
+    /// <summary>
+    /// Se duas fotografias simultâneas passarem o limite com 5 na galeria, a restrição da base de dados rejeita a
+    /// segunda: a resposta é o ERR-39 (e não um erro interno) e o ficheiro novo é apagado.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task ConcurrentSixthPhotoIsReportedAsErr39AndTheFileIsDeleted()
+    {
+        this.AddCompany(CompanyStatus.Approved);
+        this.store.SaveFailure = new CheckConstraintViolationException("ck_company_photo_paths", new InvalidOperationException());
+
+        OperationConflictException exception = await Assert.ThrowsAsync<OperationConflictException>(
+            () => this.service.AddGalleryPhotoAsync(RecruiterId, File("foto.png", Png), TestContext.Current.CancellationToken));
+
+        Assert.Equal("ERR-39", exception.Error.Code);
+        string created = Assert.Single(this.store.Saved);
+        Assert.Equal([created], this.store.Deleted);
+    }
+
+    /// <summary>
+    /// Outra restrição <c>CHECK</c> violada não é confundida com o limite da galeria: o erro sobe.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task AnotherCheckViolationIsNotReportedAsErr39()
+    {
+        this.AddCompany(CompanyStatus.Approved);
+        this.store.SaveFailure = new CheckConstraintViolationException("ck_company_website", new InvalidOperationException());
+
+        await Assert.ThrowsAsync<CheckConstraintViolationException>(
+            () => this.service.AddGalleryPhotoAsync(RecruiterId, File("foto.png", Png), TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>
+    /// Se a Empresa deixar de estar aprovada entre a política e a operação (por exemplo, suspensa), cada operação de
+    /// escrita responde com o ERR-07 e nada é alterado nem guardado.
+    /// </summary>
+    /// <param name="operation">Operação de escrita.</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData("registration")]
+    [InlineData("page")]
+    [InlineData("logo")]
+    [InlineData("photo")]
+    public async Task ACompanySuspendedAfterThePolicyReturnsErr07AndChangesNothing(string operation)
+    {
+        Company company = this.AddCompany(CompanyStatus.Approved);
+        company.Suspend();
+
+        CompanyNotApprovedException exception = await Assert.ThrowsAsync<CompanyNotApprovedException>(() => operation switch
+        {
+            "registration" => this.service.UpdateRegistrationAsync(RecruiterId, this.Request(), TestContext.Current.CancellationToken),
+            "page" => this.service.UpdatePageAsync(RecruiterId, new CompanyPageRequest("Texto", null), TestContext.Current.CancellationToken),
+            "logo" => this.service.UploadLogoAsync(RecruiterId, File("logo.png", Png), TestContext.Current.CancellationToken),
+            _ => this.service.AddGalleryPhotoAsync(RecruiterId, File("foto.png", Png), TestContext.Current.CancellationToken),
+        });
+
+        Assert.Equal(CompanyStatus.Suspended, exception.Status);
+        Assert.Equal(0, this.store.Saves);
+        Assert.Empty(this.store.Saved);
+        Assert.Null(company.Description);
+    }
+
     private static FormFile File(string fileName, byte[] content)
     {
         return new FormFile(new MemoryStream(content), 0, content.Length, "file", fileName);

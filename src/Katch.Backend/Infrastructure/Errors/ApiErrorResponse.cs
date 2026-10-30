@@ -418,6 +418,16 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Cria o corpo do ERR-07 (403) para uma Empresa que deixou de estar aprovada durante a operação.
+    /// </summary>
+    /// <param name="status">Estado atual da Empresa.</param>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto CompanyNotApproved(CompanyStatus? status)
+    {
+        return new ApiErrorDto(CompanyNotApprovedCode, CompanyNotApprovedMessage(status));
+    }
+
+    /// <summary>
     /// Designação do estado da Empresa nas mensagens do catálogo (ERR-07 e ERR-30).
     /// </summary>
     /// <param name="status">Estado da Empresa, ou <see langword="null"/> se o Recrutador não tem Empresa.</param>
