@@ -107,13 +107,17 @@ public sealed class CompanyAdminService : ICompanyAdminService
     {
         List<JobWithCount> published = await this.jobs.ListPublishedWithInterestCountAsync(cancellationToken);
 
+        // O JobWithCount tem só a vaga e a contagem (modelo de classes v02, secção 4); a designação vem das Empresas.
+        Dictionary<Guid, string> companyNames = (await this.companies.ListAllWithPublishedCountAsync(cancellationToken))
+            .ToDictionary(item => item.Company.Id, item => item.Company.CompanyName);
+
         // Publicar e voltar a publicar preenchem published_at (Job.Publish, Job.Republish); a data da primeira publicação,
         // que o ck_job_published garante, só é usada se faltar. A ordenação é feita aqui, como nas restantes listas.
         return published
             .Select(item => new PublishedJobAdminDto(
                 item.Job.Id,
                 item.Job.Title,
-                item.CompanyName,
+                companyNames.GetValueOrDefault(item.Job.CompanyId, string.Empty),
                 item.Job.PublishedAt ?? item.Job.FirstPublishedAt ?? DateTimeOffset.MinValue,
                 item.InterestCount))
             .OrderByDescending(item => item.PublishedAt)

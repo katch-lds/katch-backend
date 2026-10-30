@@ -62,9 +62,22 @@ public sealed class UserRepository : IUserRepository
     }
 
     /// <inheritdoc/>
-    public Task<List<AppUser>> ListAsync(CancellationToken cancellationToken = default)
+    public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default)
     {
-        return this.context.Users.AsNoTracking().ToListAsync(cancellationToken);
+        ArgumentNullException.ThrowIfNull(filter);
+
+        IQueryable<AppUser> accounts = this.context.Users.AsNoTracking();
+        if (filter.UserType is { } userType)
+        {
+            accounts = accounts.Where(user => user.UserType == userType);
+        }
+
+        if (filter.Status is { } status)
+        {
+            accounts = accounts.Where(user => user.Status == status);
+        }
+
+        return accounts.ToListAsync(cancellationToken);
     }
 
     /// <summary>

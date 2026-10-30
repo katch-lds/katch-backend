@@ -63,6 +63,7 @@ public sealed class AccountAdminServiceTests
 
         List<AccountDto> accounts = await this.service.ListAccountsAsync(TestContext.Current.CancellationToken);
 
+        Assert.Equal(AccountFilter.All, this.users.LastFilter);
         Assert.Equal(
             [
                 new AccountDto(admin.Id, "admin@katch.pt", UserType.Admin, AccountStatus.Active),
@@ -354,6 +355,8 @@ public sealed class AccountAdminServiceTests
     {
         public List<AppUser> Accounts { get; } = [];
 
+        public AccountFilter? LastFilter { get; private set; }
+
         public Task<AppUser?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Accounts.SingleOrDefault(user => user.Id == id));
@@ -379,9 +382,13 @@ public sealed class AccountAdminServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<List<AppUser>> ListAsync(CancellationToken cancellationToken = default)
+        public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(this.Accounts.ToList());
+            this.LastFilter = filter;
+            return Task.FromResult(this.Accounts
+                .Where(user => (filter.UserType is null || user.UserType == filter.UserType)
+                    && (filter.Status is null || user.Status == filter.Status))
+                .ToList());
         }
     }
 

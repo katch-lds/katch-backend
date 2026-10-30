@@ -203,12 +203,14 @@ public sealed class CompanyAdminServiceTests
     [Fact]
     public async Task ListPublishedJobsReturnsTheFourFieldsFromTheMostRecentPublication()
     {
-        Job older = NewPublishedJob("Programador Backend .NET", Now.AddDays(-20));
-        Job newer = NewPublishedJob("Técnico de Logística", Now.AddDays(-2));
+        Company lumen = this.AddCompany("Lumen Software, Lda.", CompanyStatus.Approved);
+        Company zeta = this.AddCompany("Zeta Logística, S.A.", CompanyStatus.Approved);
+        Job older = NewPublishedJob("Programador Backend .NET", Now.AddDays(-20), lumen.Id);
+        Job newer = NewPublishedJob("Técnico de Logística", Now.AddDays(-2), zeta.Id);
         this.jobs.Published.AddRange(
             [
-                new JobWithCount(older, "Lumen Software, Lda.", 3),
-                new JobWithCount(newer, "Zeta Logística, S.A.", 0),
+                new JobWithCount(older, 3),
+                new JobWithCount(newer, 0),
             ]);
 
         List<PublishedJobAdminDto> list = await this.service.ListPublishedJobsAsync(TestContext.Current.CancellationToken);
@@ -229,10 +231,10 @@ public sealed class CompanyAdminServiceTests
         return match;
     }
 
-    private static Job NewPublishedJob(string title, DateTimeOffset publishedAt)
+    private static Job NewPublishedJob(string title, DateTimeOffset publishedAt, Guid companyId)
     {
         var job = new Job(
-            Guid.NewGuid(),
+            companyId,
             new JobData
             {
                 Title = title,

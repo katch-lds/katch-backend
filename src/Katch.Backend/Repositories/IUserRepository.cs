@@ -52,10 +52,12 @@ public interface IUserRepository
     public Task AddRecruiterAsync(Recruiter recruiter, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Lista todas as contas de utilizador, só para leitura, para a lista do Administrador (RF085). A documentação da API
-    /// v02 não prevê filtros nem paginação (secção 11, L-02).
+    /// Lista as contas de utilizador que cumprem o critério, só para leitura, para a lista do Administrador (RF085). A
+    /// documentação da API v02 não prevê filtros nem paginação (secção 11, L-02): a lista usa
+    /// <see cref="AccountFilter.All"/>.
     /// </summary>
+    /// <param name="filter">Critério da lista; um campo nulo não restringe.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As contas, sem ordem garantida.</returns>
-    public Task<List<AppUser>> ListAsync(CancellationToken cancellationToken = default);
+    public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default);
 }

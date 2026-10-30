@@ -79,7 +79,7 @@ public sealed class AccountAdminService : IAccountAdminService
     /// <inheritdoc/>
     public async Task<List<AccountDto>> ListAccountsAsync(CancellationToken cancellationToken = default)
     {
-        List<AppUser> accounts = await this.users.ListAsync(cancellationToken);
+        List<AppUser> accounts = await this.users.ListAsync(AccountFilter.All, cancellationToken);
 
         return accounts
             .OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase)

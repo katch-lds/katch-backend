@@ -436,7 +436,7 @@ public sealed class AuthServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<List<AppUser>> ListAsync(CancellationToken cancellationToken = default)
+        public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

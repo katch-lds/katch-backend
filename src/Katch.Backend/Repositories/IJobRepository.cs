@@ -17,8 +17,8 @@ public interface IJobRepository
     public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Lista as vagas no estado publicada de todas as Empresas, com a designação da Empresa e o número de interesses
-    /// (todos os estados da decisão), só para leitura (RF098).
+    /// Lista as vagas no estado publicada de todas as Empresas, com o número de interesses (todos os estados da decisão),
+    /// só para leitura (RF098).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As vagas publicadas com a contagem, sem ordem garantida.</returns>

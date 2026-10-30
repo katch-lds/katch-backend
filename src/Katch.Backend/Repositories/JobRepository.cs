@@ -36,13 +36,11 @@ public sealed class JobRepository : IJobRepository
     public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
     {
         // Um interesse é qualquer resposta do Candidato que não seja a recusa da vaga (RF098).
-        return (from job in this.context.Jobs.AsNoTracking()
-                join company in this.context.Companies.AsNoTracking() on job.CompanyId equals company.Id
-                where job.Status == JobStatus.Published
-                select new JobWithCount(
-                    job,
-                    company.CompanyName,
-                    this.context.Matches.Count(match => match.JobId == job.Id && match.Status != MatchStatus.DeclinedByCandidate)))
+        return this.context.Jobs.AsNoTracking()
+            .Where(job => job.Status == JobStatus.Published)
+            .Select(job => new JobWithCount(
+                job,
+                this.context.Matches.Count(match => match.JobId == job.Id && match.Status != MatchStatus.DeclinedByCandidate)))
             .ToListAsync(cancellationToken);
     }
 }
