@@ -71,15 +71,13 @@ public sealed class MatchRepository : IMatchRepository
     /// <inheritdoc/>
     public Task<List<MatchView>> ListMatchViewsByCandidateAsync(Guid candidateId, CancellationToken cancellationToken = default)
     {
-        return this.QueryMatchViews().Where(view => view.Match.CandidateId == candidateId).ToListAsync(cancellationToken);
+        return this.QueryMatchViews(candidateId, companyId: null).ToListAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
     public Task<List<MatchView>> ListMatchViewsByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
     {
-        return this.QueryMatchViews()
-            .Where(view => this.context.Jobs.Any(job => job.Id == view.Match.JobId && job.CompanyId == companyId))
-            .ToListAsync(cancellationToken);
+        return this.QueryMatchViews(candidateId: null, companyId).ToListAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -101,7 +99,7 @@ public sealed class MatchRepository : IMatchRepository
             .ToListAsync(cancellationToken);
     }
 
-    private IQueryable<MatchView> QueryMatchViews()
+    private IQueryable<MatchView> QueryMatchViews(Guid? candidateId, Guid? companyId)
     {
         return from match in this.context.Matches.AsNoTracking()
                join job in this.context.Jobs on match.JobId equals job.Id
@@ -109,6 +107,8 @@ public sealed class MatchRepository : IMatchRepository
                join location in this.context.Locations on job.LocationId equals location.Id
                join candidate in this.context.Candidates on match.CandidateId equals candidate.Id
                where match.Status == MatchStatus.Matched
+                   && (candidateId == null || match.CandidateId == candidateId)
+                   && (companyId == null || job.CompanyId == companyId)
                select new MatchView(
                    match,
                    job.Title,
