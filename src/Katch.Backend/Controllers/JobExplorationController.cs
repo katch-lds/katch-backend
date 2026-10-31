@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Katch.Backend.Controllers;
 
 /// <summary>
-/// Respostas do Candidato às vagas e consulta da quota de interesses (documentação da API v02, secções 6.3.4 a 6.3.6;
-/// modelo de classes do backend v02, secção 6). As restantes operações do controller são acrescentadas por outras
-/// Issues. O Candidato é sempre o da credencial de sessão (claim <c>sub</c>), nunca o do pedido.
+/// Cartão de vaga seguinte, respostas do Candidato às vagas e consulta da quota de interesses (documentação da API v02,
+/// secções 6.3.1 e 6.3.4 a 6.3.6; modelo de classes do backend v02, secção 6). O detalhe da vaga e a página da Empresa
+/// (6.3.2 e 6.3.3) são acrescentados por outras Issues. O Candidato é sempre o da credencial de sessão (claim <c>sub</c>), nunca o do pedido.
 /// </summary>
 [ApiController]
 [Route("api/candidate/jobs")]
@@ -28,6 +28,29 @@ public sealed class JobExplorationController : ControllerBase
     public JobExplorationController(IJobExplorationService jobExploration)
     {
         this.jobExploration = jobExploration;
+    }
+
+    /// <summary>
+    /// Obtém o cartão da vaga seguinte que cumpre o filtro do RF014, com a distância à localidade do Candidato (RF013 a
+    /// RF015). Os cartões são apresentados um de cada vez: depois de o Candidato responder, o pedido seguinte traz outra
+    /// vaga.
+    /// </summary>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><c>200</c> com o cartão, ou <c>204</c> se nenhuma vaga cumprir o filtro (UC05, A6).</returns>
+    [HttpGet("next")]
+    [ProducesResponseType<JobCardDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<JobCardDto>> GetNextCard(CancellationToken cancellationToken)
+    {
+        JobCardDto? card = await this.jobExploration.GetNextCardAsync(this.GetCandidateId(), cancellationToken);
+        if (card is null)
+        {
+            return this.NoContent();
+        }
+
+        return this.Ok(card);
     }
 
     /// <summary>
@@ -88,6 +111,23 @@ public sealed class JobExplorationController : ControllerBase
     {
         QuotaDto quota = await this.jobExploration.GetQuotaAsync(this.GetCandidateId(), cancellationToken);
         return this.Ok(quota);
+    }
+
+    /// <summary>
+    /// Consulta a página de apresentação da Empresa, a partir do detalhe da vaga (6.3.3; RF017): designação, descrição,
+    /// sítio na Internet, logótipo e galeria, sem os contactos (RF025).
+    /// </summary>
+    /// <param name="companyId">Identificador da Empresa.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><c>200</c> com a página, ou <c>404</c> (ERR-20) se a Empresa não existir ou não estiver aprovada.</returns>
+    [HttpGet("companies/{companyId:guid}")]
+    [ProducesResponseType<CompanyPageDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CompanyPageDto>> GetCompanyPage(Guid companyId, CancellationToken cancellationToken)
+    {
+        return await this.jobExploration.GetCompanyPageAsync(companyId, cancellationToken);
     }
 
     private Guid GetCandidateId()

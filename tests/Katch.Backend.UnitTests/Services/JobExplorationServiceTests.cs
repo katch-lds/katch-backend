@@ -4,6 +4,7 @@ using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -11,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace Katch.Backend.UnitTests.Services;
 
 /// <summary>
-/// Testes de <see cref="JobExplorationService"/>: recusa, interesse e consulta da quota (RF014, RF018 a RF022, RF112,
-/// RF113, P11), com os repositórios simulados e o instante do relógio do servidor fixado em cada teste. A concorrência
+/// Testes de <see cref="JobExplorationService"/>: cartão de vaga seguinte (RF013 a RF015), recusa, interesse e consulta
+/// da quota (RF014, RF018 a RF022, RF112, RF113, P11), com os repositórios simulados e o instante do relógio do servidor fixado em cada teste. A concorrência
 /// (<c>xmin</c>) e o índice <c>uq_match_candidate_job</c> só se exercitam aqui, porque o SQLite dos testes de integração
 /// não os tem.
 /// </summary>
@@ -579,6 +580,176 @@ public sealed class JobExplorationServiceTests
             () => fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// O cartão traz os dados da vaga, a designação e o logótipo da Empresa, a localidade no formato «Localidade
+    /// (Distrito)», a distância calculada pela consulta e os URLs das fotografias, pela ordem de carregamento (RF013).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task NextCardHasTheJobTheCompanyTheLocationTheDistanceAndTheFiles()
+    {
+        Fixture fixture = new();
+        Company company = fixture.AddCompany("Lumen Software, Lda.", "company_logo/" + new string('a', 32) + ".png");
+        Location location = fixture.AddLocation("Braga", "Braga");
+        Job job = NewJob(company.Id, location.Id, isUrgent: true);
+        job.AddPhoto("job_photo/" + new string('1', 32) + ".jpg");
+        job.AddPhoto("job_photo/" + new string('2', 32) + ".png");
+        fixture.Jobs.Eligible.Add(new EligibleJob(job, 22));
+
+        JobCardDto? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(card);
+        Assert.Equal(job.Id, card.JobId);
+        Assert.Equal("Programador Backend .NET", card.Title);
+        Assert.Equal("Lumen Software, Lda.", card.CompanyName);
+        Assert.Equal("/api/files/COMPANY_LOGO/" + new string('a', 32) + ".png", card.LogoUrl);
+        Assert.Equal(1600.00m, card.MinSalary);
+        Assert.Equal(2100.00m, card.MaxSalary);
+        Assert.Equal("Braga (Braga)", card.LocationName);
+        Assert.Equal(22, card.DistanceKm);
+        Assert.Equal(ContractType.Permanent, card.ContractType);
+        Assert.Equal(WorkMode.Hybrid, card.WorkMode);
+        Assert.True(card.IsUrgent);
+        Assert.Equal(
+            ["/api/files/JOB_PHOTO/" + new string('1', 32) + ".jpg", "/api/files/JOB_PHOTO/" + new string('2', 32) + ".png"],
+            card.PhotoUrls);
+    }
+
+    /// <summary>
+    /// Sem logótipo nem fotografias registados, o cartão tem os restantes dados, com <c>logoUrl</c> nulo e a lista de
+    /// fotografias vazia (RF013).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task NextCardWithoutLogoNorPhotosHasTheRemainingData()
+    {
+        Fixture fixture = new();
+        Company company = fixture.AddCompany("Zeta Logística, S.A.", logoPath: null);
+        Location location = fixture.AddLocation("Porto", "Porto");
+        Job job = NewJob(company.Id, location.Id, isUrgent: false);
+        fixture.Jobs.Eligible.Add(new EligibleJob(job, 0));
+
+        JobCardDto? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(card);
+        Assert.Null(card.LogoUrl);
+        Assert.Empty(card.PhotoUrls);
+        Assert.Equal("Zeta Logística, S.A.", card.CompanyName);
+        Assert.Equal("Porto (Porto)", card.LocationName);
+        Assert.Equal(0, card.DistanceKm);
+        Assert.False(card.IsUrgent);
+    }
+
+    /// <summary>
+    /// Sem vagas que cumpram o filtro, não há cartão (o controller responde 204; UC05, A6).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task NextCardIsNullWhenNoJobIsEligible()
+    {
+        Fixture fixture = new();
+
+        JobCardDto? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+
+        Assert.Null(card);
+        Assert.Equal(1, fixture.Jobs.EligibleQueries);
+    }
+
+    /// <summary>
+    /// O serviço pede à consulta uma só vaga (os cartões são apresentados um de cada vez), com o Candidato lido da base e o
+    /// instante do relógio do servidor, e não grava nada.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task NextCardAsksTheQueryForOneJobWithTheCandidateAndTheServerInstant()
+    {
+        Fixture fixture = new();
+        using var source = new CancellationTokenSource();
+
+        await fixture.Service.GetNextCardAsync(fixture.CandidateId, source.Token);
+
+        Assert.Equal(1, fixture.Jobs.LastTake);
+        Assert.Equal(Now, fixture.Jobs.LastNow);
+        Assert.Same(fixture.Candidates.Current, fixture.Jobs.LastCandidate);
+        Assert.Equal(source.Token, fixture.Candidates.LoadedWith);
+        Assert.Equal(0, fixture.Store.Saves);
+    }
+
+    /// <summary>
+    /// Com a quota esgotada, o cartão continua a ser apresentado (UC05, A4): a quota só é verificada no interesse.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task NextCardIsShownWithTheQuotaExhausted()
+    {
+        Fixture fixture = new(() => ExhaustedAt(Now.AddHours(-1)));
+        Company company = fixture.AddCompany("Lumen Software, Lda.", logoPath: null);
+        Location location = fixture.AddLocation("Braga", "Braga");
+        fixture.Jobs.Eligible.Add(new EligibleJob(NewJob(company.Id, location.Id, isUrgent: false), 5));
+
+        JobCardDto? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(card);
+        Assert.Equal(0, fixture.Candidates.Current!.SwipeRightsRemaining);
+    }
+
+    /// <summary>
+    /// A página de uma Empresa aprovada traz a designação, a descrição, o sítio na Internet, o logótipo e a galeria, com
+    /// os URL da API, e nunca os contactos (RF017, RF025).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task CompanyPageOfAnApprovedCompanyIsReturned()
+    {
+        Fixture fixture = new();
+        Company company = fixture.AddCompany(CompanyStatus.Approved);
+        company.UpdatePage("Software de gestão de frotas.", "https://www.lumen-exemplo.pt");
+        company.SetLogo("company_logo/0123456789abcdef0123456789abcdef.png");
+        company.AddGalleryPhoto("company_photo/11111111111111111111111111111111.jpg");
+
+        CompanyPageDto page = await fixture.Service.GetCompanyPageAsync(company.Id, TestContext.Current.CancellationToken);
+
+        Assert.Equal(company.Id, page.CompanyId);
+        Assert.Equal("Lumen Software, Lda.", page.CompanyName);
+        Assert.Equal("Software de gestão de frotas.", page.Description);
+        Assert.Equal("https://www.lumen-exemplo.pt", page.Website);
+        Assert.Equal("/api/files/COMPANY_LOGO/0123456789abcdef0123456789abcdef.png", page.LogoUrl);
+        Assert.Equal(["/api/files/COMPANY_PHOTO/11111111111111111111111111111111.jpg"], page.PhotoUrls);
+        Assert.Equal(0, fixture.Store.Saves);
+    }
+
+    /// <summary>
+    /// A página de uma Empresa pendente, recusada ou suspensa não é visível ao Candidato: o mesmo ERR-20 que a
+    /// Empresa inexistente (6.3.3).
+    /// </summary>
+    /// <param name="status">Estado da Empresa.</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData(CompanyStatus.Pending)]
+    [InlineData(CompanyStatus.Rejected)]
+    [InlineData(CompanyStatus.Suspended)]
+    public async Task CompanyPageOfACompanyThatIsNotApprovedReturnsErr20(CompanyStatus status)
+    {
+        Fixture fixture = new();
+        Company company = fixture.AddCompany(status);
+
+        await Assert.ThrowsAsync<ElementNotFoundException>(
+            () => fixture.Service.GetCompanyPageAsync(company.Id, TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>
+    /// A página de uma Empresa inexistente dá o ERR-20.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task CompanyPageOfAnUnknownCompanyReturnsErr20()
+    {
+        Fixture fixture = new();
+
+        await Assert.ThrowsAsync<ElementNotFoundException>(
+            () => fixture.Service.GetCompanyPageAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
+    }
+
     private static async Task AssertRejectedAsync(Fixture fixture, bool interest, Guid jobId, JobAnswerRejection expected)
     {
         int committed = fixture.Store.Committed.Count;
@@ -590,6 +761,25 @@ public sealed class JobExplorationServiceTests
 
         Assert.Equal(expected, exception.Reason);
         Assert.Equal(committed, fixture.Store.Committed.Count);
+    }
+
+    private static Job NewJob(Guid companyId, Guid locationId, bool isUrgent)
+    {
+        var job = new Job(
+            companyId,
+            new JobData
+            {
+                Title = "Programador Backend .NET",
+                Description = "Descrição da vaga.",
+                MinSalary = 1600.00m,
+                MaxSalary = 2100.00m,
+                LocationId = locationId,
+                ContractType = ContractType.Permanent,
+                WorkMode = WorkMode.Hybrid,
+                IsUrgent = isUrgent,
+            });
+        job.Publish(Now.AddDays(-3));
+        return job;
     }
 
     private static Candidate NewCandidate()
@@ -631,15 +821,24 @@ public sealed class JobExplorationServiceTests
             this.Clock = new FixedClock { UtcNow = Now };
             this.Time = new FakeTimeProvider();
             this.Delay = new FakeRetryDelay(this.Candidates, this.Time);
+            this.Jobs = new FakeJobs(this.jobs);
+            this.References = new FakeReferences();
             this.Service = new JobExplorationService(
                 this.Candidates,
-                new FakeJobs(this.jobs),
+                this.Jobs,
                 this.Store,
                 this.Store,
                 this.Clock,
                 this.Time,
-                this.Delay);
+                this.Delay,
+                this.References,
+                this.References,
+                new FileUrlBuilder());
         }
+
+        public FakeJobs Jobs { get; }
+
+        public FakeReferences References { get; }
 
         public FakeCandidates Candidates { get; }
 
@@ -684,6 +883,75 @@ public sealed class JobExplorationServiceTests
             this.jobs[job.Id] = new JobWithCompanyStatus(job, company);
             return job.Id;
         }
+
+        public Company AddCompany(string name, string? logoPath)
+        {
+            var company = new Company(
+                Guid.NewGuid(),
+                new CompanyRegistration
+                {
+                    CompanyName = name,
+                    TaxId = "509123456",
+                    Industry = Industry.Technology,
+                    Address = "Avenida da Liberdade, 100, 4710-000 Braga",
+                    LocationId = Guid.NewGuid(),
+                    ContactEmail = "geral@exemplo.pt",
+                    ContactPhone = "253000111",
+                    ResponsibleName = "Rui Matos",
+                },
+                Now.AddDays(-30));
+            company.Approve();
+            if (logoPath is not null)
+            {
+                company.SetLogo(logoPath);
+            }
+
+            this.References.Companies.Add(company);
+            return company;
+        }
+
+        public Location AddLocation(string name, string district)
+        {
+            var location = new Location(name, district, 41.545450m, -8.426507m);
+            this.References.Locations.Add(location);
+            return location;
+        }
+
+        public Company AddCompany(CompanyStatus status)
+        {
+            var company = new Company(
+                Guid.NewGuid(),
+                new CompanyRegistration
+                {
+                    CompanyName = "Lumen Software, Lda.",
+                    TaxId = "509123456",
+                    Industry = Industry.Technology,
+                    Address = "Avenida da Liberdade, 100, 4710-000 Braga",
+                    LocationId = Guid.NewGuid(),
+                    ContactEmail = "geral@lumen-exemplo.pt",
+                    ContactPhone = "253000111",
+                    ResponsibleName = "Rui Matos",
+                },
+                Now);
+
+            if (status is CompanyStatus.Approved or CompanyStatus.Suspended)
+            {
+                company.Approve();
+            }
+
+            if (status == CompanyStatus.Suspended)
+            {
+                company.Suspend();
+            }
+
+            if (status == CompanyStatus.Rejected)
+            {
+                company.Reject("A morada indicada não corresponde à certidão permanente.");
+            }
+
+            this.References.Companies.Add(company);
+            return company;
+        }
     }
 
     private sealed class FakeJobs : IJobRepository
@@ -695,9 +963,130 @@ public sealed class JobExplorationServiceTests
             this.jobs = jobs;
         }
 
+        public List<EligibleJob> Eligible { get; } = [];
+
+        public int EligibleQueries { get; private set; }
+
+        public Candidate? LastCandidate { get; private set; }
+
+        public DateTimeOffset? LastNow { get; private set; }
+
+        public int? LastTake { get; private set; }
+
         public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.jobs.GetValueOrDefault(jobId));
+        }
+
+        public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddAsync(Job job, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Job>> ListByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<EligibleJob>> ListEligibleForCandidateAsync(
+            Candidate candidate,
+            DateTimeOffset now,
+            int take,
+            CancellationToken cancellationToken = default)
+        {
+            this.EligibleQueries++;
+            this.LastCandidate = candidate;
+            this.LastNow = now;
+            this.LastTake = take;
+            return Task.FromResult(this.Eligible.Take(take).ToList());
+        }
+
+        public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+    }
+
+    private sealed class FakeReferences : ICompanyRepository, IReferenceDataRepository
+    {
+        public List<Company> Companies { get; } = [];
+
+        public List<Location> Locations { get; } = [];
+
+        public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(this.Companies.Find(company => company.Id == id));
+        }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(this.Locations.Find(location => location.Id == id));
+        }
+
+        public Task<Company?> GetByRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> TaxIdExistsAsync(string taxId, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddAsync(Company company, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Location>> ListLocationsAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 
@@ -745,6 +1134,21 @@ public sealed class JobExplorationServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeStore : IMatchRepository, IUnitOfWork
@@ -776,6 +1180,31 @@ public sealed class JobExplorationServiceTests
             return Task.CompletedTask;
         }
 
+        public Task<Match?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Guid?> GetRecruiterIdAsync(Guid matchId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<MatchView>> ListMatchViewsByCandidateAsync(Guid candidateId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<MatchView>> ListMatchViewsByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<ConversationView>> ListConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             if (this.FailNextSaves.TryDequeue(out Exception? failure))
@@ -804,6 +1233,46 @@ public sealed class JobExplorationServiceTests
         }
 
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Match?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Match>> ListMatchesByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

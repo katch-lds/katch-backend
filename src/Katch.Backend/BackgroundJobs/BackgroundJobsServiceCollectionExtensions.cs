@@ -10,7 +10,8 @@ namespace Katch.Backend.BackgroundJobs;
 public static class BackgroundJobsServiceCollectionExtensions
 {
     /// <summary>
-    /// Regista a configuração das tarefas periódicas (validada no arranque) e a reposição da quota de interesses.
+    /// Regista a configuração das tarefas periódicas (validada no arranque), a reposição da quota de interesses e o
+    /// encerramento das vagas com a data-limite atingida.
     /// </summary>
     /// <param name="services">Coleção de serviços.</param>
     /// <returns>A mesma coleção, para encadear chamadas.</returns>
@@ -21,6 +22,7 @@ public static class BackgroundJobsServiceCollectionExtensions
         services.AddSingleton<IValidateOptions<BackgroundJobsOptions>, BackgroundJobsOptionsValidator>();
         services.AddOptions<BackgroundJobsOptions>().BindConfiguration(BackgroundJobsOptions.SectionName).ValidateOnStart();
         services.AddHostedService<QuotaRestoreWorker>();
+        services.AddHostedService<JobExpirationWorker>();
         return services;
     }
 }

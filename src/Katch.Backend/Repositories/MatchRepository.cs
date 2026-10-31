@@ -1,6 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain;
+using Katch.Backend.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Repositories;
@@ -34,5 +35,170 @@ public sealed class MatchRepository : IMatchRepository
         ArgumentNullException.ThrowIfNull(match);
 
         await this.context.Matches.AddAsync(match, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Match?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.FirstOrDefaultAsync(match => match.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        List<WaitingInterest> waiting = await (
+                from match in this.context.Matches.AsNoTracking()
+                join candidate in this.context.Candidates.AsNoTracking() on match.CandidateId equals candidate.Id
+                join location in this.context.Locations.AsNoTracking() on candidate.LocationId equals location.Id
+                where match.JobId == jobId && match.Status == MatchStatus.Waiting
+                select new WaitingInterest(
+                    match.Id,
+                    candidate.Id,
+                    candidate.FullName,
+                    candidate.DesiredRole,
+                    location,
+                    match.CandidateActionAt))
+            .ToListAsync(cancellationToken);
+
+        // A ordenação é feita depois da leitura porque o SQLite dos testes de integração guarda o DateTimeOffset como
+        // texto e o EF Core não a traduz; as listas são curtas (sem paginação, documentação da API v02, L-02).
+        return waiting.OrderBy(interest => interest.InterestAt).ToList();
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
+    {
+        return (from match in this.context.Matches
+                join job in this.context.Jobs on match.JobId equals job.Id
+                join company in this.context.Companies on job.CompanyId equals company.Id
+                where match.CandidateId == candidateId
+                    && match.Status != MatchStatus.DeclinedByCandidate
+                    && company.RecruiterId == recruiterId
+                select match.Id)
+            .AnyAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(
+        IReadOnlyCollection<Guid> jobIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(jobIds);
+
+        return this.context.Matches
+            .Where(match => jobIds.Contains(match.JobId) && match.Status == MatchStatus.Waiting)
+            .GroupBy(match => match.JobId)
+            .Select(group => new { JobId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.JobId, item => item.Count, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<Match>> ListMatchesByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches
+            .Where(match => match.Status == MatchStatus.Matched
+                && this.context.Jobs.Any(job => job.Id == match.JobId && job.CompanyId == companyId))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        // A parte do lado da Empresa é o Recrutador que a registou (company.recruiter_id).
+        return this.context.Matches
+            .Where(match => match.Status == MatchStatus.Matched
+                && match.ConversationStatus == ConversationStatus.Open
+                && (match.CandidateId == userId
+                    || this.context.Jobs.Any(job => job.Id == match.JobId
+                        && this.context.Companies.Any(company => company.Id == job.CompanyId && company.RecruiterId == userId))))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<Guid?> GetRecruiterIdAsync(Guid matchId, CancellationToken cancellationToken = default)
+    {
+        // A parte do lado da Empresa é o Recrutador que a registou (company.recruiter_id).
+        return await (from match in this.context.Matches
+                      join job in this.context.Jobs on match.JobId equals job.Id
+                      join company in this.context.Companies on job.CompanyId equals company.Id
+                      where match.Id == matchId
+                      select (Guid?)company.RecruiterId)
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<MatchView>> ListMatchViewsByCandidateAsync(Guid candidateId, CancellationToken cancellationToken = default)
+    {
+        return this.QueryMatchViews(candidateId, companyId: null).ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<MatchView>> ListMatchViewsByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        return this.QueryMatchViews(candidateId: null, companyId).ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<ConversationView>> ListConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return (from match in this.context.Matches.AsNoTracking()
+                join job in this.context.Jobs on match.JobId equals job.Id
+                join company in this.context.Companies on job.CompanyId equals company.Id
+                join candidate in this.context.Candidates on match.CandidateId equals candidate.Id
+                where match.Status == MatchStatus.Matched
+                    && (match.CandidateId == userId || company.RecruiterId == userId)
+                select new ConversationView(
+                    match,
+                    match.CandidateId == userId ? company.ResponsibleName : candidate.FullName,
+                    job.Title,
+                    company.CompanyName,
+                    this.context.Messages.Where(message => message.MatchId == match.Id).Max(message => (DateTimeOffset?)message.SentAt),
+                    this.context.Messages.Count(message => message.MatchId == match.Id && message.SenderId != userId && message.ReadAt == null)))
+            .ToListAsync(cancellationToken);
+    }
+
+    private IQueryable<MatchView> QueryMatchViews(Guid? candidateId, Guid? companyId)
+    {
+        return from match in this.context.Matches.AsNoTracking()
+               join job in this.context.Jobs on match.JobId equals job.Id
+               join company in this.context.Companies on job.CompanyId equals company.Id
+               join location in this.context.Locations on job.LocationId equals location.Id
+               join candidate in this.context.Candidates on match.CandidateId equals candidate.Id
+               where match.Status == MatchStatus.Matched
+                   && (candidateId == null || match.CandidateId == candidateId)
+                   && (companyId == null || job.CompanyId == companyId)
+               select new MatchView(
+                   match,
+                   job.Title,
+                   job.Status,
+                   location,
+                   company.CompanyName,
+                   company.LogoPath,
+                   company.ResponsibleName,
+                   company.ContactEmail,
+                   company.ContactPhone,
+                   candidate.FullName,
+                   candidate.User.Email,
+                   candidate.PhoneNumber);
+    }
+
+    /// <inheritdoc/>
+    public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.CountAsync(
+            match => match.Status != MatchStatus.DeclinedByCandidate
+                && match.CandidateActionAt >= periodStart
+                && match.CandidateActionAt < periodEnd,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.CountAsync(
+            match => match.Status == MatchStatus.Matched
+                && match.RecruiterActionAt >= periodStart
+                && match.RecruiterActionAt < periodEnd,
+            cancellationToken);
     }
 }

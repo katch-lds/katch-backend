@@ -224,6 +224,27 @@ public sealed class JobTests
     }
 
     /// <summary>
+    /// Voltar a publicar recusa a data-limite já atingida, como a primeira publicação: a vaga fica suspensa. Um
+    /// instante antes da data-limite é aceite.
+    /// </summary>
+    [Fact]
+    public void RepublishAtOrAfterTheDeadlineIsRejected()
+    {
+        var job = new Job(CompanyId, Data() with { ExpiresAt = Now.AddDays(1) });
+        job.Publish(Now);
+        job.Suspend(Now.AddHours(1));
+
+        Assert.Throws<InvalidOperationException>(() => job.Republish(Now.AddDays(1)));
+        Assert.Throws<InvalidOperationException>(() => job.Republish(Now.AddDays(2)));
+        Assert.Equal(JobStatus.Suspended, job.Status);
+        Assert.Equal(Now, job.PublishedAt);
+
+        job.Republish(Now.AddDays(1).AddTicks(-1));
+
+        Assert.Equal(JobStatus.Published, job.Status);
+    }
+
+    /// <summary>
     /// O encerramento pelo Recrutador (RF056) é admitido a partir de qualquer estado exceto encerrada.
     /// </summary>
     /// <param name="status">Estado da vaga antes do encerramento.</param>
