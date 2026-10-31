@@ -6,7 +6,7 @@ namespace Katch.Backend.Services;
 
 /// <summary>
 /// Exploração de vagas pelo Candidato (modelo de classes do backend v02, secção 5). Tem o cartão de vaga seguinte, as
-/// respostas à vaga e a quota; o detalhe e a página da Empresa são acrescentados por outras Issues.
+/// respostas à vaga, a quota e o detalhe de uma vaga; a página da Empresa é acrescentada por outra Issue.
 /// </summary>
 public interface IJobExplorationService
 {
@@ -20,6 +20,21 @@ public interface IJobExplorationService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>O cartão, ou <see langword="null"/> se nenhuma vaga cumprir o filtro (UC05, A6).</returns>
     public Task<JobCardDto?> GetNextCardAsync(Guid candidateId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém o detalhe de uma vaga disponível para os Candidatos: o cartão, com a distância à localidade do Candidato, a
+    /// descrição completa, as competências, os benefícios e a Empresa (RF016; UC05, A2). O detalhe não depende das
+    /// preferências de procura nem de o Candidato já ter respondido à vaga.
+    /// </summary>
+    /// <param name="candidateId">Identificador do Candidato.</param>
+    /// <param name="jobId">Identificador da vaga.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O detalhe da vaga.</returns>
+    /// <exception cref="ElementNotFoundException">
+    /// Se a vaga não existir, estiver eliminada, não estiver publicada ou estiver expirada, ou se a Empresa não estiver
+    /// aprovada.
+    /// </exception>
+    public Task<JobDetailDto> GetDetailAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Regista a recusa da vaga, sem consumir a quota e sem limite de recusas (RF018, RF112).

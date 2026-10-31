@@ -39,6 +39,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IQuotaService, QuotaService>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IConflictRetryDelay, RandomConflictRetryDelay>();
+        services.AddSingleton<IDistanceCalculator, HaversineDistanceCalculator>();
         services.AddScoped<IJobExplorationService, JobExplorationService>();
 
         services.AddOptions<FileStorageOptions>().BindConfiguration(FileStorageOptions.SectionName);
