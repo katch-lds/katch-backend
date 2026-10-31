@@ -1035,7 +1035,6 @@ public sealed class JobExplorationServiceTests
         {
             throw new NotSupportedException();
         }
-
     }
 
     private sealed class FakeReferences : ICompanyRepository, IReferenceDataRepository

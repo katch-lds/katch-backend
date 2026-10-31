@@ -51,11 +51,13 @@ internal sealed class FakeUserRepository : IUserRepository
         throw new NotSupportedException();
     }
 
+    /// <inheritdoc/>
     public Task<int> CountActiveCandidatesAtAsync(DateTimeOffset at, CancellationToken cancellationToken = default)
     {
         throw new NotSupportedException();
     }
 
+    /// <inheritdoc/>
     public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default)
     {
         throw new NotSupportedException();
