@@ -216,11 +216,6 @@ public sealed class JobRepository : IJobRepository
             .ToList();
     }
 
-    private static double ToRadians(double degrees)
-    {
-        return degrees * Math.PI / 180;
-    }
-
     /// <inheritdoc/>
     public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
     {
@@ -228,6 +223,11 @@ public sealed class JobRepository : IJobRepository
         return this.context.Jobs
             .IgnoreQueryFilters()
             .CountAsync(job => job.FirstPublishedAt >= periodStart && job.FirstPublishedAt < periodEnd, cancellationToken);
+    }
+
+    private static double ToRadians(double degrees)
+    {
+        return degrees * Math.PI / 180;
     }
 
     /// <summary>

@@ -157,6 +157,26 @@ public sealed class MatchRepository : IMatchRepository
             .ToListAsync(cancellationToken);
     }
 
+    /// <inheritdoc/>
+    public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.CountAsync(
+            match => match.Status != MatchStatus.DeclinedByCandidate
+                && match.CandidateActionAt >= periodStart
+                && match.CandidateActionAt < periodEnd,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.CountAsync(
+            match => match.Status == MatchStatus.Matched
+                && match.RecruiterActionAt >= periodStart
+                && match.RecruiterActionAt < periodEnd,
+            cancellationToken);
+    }
+
     private IQueryable<MatchView> QueryMatchViews(Guid? candidateId, Guid? companyId)
     {
         return from match in this.context.Matches.AsNoTracking()
@@ -180,25 +200,5 @@ public sealed class MatchRepository : IMatchRepository
                    candidate.FullName,
                    candidate.User.Email,
                    candidate.PhoneNumber);
-    }
-
-    /// <inheritdoc/>
-    public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
-    {
-        return this.context.Matches.CountAsync(
-            match => match.Status != MatchStatus.DeclinedByCandidate
-                && match.CandidateActionAt >= periodStart
-                && match.CandidateActionAt < periodEnd,
-            cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
-    {
-        return this.context.Matches.CountAsync(
-            match => match.Status == MatchStatus.Matched
-                && match.RecruiterActionAt >= periodStart
-                && match.RecruiterActionAt < periodEnd,
-            cancellationToken);
     }
 }

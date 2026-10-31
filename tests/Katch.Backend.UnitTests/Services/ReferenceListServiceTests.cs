@@ -513,11 +513,6 @@ public sealed class ReferenceListServiceTests
             return Task.CompletedTask;
         }
 
-        private static bool SameName(string stored, string requested)
-        {
-            return string.Equals(stored, requested, StringComparison.OrdinalIgnoreCase);
-        }
-
         public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -526,6 +521,11 @@ public sealed class ReferenceListServiceTests
         public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
+        }
+
+        private static bool SameName(string stored, string requested)
+        {
+            return string.Equals(stored, requested, StringComparison.OrdinalIgnoreCase);
         }
     }
 
