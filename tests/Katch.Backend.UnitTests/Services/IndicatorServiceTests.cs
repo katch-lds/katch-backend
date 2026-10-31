@@ -400,5 +400,15 @@ public sealed class IndicatorServiceTests
         {
             throw new NotSupportedException();
         }
+
+        Task IJobRepository.AddAsync(Job job, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        Task IMessageRepository.AddAsync(Message message, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

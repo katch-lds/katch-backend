@@ -839,6 +839,11 @@ public sealed class CandidateEvaluationServiceTests
         {
             throw new NotSupportedException();
         }
+
+        Task IJobRepository.AddAsync(Job job, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FixedClock : IClock

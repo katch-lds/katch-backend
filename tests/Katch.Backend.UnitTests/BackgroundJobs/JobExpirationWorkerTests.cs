@@ -3,6 +3,7 @@
 using Katch.Backend.BackgroundJobs;
 using Katch.Backend.Dtos;
 using Katch.Backend.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
