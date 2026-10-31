@@ -3,6 +3,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using Katch.Backend.Domain;
+using Katch.Backend.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Repositories;
@@ -59,6 +60,36 @@ public sealed class UserRepository : IUserRepository
         ArgumentNullException.ThrowIfNull(recruiter);
 
         await this.context.Recruiters.AddAsync(recruiter, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<int> CountActiveCandidatesAtAsync(DateTimeOffset at, CancellationToken cancellationToken = default)
+    {
+        // Cada operação de conta tem um único estado anterior: o bloqueio e a suspensão partem de uma conta ativa e a
+        // reativação de uma conta bloqueada ou suspensa (RF086, RF087, RF089, RF090).
+        OperationType[] accountOperations =
+            [OperationType.AccountBlocked, OperationType.AccountSuspended, OperationType.AccountReactivated];
+        OperationType[] leavingActive = [OperationType.AccountBlocked, OperationType.AccountSuspended];
+
+        return this.context.Users
+            .Where(user => user.UserType == UserType.Candidate && user.CreatedAt < at)
+            .Select(user => new
+            {
+                user.Status,
+                NextOperation = this.context.OperationLogs
+                    .Where(log => log.EntityId == user.Id
+                        && accountOperations.Contains(log.Operation)
+                        && log.OccurredAt >= at)
+                    .OrderBy(log => log.OccurredAt)
+                    .ThenBy(log => log.Id)
+                    .Select(log => (OperationType?)log.Operation)
+                    .FirstOrDefault(),
+            })
+            .CountAsync(
+                user => user.NextOperation == null
+                    ? user.Status == AccountStatus.Active
+                    : leavingActive.Contains(user.NextOperation.Value),
+                cancellationToken);
     }
 
     /// <summary>

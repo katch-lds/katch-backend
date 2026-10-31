@@ -1,6 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain;
+using Katch.Backend.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Repositories;
@@ -34,5 +35,25 @@ public sealed class MatchRepository : IMatchRepository
         ArgumentNullException.ThrowIfNull(match);
 
         await this.context.Matches.AddAsync(match, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.CountAsync(
+            match => match.Status != MatchStatus.DeclinedByCandidate
+                && match.CandidateActionAt >= periodStart
+                && match.CandidateActionAt < periodEnd,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.CountAsync(
+            match => match.Status == MatchStatus.Matched
+                && match.RecruiterActionAt >= periodStart
+                && match.RecruiterActionAt < periodEnd,
+            cancellationToken);
     }
 }

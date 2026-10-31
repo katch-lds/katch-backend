@@ -50,4 +50,14 @@ public interface IUserRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Tarefa que termina quando o Recrutador foi acrescentado.</returns>
     public Task AddRecruiterAsync(Recruiter recruiter, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Conta os Candidatos com a conta ativa no instante indicado (RF096). O estado nesse instante é o atual, exceto
+    /// quando há bloqueios, suspensões ou reativações registadas a partir dele: nesse caso é o estado anterior à primeira
+    /// dessas operações (modelo de classes do backend v02, secção 4; modelo de dados v02, DM-18).
+    /// </summary>
+    /// <param name="at">Instante, exclusivo: as operações e as contas criadas a partir dele não contam.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O número de Candidatos ativos.</returns>
+    public Task<int> CountActiveCandidatesAtAsync(DateTimeOffset at, CancellationToken cancellationToken = default);
 }

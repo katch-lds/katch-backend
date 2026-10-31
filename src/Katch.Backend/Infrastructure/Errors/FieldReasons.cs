@@ -78,6 +78,32 @@ public static class FieldReasons
     public const string TaxIdTaken = "O número de identificação fiscal já está registado.";
 
     /// <summary>
+    /// Designação de uma competência ou de um benefício vazia (documentação da API v02, secção 4.3; RF099 a RF102).
+    /// </summary>
+    public const string ReferenceNameRequired = "A designação é obrigatória.";
+
+    /// <summary>
+    /// Designação que já existe na lista, sem distinção de maiúsculas (documentação da API v02, secção 4.3; RF099 a
+    /// RF102).
+    /// </summary>
+    public const string ReferenceNameTaken = "A designação já existe na lista.";
+
+    /// <summary>
+    /// Data dos indicadores fora do formato <c>yyyy-MM-dd</c> (documentação da API v02, secções 2.3 e 6.12.1).
+    /// </summary>
+    public const string DateFormat = "A data tem de ter o formato aaaa-mm-dd.";
+
+    /// <summary>
+    /// Data inicial dos indicadores posterior à data final (documentação da API v02, secção 6.12.1).
+    /// </summary>
+    public const string PeriodStartAfterEnd = "A data inicial não pode ser posterior à data final.";
+
+    /// <summary>
+    /// Data final dos indicadores posterior à data atual (documentação da API v02, secção 6.12.1).
+    /// </summary>
+    public const string PeriodEndInFuture = "A data final não pode ser posterior à data atual.";
+
+    /// <summary>
     /// Compõe o motivo de um texto acima do comprimento máximo da coluna, no formato do catálogo («O texto não pode
     /// exceder 1000 caracteres.», P08).
     /// </summary>

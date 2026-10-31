@@ -26,4 +26,24 @@ public interface IMatchRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Tarefa que termina quando a resposta foi acrescentada.</returns>
     public Task AddAsync(Match match, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Conta os interesses manifestados no período: respostas com estado diferente de recusada pelo Candidato, pela data
+    /// da resposta (RF096; modelo de dados v02, DM-21).
+    /// </summary>
+    /// <param name="periodStart">Início do período, inclusive.</param>
+    /// <param name="periodEnd">Fim do período, exclusivo.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O número de interesses.</returns>
+    public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Conta os matches confirmados no período, pela data da aceitação pelo Recrutador (RF096; modelo de dados v02,
+    /// DM-24).
+    /// </summary>
+    /// <param name="periodStart">Início do período, inclusive.</param>
+    /// <param name="periodEnd">Fim do período, exclusivo.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O número de matches.</returns>
+    public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
 }
