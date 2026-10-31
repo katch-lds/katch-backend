@@ -517,6 +517,16 @@ public sealed class ReferenceListServiceTests
         {
             return string.Equals(stored, requested, StringComparison.OrdinalIgnoreCase);
         }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeOperationLogger : IOperationLogger

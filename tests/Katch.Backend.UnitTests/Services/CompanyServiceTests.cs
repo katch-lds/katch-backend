@@ -486,11 +486,6 @@ public sealed class CompanyServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
         public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

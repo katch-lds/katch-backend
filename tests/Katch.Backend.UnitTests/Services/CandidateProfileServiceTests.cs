@@ -3,6 +3,7 @@
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -43,7 +44,10 @@ public sealed class CandidateProfileServiceTests
         this.service = new CandidateProfileService(
             this.candidates,
             new FakeReferenceData([this.csharp, this.docker, this.sql]),
-            this.unitOfWork);
+            this.unitOfWork,
+            new UnusedFileStorage(),
+            new FileValidator(),
+            new FileUrlBuilder());
     }
 
     /// <summary>
@@ -396,8 +400,9 @@ public sealed class CandidateProfileServiceTests
     /// O perfil devolvido tem os dados de registo, a localidade «Localidade (Distrito)», as hiperligações por ordem, o
     /// indicador do CV e as preferências; sem fotografia gravada, <c>photoUrl</c> fica vazio.
     /// </summary>
+    /// <returns>Tarefa do teste.</returns>
     [Fact]
-    public void ProfileDtoCarriesTheRegistrationDataAndThePreferences()
+    public async Task ProfileDtoCarriesTheRegistrationDataAndThePreferences()
     {
         this.candidate.DesiredRole = "Programadora backend";
         this.candidate.Availability = Availability.OneMonth;
@@ -409,7 +414,7 @@ public sealed class CandidateProfileServiceTests
         this.candidate.AddCustomSkill("Entity Framework");
         this.candidate.AddCustomSkill("Blazor");
 
-        CandidateProfileDto profile = CandidateProfileService.ToDto(this.candidate, Guimaraes);
+        CandidateProfileDto profile = await this.service.GetAsync(this.candidate.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(this.candidate.Id, profile.CandidateId);
         Assert.Equal("ana.ferreira@exemplo.pt", profile.Email);
@@ -460,6 +465,16 @@ public sealed class CandidateProfileServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeReferenceData : IReferenceDataRepository
@@ -495,6 +510,36 @@ public sealed class CandidateProfileServiceTests
         {
             return Task.FromResult(this.skills.Find(skill => skill.Id == id));
         }
+
+        public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddSkillAsync(Skill skill, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> BenefitNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> SkillNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork
@@ -519,6 +564,24 @@ public sealed class CandidateProfileServiceTests
         }
 
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class UnusedFileStorage : IFileStorage
+    {
+        public Task DeleteAsync(string path, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Stream> OpenReadAsync(string path, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<string> SaveAsync(Stream content, FileKind kind, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

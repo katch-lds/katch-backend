@@ -50,4 +50,14 @@ internal sealed class FakeUserRepository : IUserRepository
     {
         throw new NotSupportedException();
     }
+
+    public Task<int> CountActiveCandidatesAtAsync(DateTimeOffset at, CancellationToken cancellationToken = default)
+    {
+        throw new NotSupportedException();
+    }
+
+    public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default)
+    {
+        throw new NotSupportedException();
+    }
 }
