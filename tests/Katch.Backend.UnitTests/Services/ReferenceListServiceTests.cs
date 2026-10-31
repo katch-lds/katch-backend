@@ -520,7 +520,7 @@ public sealed class ReferenceListServiceTests
 
         public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException();
+            return Task.FromResult(this.Skills.ToList());
         }
 
         private static bool SameName(string stored, string requested)
