@@ -149,8 +149,9 @@ public sealed class CompanyAdminService : ICompanyAdminService
         }
         catch (ConcurrencyConflictException)
         {
-            // Uma das conversas foi alterada por outro pedido entre a leitura e a gravação: nada fica gravado e o
-            // Administrador repete a operação (modelo de dados, secção 7.3).
+            // A Empresa foi alterada por outro pedido entre a leitura e a gravação: a mudança de estado e o registo da
+            // operação, que fazem parte da mesma unidade de trabalho, não ficam gravados e o Administrador repete a
+            // operação (modelo de dados, secção 7.3).
             throw new OperationConflictException(ApiErrorResponse.ConcurrencyConflict());
         }
     }
