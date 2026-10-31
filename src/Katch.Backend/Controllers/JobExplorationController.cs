@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Katch.Backend.Controllers;
 
 /// <summary>
-/// Cartão de vaga seguinte, respostas do Candidato às vagas e consulta da quota de interesses (documentação da API v02,
-/// secções 6.3.1 e 6.3.4 a 6.3.6; modelo de classes do backend v02, secção 6). O detalhe da vaga e a página da Empresa
-/// (6.3.2 e 6.3.3) são acrescentados por outras Issues. O Candidato é sempre o da credencial de sessão (claim <c>sub</c>), nunca o do pedido.
+/// Cartão de vaga seguinte, detalhe da vaga, página de apresentação da Empresa, respostas do Candidato às vagas e
+/// consulta da quota de interesses (documentação da API v02, secções 6.3.1 a 6.3.6; modelo de classes do backend v02,
+/// secção 6). O Candidato é sempre o da credencial de sessão (claim <c>sub</c>), nunca o do pedido.
 /// </summary>
 [ApiController]
 [Route("api/candidate/jobs")]
@@ -51,6 +51,28 @@ public sealed class JobExplorationController : ControllerBase
         }
 
         return this.Ok(card);
+    }
+
+    /// <summary>
+    /// Consulta o detalhe de uma vaga (RF016; UC05, A2): o cartão, a descrição completa, as competências, os benefícios e o
+    /// identificador da Empresa, para a página de apresentação. A rota só aceita um GUID, por isso <c>next</c> e
+    /// <c>quota</c> não são lidos como identificadores de vaga.
+    /// </summary>
+    /// <param name="jobId">Identificador da vaga.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>
+    /// <c>200</c> com o detalhe, ou <c>404</c> (ERR-20) se a vaga não existir, estiver eliminada, não estiver publicada
+    /// ou estiver expirada, ou se a Empresa não estiver aprovada.
+    /// </returns>
+    [HttpGet("{jobId:guid}")]
+    [ProducesResponseType<JobDetailDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<JobDetailDto>> GetDetail(Guid jobId, CancellationToken cancellationToken)
+    {
+        JobDetailDto detail = await this.jobExploration.GetDetailAsync(this.GetCandidateId(), jobId, cancellationToken);
+        return this.Ok(detail);
     }
 
     /// <summary>

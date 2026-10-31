@@ -2,6 +2,7 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
+using Katch.Backend.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Repositories;
@@ -12,9 +13,9 @@ namespace Katch.Backend.Repositories;
 public sealed class JobRepository : IJobRepository
 {
     /// <summary>
-    /// Raio médio da Terra em km, usado na fórmula de Haversine (RF015).
+    /// Raio médio da Terra em km, usado na fórmula de Haversine (RF015); o mesmo do detalhe da vaga.
     /// </summary>
-    internal const double EarthRadiusKm = 6371.0088;
+    internal const double EarthRadiusKm = HaversineDistanceCalculator.EarthRadiusKm;
 
     private readonly KatchDbContext context;
 
