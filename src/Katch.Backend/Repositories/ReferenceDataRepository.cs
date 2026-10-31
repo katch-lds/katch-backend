@@ -32,4 +32,22 @@ public sealed class ReferenceDataRepository : IReferenceDataRepository
     {
         return this.context.Locations.AnyAsync(location => location.Id == id, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Locations.AsNoTracking().FirstOrDefaultAsync(location => location.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Skills.FirstOrDefaultAsync(skill => skill.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Benefits.FirstOrDefaultAsync(benefit => benefit.Id == id, cancellationToken);
+    }
 }

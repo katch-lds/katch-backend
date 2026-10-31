@@ -32,6 +32,7 @@ public static class ApiConventionsMvcBuilderExtensions
             options.Filters.Add<ServiceExceptionFilter>();
             options.Filters.Add<LoginRejectedExceptionFilter>();
             options.Filters.Add<JobExplorationExceptionFilter>();
+            options.Filters.Add<FileExceptionFilter>();
         });
         builder.AddJsonOptions(options =>
         {
@@ -66,8 +67,10 @@ public static class ApiConventionsMvcBuilderExtensions
     {
         return field switch
         {
-            "locationId" or "industry" => FieldReasons.NotInList,
+            "locationId" or "industry" or "contractType" or "workMode" => FieldReasons.NotInList,
             "acceptTerms" => FieldReasons.AcceptTerms,
+            "maxDistanceKm" => FieldReasons.MaxDistance,
+            "minSalaryExpectation" => FieldReasons.MinSalary,
             _ => FieldReasons.InvalidValue,
         };
     }

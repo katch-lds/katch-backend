@@ -5,11 +5,22 @@ using Katch.Backend.Dtos;
 namespace Katch.Backend.Services;
 
 /// <summary>
-/// Exploração de vagas pelo Candidato (modelo de classes do backend v02, secção 5). Tem só as respostas à vaga e a
-/// quota; o cartão, o detalhe e a página da Empresa são acrescentados por outras Issues.
+/// Exploração de vagas pelo Candidato (modelo de classes do backend v02, secção 5). Tem o cartão de vaga seguinte, as
+/// respostas à vaga e a quota; o detalhe e a página da Empresa são acrescentados por outras Issues.
 /// </summary>
 public interface IJobExplorationService
 {
+    /// <summary>
+    /// Obtém o cartão da vaga seguinte que cumpre o filtro do RF014 para o Candidato, com a distância à sua localidade
+    /// (RF013 a RF015). Os cartões são apresentados um de cada vez: depois de o Candidato responder, o pedido seguinte traz
+    /// outra vaga, e uma vaga recusada ou com interesse não volta a ser apresentada. Com a quota esgotada, os cartões
+    /// continuam a ser apresentados (UC05, A4).
+    /// </summary>
+    /// <param name="candidateId">Identificador do Candidato.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O cartão, ou <see langword="null"/> se nenhuma vaga cumprir o filtro (UC05, A6).</returns>
+    public Task<JobCardDto?> GetNextCardAsync(Guid candidateId, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Regista a recusa da vaga, sem consumir a quota e sem limite de recusas (RF018, RF112).
     /// </summary>

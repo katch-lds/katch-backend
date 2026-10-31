@@ -466,6 +466,11 @@ public sealed class CompanyServiceTests
             return Task.FromResult(this.Existing.Concat(this.Added).SingleOrDefault(c => c.RecruiterId == recruiterId));
         }
 
+        public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<bool> TaxIdExistsAsync(string taxId, Guid? exceptId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Existing.Any(c => c.TaxId == taxId && c.Id != exceptId));
@@ -510,6 +515,21 @@ public sealed class CompanyServiceTests
         public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(id == this.locationId);
+        }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 

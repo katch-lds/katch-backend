@@ -44,4 +44,10 @@ public sealed class CompanyRepository : ICompanyRepository
 
         await this.context.Companies.AddAsync(company, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Companies.SingleOrDefaultAsync(company => company.Id == id, cancellationToken);
+    }
 }

@@ -449,3 +449,36 @@ HTTP/1.1 409 Conflict
 
 Os testes estão em `JobExplorationServiceTests` (unitários, com a concorrência e o índice único) e em
 `JobExplorationTests` (integração, sobre SQLite).
+
+### Cartão de vaga seguinte
+
+`GET /api/candidate/jobs/next` (API v02, secção 6.3.1; RF013 a RF015), com a mesma política `Candidate`, devolve `200`
+com um `JobCardDto` ou `204` sem corpo quando nenhuma vaga cumpre o filtro. Os cartões são apresentados um de cada vez:
+sem resposta, o pedido seguinte devolve o mesmo cartão; depois da recusa ou do interesse, a vaga não volta a surgir.
+
+O filtro do RF014 e a distância são calculados na consulta à base de dados (`IJobRepository.ListEligibleForCandidateAsync`),
+antes de limitar o resultado a uma vaga:
+
+- vaga `PUBLISHED`, não eliminada e não expirada (`expires_at` nulo ou posterior ao instante do pedido, mesmo antes de a
+  tarefa periódica a encerrar), de Empresa `APPROVED`, sem resposta anterior do Candidato;
+- valor máximo do intervalo salarial não inferior à pretensão mínima; regime de trabalho e tipo de contrato nas
+  preferências; distância não superior à máxima, exceto nas vagas `REMOTE`. Uma preferência sem valor ou uma lista vazia
+  não restringe (modelo de dados, DM-11);
+- `distanceKm` é a distância em linha reta (fórmula de Haversine, raio médio da Terra de 6371,0088 km) entre as
+  localidades do Candidato e da vaga, arredondada às unidades; o filtro usa o mesmo valor arredondado;
+- ordem: primeiro as vagas urgentes, depois a mais próxima, com o identificador a desempatar.
+
+Com a quota esgotada, os cartões continuam a ser apresentados (UC05, A4). O logótipo e as fotografias só aparecem quando
+registados (`logoUrl` nulo e `photoUrls` vazia nos outros casos).
+
+```
+GET /api/candidate/jobs/next
+HTTP/1.1 200 OK
+{"jobId":"5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a805","title":"Programador Backend .NET","companyName":"Lumen Software, Lda.","logoUrl":"/api/files/COMPANY_LOGO/<nome>.png","minSalary":1600.00,"maxSalary":2100.00,"locationName":"Braga (Braga)","distanceKm":22,"contractType":"PERMANENT","workMode":"HYBRID","isUrgent":true,"photoUrls":["/api/files/JOB_PHOTO/<nome>.jpg"]}
+
+GET /api/candidate/jobs/next        (nenhuma vaga cumpre o filtro)
+HTTP/1.1 204 No Content
+```
+
+Os testes estão em `JobExplorationServiceTests` (unitários, o cartão) e em `JobCardTests` (integração, sobre SQLite, com
+o exemplo do critério de aceitação do RF014 e a distância comparada com o cálculo a partir das coordenadas).

@@ -4,6 +4,7 @@ using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 
 namespace Katch.Backend.Services;
@@ -33,6 +34,9 @@ public sealed class JobExplorationService : IJobExplorationService
     private readonly IClock clock;
     private readonly TimeProvider timeProvider;
     private readonly IConflictRetryDelay retryDelay;
+    private readonly ICompanyRepository companies;
+    private readonly IReferenceDataRepository referenceData;
+    private readonly IFileUrlBuilder fileUrls;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JobExplorationService"/> class.
@@ -44,6 +48,9 @@ public sealed class JobExplorationService : IJobExplorationService
     /// <param name="clock">Relógio do servidor, a única fonte do instante das operações.</param>
     /// <param name="timeProvider">Fonte do tempo decorrido, que limita a repetição por conflito de concorrência.</param>
     /// <param name="retryDelay">Espera entre as repetições por conflito de concorrência.</param>
+    /// <param name="companies">Repositório das Empresas, para a designação e o logótipo do cartão.</param>
+    /// <param name="referenceData">Listas pré-definidas, para a localidade do cartão.</param>
+    /// <param name="fileUrls">Construtor dos URLs do logótipo e das fotografias.</param>
     public JobExplorationService(
         ICandidateRepository candidates,
         IJobRepository jobs,
@@ -51,7 +58,10 @@ public sealed class JobExplorationService : IJobExplorationService
         IUnitOfWork unitOfWork,
         IClock clock,
         TimeProvider timeProvider,
-        IConflictRetryDelay retryDelay)
+        IConflictRetryDelay retryDelay,
+        ICompanyRepository companies,
+        IReferenceDataRepository referenceData,
+        IFileUrlBuilder fileUrls)
     {
         this.candidates = candidates;
         this.jobs = jobs;
@@ -60,6 +70,43 @@ public sealed class JobExplorationService : IJobExplorationService
         this.clock = clock;
         this.timeProvider = timeProvider;
         this.retryDelay = retryDelay;
+        this.companies = companies;
+        this.referenceData = referenceData;
+        this.fileUrls = fileUrls;
+    }
+
+    /// <inheritdoc/>
+    public async Task<JobCardDto?> GetNextCardAsync(Guid candidateId, CancellationToken cancellationToken = default)
+    {
+        Candidate candidate = await this.GetCandidateAsync(candidateId, cancellationToken);
+
+        // Os filtros do RF014 e a distância são aplicados na consulta; só se pede uma vaga, porque os cartões são
+        // apresentados um de cada vez (RF013).
+        List<EligibleJob> next = await this.jobs.ListEligibleForCandidateAsync(candidate, this.clock.UtcNow, 1, cancellationToken);
+        if (next.Count == 0)
+        {
+            return null;
+        }
+
+        (Job job, int distanceKm) = next[0];
+        Company company = await this.companies.GetByIdAsync(job.CompanyId, cancellationToken)
+            ?? throw new InvalidOperationException("A Empresa da vaga não existe.");
+        Location location = await this.referenceData.GetLocationAsync(job.LocationId, cancellationToken)
+            ?? throw new InvalidOperationException("A localidade da vaga não existe na lista pré-definida.");
+
+        return new JobCardDto(
+            job.Id,
+            job.Title,
+            company.CompanyName,
+            this.fileUrls.ToUrl(company.LogoPath),
+            job.MinSalary,
+            job.MaxSalary,
+            ReferenceListService.DisplayName(location),
+            distanceKm,
+            job.ContractType,
+            job.WorkMode,
+            job.IsUrgent,
+            this.fileUrls.ToUrls(job.PhotoPaths));
     }
 
     /// <inheritdoc/>

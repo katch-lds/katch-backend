@@ -206,6 +206,16 @@ public sealed class QuotaServiceTests
             this.QueriedWith = cancellationToken;
             return Task.FromResult(this.due);
         }
+
+        public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork
