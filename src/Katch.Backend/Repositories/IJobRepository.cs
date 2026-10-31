@@ -55,6 +55,21 @@ public interface IJobRepository
     public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Acrescenta o caminho de uma fotografia ao fim de <c>photo_paths</c> da vaga, numa única instrução atómica na base
+    /// de dados que também verifica o limite (RF052; P13). Ao contrário de ler a vaga e gravá-la, não perde escritas de
+    /// pedidos simultâneos e nunca ultrapassa o limite. Não altera a entidade acompanhada pelo contexto.
+    /// </summary>
+    /// <param name="jobId">Identificador da vaga (não eliminada).</param>
+    /// <param name="path">Caminho relativo do ficheiro guardado.</param>
+    /// <param name="maxPhotos">Número máximo de fotografias da vaga.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>
+    /// <see langword="true"/> se o caminho foi acrescentado; <see langword="false"/> se a vaga já tinha o máximo de
+    /// fotografias ou entretanto foi eliminada.
+    /// </returns>
+    public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lista, só para leitura, as vagas que cumprem o filtro do RF014 para o Candidato, com a distância à sua localidade
     /// (RF013 a RF015). Todos os filtros são aplicados na consulta à base de dados, incluindo a distância, e só depois o
     /// resultado é limitado a <paramref name="take"/> vagas (modelo de classes v02, secção 4, N1): vaga publicada, não
