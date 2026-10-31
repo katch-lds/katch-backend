@@ -392,10 +392,26 @@ public sealed class AdminIndicatorsTests : IClassFixture<KatchWebApplicationFact
         using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(route, UriKind.Relative));
         if (user is not null)
         {
-            string token = target.Services.GetRequiredService<ITokenService>().CreateToken(user).Token;
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", IssueToken(target, user));
         }
 
         return await client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
+    // O token é validado com o relógio real: se fosse emitido com o relógio fixo no passado, expirava e os testes
+    // passavam a receber 401 com o passar dos dias. Por isso emite-se com o relógio real, e só a data atual usada pelo
+    // serviço dos indicadores fica fixa.
+    private static string IssueToken(KatchWebApplicationFactory target, AppUser user)
+    {
+        DateTimeOffset? fixedNow = target.Clock.Fixed;
+        target.Clock.Fixed = null;
+        try
+        {
+            return target.Services.GetRequiredService<ITokenService>().CreateToken(user).Token;
+        }
+        finally
+        {
+            target.Clock.Fixed = fixedNow;
+        }
     }
 }
