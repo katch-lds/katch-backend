@@ -9,14 +9,15 @@ using Microsoft.AspNetCore.Routing;
 namespace Katch.Backend.IntegrationTests;
 
 /// <summary>
-/// Regista, para a matriz de cobertura dos endpoints (I064), o método, o modelo da rota e o código de estado de cada
-/// pedido tratado pela API nos testes de integração. Só escreve quando a variável de ambiente
+/// Regista, para a matriz de cobertura dos endpoints (I064), o método, o modelo da rota, o código de estado e o teste de
+/// origem de cada pedido tratado pela API nos testes de integração. Só escreve quando a variável de ambiente
 /// <see cref="FileVariable"/> indica o ficheiro; sem ela, não altera nada nos testes.
 /// </summary>
 public sealed class EndpointHitRecorder : IStartupFilter
 {
     /// <summary>
-    /// Nome da variável de ambiente com o caminho do ficheiro de registo (uma linha por pedido, separada por tabulações).
+    /// Nome da variável de ambiente com o caminho do ficheiro de registo (uma linha por pedido, com o método, a rota, o
+    /// código de estado e o teste separados por tabulações).
     /// </summary>
     public const string FileVariable = "KATCH_ENDPOINT_HITS";
 
@@ -54,12 +55,20 @@ public sealed class EndpointHitRecorder : IStartupFilter
         string route = context.GetEndpoint() is RouteEndpoint endpoint
             ? "/" + (endpoint.RoutePattern.RawText ?? string.Empty).TrimStart('/')
             : "(sem endpoint) " + context.Request.Path;
+
+        // O servidor de testes corre no mesmo contexto de execução do teste, por isso o TestContext identifica-o.
+        string test = string.Concat(
+            TestContext.Current.TestClass?.TestClassName ?? "-",
+            ".",
+            TestContext.Current.TestMethod?.MethodName ?? "-");
         string line = string.Concat(
             context.Request.Method,
             "\t",
             route,
             "\t",
             context.Response.StatusCode.ToString(CultureInfo.InvariantCulture),
+            "\t",
+            test,
             Environment.NewLine);
         lock (Gate)
         {
