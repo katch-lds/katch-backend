@@ -21,7 +21,30 @@ public sealed class EndpointHitRecorder : IStartupFilter
     /// </summary>
     public const string FileVariable = "KATCH_ENDPOINT_HITS";
 
+    /// <summary>
+    /// Cabeçalho com o teste que criou o cliente HTTP, acrescentado por <see cref="KatchWebApplicationFactory"/> só
+    /// quando o registo está ativo. O servidor de testes não corre no contexto de execução do teste, por isso o teste é
+    /// identificado no cliente.
+    /// </summary>
+    public const string TestHeader = "X-Katch-Test";
+
     private static readonly Lock Gate = new();
+
+    /// <summary>
+    /// Gets a value indicating whether the registo está ativo (variável <see cref="FileVariable"/> definida).
+    /// </summary>
+    public static bool IsEnabled => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(FileVariable));
+
+    /// <summary>
+    /// Identifica o teste em execução, no formato <c>Classe.Método</c>.
+    /// </summary>
+    /// <returns>O teste, ou <c>-</c> fora de um teste.</returns>
+    public static string CurrentTest()
+    {
+        string? type = TestContext.Current.TestClass?.TestClassName;
+        string? method = TestContext.Current.TestMethod?.MethodName;
+        return type is null || method is null ? "-" : string.Concat(type[(type.LastIndexOf('.') + 1)..], ".", method);
+    }
 
     /// <inheritdoc/>
     public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
@@ -56,11 +79,7 @@ public sealed class EndpointHitRecorder : IStartupFilter
             ? "/" + (endpoint.RoutePattern.RawText ?? string.Empty).TrimStart('/')
             : "(sem endpoint) " + context.Request.Path;
 
-        // O servidor de testes corre no mesmo contexto de execução do teste, por isso o TestContext identifica-o.
-        string test = string.Concat(
-            TestContext.Current.TestClass?.TestClassName ?? "-",
-            ".",
-            TestContext.Current.TestMethod?.MethodName ?? "-");
+        string test = context.Request.Headers[TestHeader].ToString();
         string line = string.Concat(
             context.Request.Method,
             "\t",

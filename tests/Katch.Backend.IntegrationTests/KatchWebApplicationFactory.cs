@@ -73,6 +73,19 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
     }
 
     /// <inheritdoc/>
+    protected override void ConfigureClient(HttpClient client)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        base.ConfigureClient(client);
+
+        // Só com o registo dos endpoints ativo (I064): identifica o teste que criou o cliente.
+        if (EndpointHitRecorder.IsEnabled)
+        {
+            client.DefaultRequestHeaders.Add(EndpointHitRecorder.TestHeader, EndpointHitRecorder.CurrentTest());
+        }
+    }
+
+    /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
