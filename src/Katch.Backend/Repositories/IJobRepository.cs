@@ -53,4 +53,26 @@ public interface IJobRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><see langword="true"/> se houver interesses.</returns>
     public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista, só para leitura, as vagas que cumprem o filtro do RF014 para o Candidato, com a distância à sua localidade
+    /// (RF013 a RF015). Todos os filtros são aplicados na consulta à base de dados, incluindo a distância, e só depois o
+    /// resultado é limitado a <paramref name="take"/> vagas (modelo de classes v02, secção 4, N1): vaga publicada, não
+    /// eliminada e não expirada (N2; DM-17); Empresa aprovada; sem resposta anterior do Candidato; valor máximo do
+    /// intervalo salarial não inferior à pretensão mínima; regime e tipo de contrato nas preferências; distância não
+    /// superior à máxima, exceto nas vagas remotas. Uma preferência sem valor ou uma lista vazia não restringe (DM-11).
+    /// </summary>
+    /// <param name="candidate">Candidato, com a localidade e as preferências de procura.</param>
+    /// <param name="now">Instante do pedido, em UTC, para excluir as vagas expiradas.</param>
+    /// <param name="take">Número máximo de vagas a devolver.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>
+    /// As vagas, primeiro as urgentes e depois da mais próxima para a mais afastada; vazia se nenhuma cumprir o filtro ou se
+    /// a localidade do Candidato não existir.
+    /// </returns>
+    public Task<List<EligibleJob>> ListEligibleForCandidateAsync(
+        Candidate candidate,
+        DateTimeOffset now,
+        int take,
+        CancellationToken cancellationToken = default);
 }
