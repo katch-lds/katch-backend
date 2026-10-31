@@ -21,9 +21,12 @@ namespace Katch.Backend.Controllers;
 [Produces("application/json")]
 public sealed class CandidateProfileController : ControllerBase
 {
-    // 6 MB (5 MB do ficheiro mais a margem para que um ficheiro entre 5 e 6 MB chegue ao validador e receba o ERR-11) e
-    // 4 KB para as fronteiras e os cabeçalhos do multipart/form-data.
-    private const long MaxUploadRequestBytes = (6L * 1024 * 1024) + (4 * 1024);
+    /// <summary>
+    /// Dimensão máxima do pedido de carregamento de um ficheiro: 6 MB (5 MB do ficheiro mais a margem para que um
+    /// ficheiro entre 5 e 6 MB chegue ao validador e receba o ERR-11) e 4 KB para as fronteiras e os cabeçalhos do
+    /// <c>multipart/form-data</c>. Também é usada pelo carregamento das fotografias da vaga.
+    /// </summary>
+    internal const long MaxUploadRequestBytes = (6L * 1024 * 1024) + (4 * 1024);
 
     private const string UploadFileField = "file";
 

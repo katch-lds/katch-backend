@@ -13,7 +13,7 @@ using Microsoft.Extensions.Options;
 namespace Katch.Backend.UnitTests.Services;
 
 /// <summary>
-/// Testes de <see cref="JobPhotoService"/> (documentação da API v02, secção 6.5.9; RF052, RF059; RNF016; P01, P13), com
+/// Testes de <see cref="JobService.AddPhotoAsync"/> (documentação da API v02, secção 6.5.9; RF052, RF059; RNF016; P01, P13), com
 /// repositórios em memória e o armazenamento local numa pasta temporária de cada teste, apagada no fim.
 /// </summary>
 public sealed class JobPhotoServiceTests : IDisposable
@@ -26,7 +26,7 @@ public sealed class JobPhotoServiceTests : IDisposable
     private readonly Store store = new();
     private readonly Guid recruiterId = Guid.NewGuid();
     private readonly Company company;
-    private readonly JobPhotoService service;
+    private readonly JobService service;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JobPhotoServiceTests"/> class.
@@ -35,13 +35,19 @@ public sealed class JobPhotoServiceTests : IDisposable
     {
         this.company = NewCompany(this.recruiterId);
         this.store.Companies.Add(this.company);
-        this.service = new JobPhotoService(
+
+        // A operação 6.5.9 só usa os repositórios das vagas e das Empresas, o armazenamento e a validação.
+        this.service = new JobService(
             this.store,
             this.store,
+            null!,
+            null!,
+            null!,
+            this.store,
+            null!,
             new FileValidator(),
             new LocalFileStorage(Options.Create(new FileStorageOptions { RootPath = this.root })),
-            new FileUrlBuilder(),
-            this.store);
+            new FileUrlBuilder());
     }
 
     /// <inheritdoc/>
@@ -74,7 +80,6 @@ public sealed class JobPhotoServiceTests : IDisposable
         Assert.EndsWith(extension, path, StringComparison.Ordinal);
         Assert.Equal($"/api/files/JOB_PHOTO/{path["job_photo/".Length..]}", url);
         Assert.True(System.IO.File.Exists(Path.Combine(this.root, path)));
-        Assert.Equal(1, this.store.Saves);
     }
 
     /// <summary>
@@ -283,7 +288,7 @@ public sealed class JobPhotoServiceTests : IDisposable
     }
 
     /// <summary>
-    /// Se a gravação das alterações falhar (por exemplo, conflito de concorrência), o ficheiro novo é apagado e a exceção
+    /// Se o acrescento à vaga falhar (por exemplo, conflito de concorrência), o ficheiro novo é apagado e a exceção
     /// segue para o tratador global, que a converte no ERR-41.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
@@ -291,12 +296,77 @@ public sealed class JobPhotoServiceTests : IDisposable
     public async Task SaveFailureDeletesTheNewFileAndRethrows()
     {
         Job job = this.NewJob();
-        this.store.SaveFailure = new ConcurrencyConflictException(new InvalidOperationException("Conflito."));
+        this.store.AddFailure = new ConcurrencyConflictException(new InvalidOperationException("Conflito."));
 
         await Assert.ThrowsAsync<ConcurrencyConflictException>(
             () => this.service.AddPhotoAsync(this.recruiterId, job.Id, File("foto.jpg", Jpeg), TestContext.Current.CancellationToken));
 
         Assert.Empty(this.StoredFiles());
+    }
+
+    /// <summary>
+    /// Se a atualização atómica recusar o acrescento (outro pedido ocupou entretanto a última vaga de fotografia), o
+    /// ficheiro já guardado é apagado e a resposta é o ERR-39, mesmo que a leitura da vaga ainda mostrasse lugar.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task AtomicAddRejectedAfterTheFileWasSavedThrowsErr39AndDeletesTheFile()
+    {
+        Job job = this.NewJob();
+        this.store.RejectAdd = true;
+
+        OperationConflictException exception = await Assert.ThrowsAsync<OperationConflictException>(
+            () => this.service.AddPhotoAsync(this.recruiterId, job.Id, File("foto.jpg", Jpeg), TestContext.Current.CancellationToken));
+
+        Assert.Equal("ERR-39", exception.Error.Code);
+        Assert.Equal("Foi atingido o número máximo de fotografias (5).", exception.Error.Message);
+        Assert.Empty(job.PhotoPaths);
+        Assert.Empty(this.StoredFiles());
+    }
+
+    /// <summary>
+    /// Com N carregamentos simultâneos numa vaga com K fotografias ficam min(5, K+N): recebem sucesso exatamente os
+    /// pedidos acrescentados, os restantes o ERR-39, e não fica nenhum ficheiro órfão.
+    /// </summary>
+    /// <param name="existing">Fotografias que a vaga já tem (K).</param>
+    /// <param name="requests">Carregamentos simultâneos (N).</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData(0, 5)]
+    [InlineData(3, 3)]
+    [InlineData(0, 8)]
+    [InlineData(4, 1)]
+    public async Task ConcurrentUploadsNeverExceedTheLimitAndLeaveNoOrphanFiles(int existing, int requests)
+    {
+        Job job = this.NewJob(photos: existing);
+        CancellationToken token = TestContext.Current.CancellationToken;
+
+        Task<string>[] uploads = Enumerable.Range(0, requests)
+            .Select(_ => Task.Run(() => this.service.AddPhotoAsync(this.recruiterId, job.Id, File("foto.jpg", Jpeg), token), token))
+            .ToArray();
+        await Task.WhenAll(uploads.Select(AsOutcome));
+
+        int added = Math.Min(Job.MaxPhotos, existing + requests) - existing;
+        Assert.Equal(added, uploads.Count(upload => upload.IsCompletedSuccessfully));
+        Assert.All(
+            uploads.Where(upload => upload.IsFaulted),
+            upload => Assert.Equal("ERR-39", Assert.IsType<OperationConflictException>(upload.Exception!.InnerException).Error.Code));
+        Assert.Equal(Math.Min(Job.MaxPhotos, existing + requests), job.PhotoPaths.Count);
+        Assert.Equal(
+            job.PhotoPaths.Skip(existing).Select(path => Path.GetFileName(path)).Order(StringComparer.Ordinal),
+            this.StoredFiles());
+    }
+
+    private static async Task AsOutcome(Task upload)
+    {
+        try
+        {
+            await upload;
+        }
+        catch (OperationConflictException)
+        {
+            // O resultado de cada pedido é verificado a seguir.
+        }
     }
 
     private static Company NewCompany(Guid recruiterId)
@@ -392,11 +462,15 @@ public sealed class JobPhotoServiceTests : IDisposable
 
     private sealed class Store : IJobRepository, ICompanyRepository, IUnitOfWork
     {
+        private readonly object gate = new();
+
         public List<Job> Jobs { get; } = [];
 
         public List<Company> Companies { get; } = [];
 
-        public Exception? SaveFailure { get; set; }
+        public Exception? AddFailure { get; set; }
+
+        public bool RejectAdd { get; set; }
 
         public int Saves { get; private set; }
 
@@ -410,13 +484,29 @@ public sealed class JobPhotoServiceTests : IDisposable
             return Task.FromResult(this.Companies.Find(item => item.RecruiterId == recruiterId));
         }
 
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
         {
-            if (this.SaveFailure is not null)
+            if (this.AddFailure is not null)
             {
-                throw this.SaveFailure;
+                throw this.AddFailure;
             }
 
+            // Como o UPDATE atómico: verifica o limite e acrescenta sob um bloqueio, sem ler o estado do pedido.
+            lock (this.gate)
+            {
+                Job? job = this.Jobs.Find(item => item.Id == jobId && item.DeletedAt is null);
+                if (this.RejectAdd || job is null || job.PhotoPaths.Count >= maxPhotos)
+                {
+                    return Task.FromResult(false);
+                }
+
+                job.PhotoPaths.Add(path);
+                return Task.FromResult(true);
+            }
+        }
+
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
             this.Saves++;
             return Task.FromResult(1);
         }

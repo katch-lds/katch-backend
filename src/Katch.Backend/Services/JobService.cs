@@ -6,6 +6,7 @@ using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 
 namespace Katch.Backend.Services;
@@ -33,6 +34,9 @@ public sealed class JobService : IJobService
     private readonly IOperationLogger operationLogger;
     private readonly IUnitOfWork unitOfWork;
     private readonly IClock clock;
+    private readonly IFileValidator fileValidator;
+    private readonly IFileStorage fileStorage;
+    private readonly IFileUrlBuilder fileUrlBuilder;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JobService"/> class.
@@ -44,6 +48,9 @@ public sealed class JobService : IJobService
     /// <param name="operationLogger">Registo de autoria das operações relevantes (RF112).</param>
     /// <param name="unitOfWork">Gravação das alterações do pedido.</param>
     /// <param name="clock">Relógio, para a data-limite e as datas de publicação.</param>
+    /// <param name="fileValidator">Validação das fotografias enviadas.</param>
+    /// <param name="fileStorage">Armazenamento das fotografias.</param>
+    /// <param name="fileUrlBuilder">Construção do URL das fotografias.</param>
     public JobService(
         IJobRepository jobs,
         ICompanyRepository companies,
@@ -51,7 +58,10 @@ public sealed class JobService : IJobService
         IReferenceDataRepository referenceData,
         IOperationLogger operationLogger,
         IUnitOfWork unitOfWork,
-        IClock clock)
+        IClock clock,
+        IFileValidator fileValidator,
+        IFileStorage fileStorage,
+        IFileUrlBuilder fileUrlBuilder)
     {
         this.jobs = jobs;
         this.companies = companies;
@@ -60,6 +70,9 @@ public sealed class JobService : IJobService
         this.operationLogger = operationLogger;
         this.unitOfWork = unitOfWork;
         this.clock = clock;
+        this.fileValidator = fileValidator;
+        this.fileStorage = fileStorage;
+        this.fileUrlBuilder = fileUrlBuilder;
     }
 
     /// <summary>
@@ -192,6 +205,56 @@ public sealed class JobService : IJobService
         await this.unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
+    /// <inheritdoc/>
+    public async Task<string> AddPhotoAsync(Guid recruiterId, Guid jobId, IFormFile? file, CancellationToken cancellationToken = default)
+    {
+        Job job = await this.OwnJobAsync(recruiterId, jobId, cancellationToken);
+
+        if (job.Status == JobStatus.Closed)
+        {
+            throw InvalidState(job);
+        }
+
+        // Atalho antes de guardar o ficheiro; a decisão final é a da atualização atómica de TryAddPhotoAsync.
+        if (job.PhotoPaths.Count >= Job.MaxPhotos)
+        {
+            throw PhotoLimitReached();
+        }
+
+        ValidationResult validation = this.fileValidator.Validate(file, FileKind.JobPhoto);
+        if (!validation.IsValid)
+        {
+            throw new FileRejectedException(validation.Reason!);
+        }
+
+        string path;
+        await using (Stream content = file!.OpenReadStream())
+        {
+            path = await this.fileStorage.SaveAsync(content, FileKind.JobPhoto, cancellationToken);
+        }
+
+        // O caminho é acrescentado e o limite verificado numa só instrução: pedidos simultâneos na mesma vaga não perdem
+        // fotografias nem deixam ficheiros órfãos.
+        bool added;
+        try
+        {
+            added = await this.jobs.TryAddPhotoAsync(job.Id, path, Job.MaxPhotos, cancellationToken);
+        }
+        catch
+        {
+            await this.TryDeleteFileAsync(path);
+            throw;
+        }
+
+        if (!added)
+        {
+            await this.TryDeleteFileAsync(path);
+            throw PhotoLimitReached();
+        }
+
+        return this.fileUrlBuilder.ToUrl(path)!;
+    }
+
     private static JobDto ToDto(Job job, string locationName, int waitingCandidates)
     {
         return new JobDto(
@@ -221,6 +284,11 @@ public sealed class JobService : IJobService
         job.Benefits.Clear();
         validated.Skills.ForEach(job.Skills.Add);
         validated.Benefits.ForEach(job.Benefits.Add);
+    }
+
+    private static OperationConflictException PhotoLimitReached()
+    {
+        return new OperationConflictException(ApiErrorResponse.PhotoLimitReached(Job.MaxPhotos));
     }
 
     private static OperationConflictException InvalidState(Job job)
@@ -329,6 +397,18 @@ public sealed class JobService : IJobService
         await this.unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await this.ToDtoAsync(job, cancellationToken);
+    }
+
+    private async Task TryDeleteFileAsync(string path)
+    {
+        try
+        {
+            await this.fileStorage.DeleteAsync(path, CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            // O erro original é que interessa ao pedido; fica um ficheiro sem referência na pasta de armazenamento.
+        }
     }
 
     private async Task<Guid> OwnCompanyIdAsync(Guid recruiterId, CancellationToken cancellationToken)

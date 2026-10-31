@@ -10,7 +10,6 @@ using Katch.Backend.Domain.Enums;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Repositories;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using static Katch.Backend.IntegrationTests.CandidateProfileTestData;
 using static Katch.Backend.IntegrationTests.JobPhotoTestData;
@@ -466,7 +465,8 @@ public sealed partial class JobPhotoEndpointsTests : IClassFixture<KatchWebAppli
     }
 
     /// <summary>
-    /// Se a gravação falhar por conflito de concorrência, a resposta é <c>409</c> ERR-41 e o ficheiro novo é apagado.
+    /// Se o acrescento à vaga falhar com um conflito de concorrência, a resposta é <c>409</c> ERR-41 e o ficheiro novo é
+    /// apagado.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
@@ -476,7 +476,7 @@ public sealed partial class JobPhotoEndpointsTests : IClassFixture<KatchWebAppli
         Guid jobId = await SeedJobAsync(this.factory, seed);
         List<string> before = StoredPhotos(this.factory);
 
-        using WebApplicationFactory<Program> failing = this.factory.WithWebHostBuilder(builder => builder.ConfigureServices(services => services.AddScoped<IUnitOfWork, ConflictingUnitOfWork>()));
+        using WebApplicationFactory<Program> failing = this.factory.WithWebHostBuilder(builder => builder.ConfigureServices(services => services.AddScoped<IJobRepository>(provider => new FailingPhotoJobRepository(ActivatorUtilities.CreateInstance<JobRepository>(provider)))));
         using HttpClient client = failing.CreateClient();
         using HttpResponseMessage response = await SendWithAsync(client, HttpMethod.Post, Route(jobId), failing.Services.GetRequiredService<ITokenService>().CreateToken(seed.User).Token, Multipart("foto.jpg", Jpeg));
 
@@ -487,6 +487,33 @@ public sealed partial class JobPhotoEndpointsTests : IClassFixture<KatchWebAppli
             "O elemento foi alterado por outro pedido. Atualize e tente novamente.");
         Assert.Equal(before, StoredPhotos(this.factory));
         Assert.Empty(await ReadPhotoPathsAsync(this.factory, jobId));
+    }
+
+    /// <summary>
+    /// A atualização atómica do repositório acrescenta os caminhos pela ordem, pára no limite de 5 sem os ultrapassar e
+    /// recusa a vaga eliminada (SQL do SQLite dos testes; o do PostgreSQL é verificado contra a base real).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task AtomicAddAppendsInOrderAndStopsAtTheLimit()
+    {
+        RecruiterSeed seed = await SeedRecruiterAsync(this.factory);
+        Guid jobId = await SeedJobAsync(this.factory, seed, photos: 3);
+        Guid deletedId = await SeedJobAsync(this.factory, seed, deleted: true);
+        CancellationToken token = TestContext.Current.CancellationToken;
+
+        using IServiceScope scope = this.factory.Services.CreateScope();
+        IJobRepository jobs = scope.ServiceProvider.GetRequiredService<IJobRepository>();
+        bool fourth = await jobs.TryAddPhotoAsync(jobId, "job_photo/quarta.jpg", Job.MaxPhotos, token);
+        bool fifth = await jobs.TryAddPhotoAsync(jobId, "job_photo/quinta.jpg", Job.MaxPhotos, token);
+        bool sixth = await jobs.TryAddPhotoAsync(jobId, "job_photo/sexta.jpg", Job.MaxPhotos, token);
+        bool deleted = await jobs.TryAddPhotoAsync(deletedId, "job_photo/x.jpg", Job.MaxPhotos, token);
+
+        Assert.Equal([true, true, false, false], [fourth, fifth, sixth, deleted]);
+        List<string> paths = await ReadPhotoPathsAsync(this.factory, jobId);
+        Assert.Equal(5, paths.Count);
+        Assert.Equal(["job_photo/quarta.jpg", "job_photo/quinta.jpg"], paths.Skip(3));
+        Assert.Empty(await ReadPhotoPathsAsync(this.factory, deletedId));
     }
 
     [GeneratedRegex(@"^job_photo/[0-9a-f]{32}\.(jpg|png)$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
@@ -531,20 +558,36 @@ public sealed partial class JobPhotoEndpointsTests : IClassFixture<KatchWebAppli
         return await CandidateProfileTestData.SendAsync(this.factory, HttpMethod.Post, Route(jobId), token, form);
     }
 
-    private sealed class ConflictingUnitOfWork : IUnitOfWork
+    private sealed class FailingPhotoJobRepository(JobRepository inner) : IJobRepository
     {
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            return inner.GetWithCompanyStatusAsync(jobId, cancellationToken);
+        }
+
+        public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return inner.GetByIdAsync(id, cancellationToken);
+        }
+
+        public Task AddAsync(Job job, CancellationToken cancellationToken = default)
+        {
+            return inner.AddAsync(job, cancellationToken);
+        }
+
+        public Task<List<Job>> ListByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        {
+            return inner.ListByCompanyAsync(companyId, cancellationToken);
+        }
+
+        public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            return inner.HasInterestsAsync(jobId, cancellationToken);
+        }
+
+        public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
         {
             throw new ConcurrencyConflictException(new InvalidOperationException("Conflito simulado."));
-        }
-
-        public void DiscardChanges()
-        {
-        }
-
-        public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
         }
     }
 }

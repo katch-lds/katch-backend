@@ -15,7 +15,7 @@ namespace Katch.Backend.Controllers;
 /// Gestão das vagas pelo Recrutador da Empresa aprovada (documentação da API v02, secção 6.5; modelo de classes do
 /// backend v02, secção 6; UC09, UC10). A Empresa é sempre a do Recrutador da credencial de sessão (RNF006, DC-05); uma
 /// vaga de outra Empresa dá <c>403</c> (ERR-08, RF059) e uma vaga eliminada <c>404</c> (ERR-20). O carregamento das
-/// fotografias (6.5.9) é feito pelo <see cref="IJobPhotoService"/>.
+/// fotografias (6.5.9) é acrescentado pelo <see cref="IJobService"/>.
 /// </summary>
 [ApiController]
 [Route("api/recruiter/jobs")]
@@ -25,22 +25,17 @@ namespace Katch.Backend.Controllers;
 [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
 public sealed class JobsController : ControllerBase
 {
-    private const long MaxUploadRequestBytes = (6L * 1024 * 1024) + (4 * 1024);
-
     private const string UploadFileField = "file";
 
     private readonly IJobService jobService;
-    private readonly IJobPhotoService jobPhotoService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JobsController"/> class.
     /// </summary>
     /// <param name="jobService">Serviço da gestão das vagas.</param>
-    /// <param name="jobPhotoService">Serviço do carregamento das fotografias das vagas.</param>
-    public JobsController(IJobService jobService, IJobPhotoService jobPhotoService)
+    public JobsController(IJobService jobService)
     {
         this.jobService = jobService;
-        this.jobPhotoService = jobPhotoService;
     }
 
     /// <summary>
@@ -195,9 +190,9 @@ public sealed class JobsController : ControllerBase
     /// <c>413</c> (ERR-12) ou <c>415</c> (ERR-13).
     /// </returns>
     [HttpPost("{jobId:guid}/photos")]
-    [UploadRequestFilter(MaxUploadRequestBytes)]
-    [RequestSizeLimit(MaxUploadRequestBytes)]
-    [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadRequestBytes)]
+    [UploadRequestFilter(CandidateProfileController.MaxUploadRequestBytes)]
+    [RequestSizeLimit(CandidateProfileController.MaxUploadRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = CandidateProfileController.MaxUploadRequestBytes)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
@@ -207,7 +202,7 @@ public sealed class JobsController : ControllerBase
     public async Task<IActionResult> AddPhoto(Guid jobId, CancellationToken cancellationToken)
     {
         IFormCollection form = await this.Request.ReadFormAsync(cancellationToken);
-        string url = await this.jobPhotoService.AddPhotoAsync(
+        string url = await this.jobService.AddPhotoAsync(
             this.RecruiterId(),
             jobId,
             form.Files.GetFile(UploadFileField),

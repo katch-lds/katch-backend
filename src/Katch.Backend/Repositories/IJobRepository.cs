@@ -53,4 +53,19 @@ public interface IJobRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><see langword="true"/> se houver interesses.</returns>
     public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Acrescenta o caminho de uma fotografia ao fim de <c>photo_paths</c> da vaga, numa única instrução atómica na base
+    /// de dados que também verifica o limite (RF052; P13). Ao contrário de ler a vaga e gravá-la, não perde escritas de
+    /// pedidos simultâneos e nunca ultrapassa o limite. Não altera a entidade acompanhada pelo contexto.
+    /// </summary>
+    /// <param name="jobId">Identificador da vaga (não eliminada).</param>
+    /// <param name="path">Caminho relativo do ficheiro guardado.</param>
+    /// <param name="maxPhotos">Número máximo de fotografias da vaga.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>
+    /// <see langword="true"/> se o caminho foi acrescentado; <see langword="false"/> se a vaga já tinha o máximo de
+    /// fotografias ou entretanto foi eliminada.
+    /// </returns>
+    public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default);
 }

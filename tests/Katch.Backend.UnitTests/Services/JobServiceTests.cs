@@ -5,6 +5,7 @@ using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -486,7 +487,10 @@ public sealed class JobServiceTests
             this.store,
             this.operationLogger,
             this.unitOfWork,
-            clock ?? new FixedClock(Now));
+            clock ?? new FixedClock(Now),
+            new FileValidator(),
+            new UnusedFileStorage(),
+            new FileUrlBuilder());
     }
 
     private sealed class FixedClock : IClock
@@ -546,6 +550,11 @@ public sealed class JobServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Company?> GetByRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Companies.Find(item => item.RecruiterId == recruiterId));
@@ -597,6 +606,24 @@ public sealed class JobServiceTests
         }
 
         public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class UnusedFileStorage : IFileStorage
+    {
+        public Task<string> SaveAsync(Stream content, FileKind kind, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Stream> OpenReadAsync(string path, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task DeleteAsync(string path, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
