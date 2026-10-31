@@ -45,6 +45,14 @@ public interface ICompanyRepository
     public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Obtém uma Empresa com a sua localidade, só para leitura (RF092).
+    /// </summary>
+    /// <param name="id">Identificador da Empresa.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>A Empresa com a localidade, ou <see langword="null"/> se a Empresa não existir.</returns>
+    public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lista as Empresas pendentes de aprovação, só para leitura (RF091).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>

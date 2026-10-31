@@ -21,7 +21,6 @@ namespace Katch.Backend.Services;
 public sealed class CompanyAdminService : ICompanyAdminService
 {
     private readonly ICompanyRepository companies;
-    private readonly IReferenceDataRepository referenceData;
     private readonly IOperationLogger operationLogger;
     private readonly IUnitOfWork unitOfWork;
 
@@ -29,17 +28,14 @@ public sealed class CompanyAdminService : ICompanyAdminService
     /// Initializes a new instance of the <see cref="CompanyAdminService"/> class.
     /// </summary>
     /// <param name="companies">Repositório das Empresas.</param>
-    /// <param name="referenceData">Repositório das listas pré-definidas, para a designação da localidade.</param>
     /// <param name="operationLogger">Registo das operações do RF112.</param>
     /// <param name="unitOfWork">Unidade de trabalho do pedido.</param>
     public CompanyAdminService(
         ICompanyRepository companies,
-        IReferenceDataRepository referenceData,
         IOperationLogger operationLogger,
         IUnitOfWork unitOfWork)
     {
         this.companies = companies;
-        this.referenceData = referenceData;
         this.operationLogger = operationLogger;
         this.unitOfWork = unitOfWork;
     }
@@ -60,9 +56,9 @@ public sealed class CompanyAdminService : ICompanyAdminService
     /// <inheritdoc/>
     public async Task<CompanyRegistrationDto> GetSubmittedDataAsync(Guid companyId, CancellationToken cancellationToken = default)
     {
-        Company company = await this.LoadAsync(companyId, cancellationToken);
-        Location? location = (await this.referenceData.ListLocationsAsync(cancellationToken))
-            .SingleOrDefault(item => item.Id == company.LocationId);
+        CompanyWithLocation found = await this.companies.GetWithLocationAsync(companyId, cancellationToken)
+            ?? throw new ElementNotFoundException();
+        Company company = found.Company;
 
         return new CompanyRegistrationDto(
             company.Id,
@@ -71,7 +67,7 @@ public sealed class CompanyAdminService : ICompanyAdminService
             company.Industry,
             company.Address,
             company.LocationId,
-            location is null ? string.Empty : ReferenceListService.DisplayName(location),
+            ReferenceListService.DisplayName(found.Location),
             company.ContactEmail,
             company.ContactPhone,
             company.ResponsibleName,
