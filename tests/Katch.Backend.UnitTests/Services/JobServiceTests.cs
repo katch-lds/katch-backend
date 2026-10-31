@@ -536,6 +536,15 @@ public sealed class JobServiceTests
             return Task.FromResult(this.JobsWithInterests.Contains(jobId));
         }
 
+        public Task<List<EligibleJob>> ListEligibleForCandidateAsync(
+            Candidate candidate,
+            DateTimeOffset now,
+            int take,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Waiting.Where(item => jobIds.Contains(item.Key)).ToDictionary());
@@ -549,6 +558,11 @@ public sealed class JobServiceTests
         public Task<Company?> GetByRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Companies.Find(item => item.RecruiterId == recruiterId));
+        }
+
+        Task<Company?> ICompanyRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
         }
 
         public Task<List<Location>> ListLocationsAsync(CancellationToken cancellationToken = default)

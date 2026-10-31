@@ -466,6 +466,11 @@ public sealed class CompanyServiceTests
             return Task.FromResult(this.Existing.Concat(this.Added).SingleOrDefault(c => c.RecruiterId == recruiterId));
         }
 
+        public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<bool> TaxIdExistsAsync(string taxId, Guid? exceptId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Existing.Any(c => c.TaxId == taxId && c.Id != exceptId));

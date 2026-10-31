@@ -410,6 +410,11 @@ public sealed class JobPhotoServiceTests : IDisposable
             return Task.FromResult(this.Companies.Find(item => item.RecruiterId == recruiterId));
         }
 
+        Task<Company?> ICompanyRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             if (this.SaveFailure is not null)
@@ -447,6 +452,15 @@ public sealed class JobPhotoServiceTests : IDisposable
         }
 
         public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<EligibleJob>> ListEligibleForCandidateAsync(
+            Candidate candidate,
+            DateTimeOffset now,
+            int take,
+            CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
