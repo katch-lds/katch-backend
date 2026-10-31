@@ -288,6 +288,64 @@ public sealed class JobCardTests : IClassFixture<KatchWebApplicationFactory>
     }
 
     /// <summary>
+    /// Fronteiras do filtro (RF014): o valor máximo do intervalo salarial igual à pretensão mínima é aceite e um cêntimo
+    /// abaixo não; com distância máxima de 20 km, uma vaga presencial a 20 km e a 20,4 km (cartão com 20 km) aparece, e a
+    /// 20,6 km (cartão com 21 km) e a 21 km não; uma vaga publicada e depois eliminada não aparece (DM-09).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task BoundariesOfTheSalaryTheDistanceAndTheDeletionAreRespected()
+    {
+        (_, string token) = await this.SeedCandidateAsync(candidate =>
+        {
+            candidate.MaxDistanceKm = 20;
+            candidate.MinSalaryExpectation = 1200.00m;
+        });
+
+        Guid salaryEqual = await this.SeedJobAsync(5, WorkMode.OnSite, minSalary: 1000.00m, maxSalary: 1200.00m);
+        Guid salaryBelow = await this.SeedJobAsync(5, WorkMode.OnSite, minSalary: 1000.00m, maxSalary: 1199.99m);
+        Guid at20 = await this.SeedJobAsync(20, WorkMode.OnSite);
+        Guid at20Point4 = await this.SeedJobAsync(20.4, WorkMode.OnSite);
+        Guid at20Point6 = await this.SeedJobAsync(20.6, WorkMode.OnSite);
+        Guid at21 = await this.SeedJobAsync(21, WorkMode.Hybrid);
+        Guid deleted = await this.SeedJobAsync(5, WorkMode.OnSite, configure: job => job.MarkDeleted(this.now.AddDays(-1)));
+
+        List<JsonElement> cards = await this.WalkAsync(token);
+
+        Guid[] mine = [salaryEqual, salaryBelow, at20, at20Point4, at20Point6, at21, deleted];
+        Assert.Equal(new[] { salaryEqual, at20, at20Point4 }.Order(), JobIds(cards).Where(id => mine.Contains(id)).Order());
+        Assert.Equal(20, cards.Single(card => JobId(card) == at20).GetProperty("distanceKm").GetInt32());
+        Assert.Equal(20, cards.Single(card => JobId(card) == at20Point4).GetProperty("distanceKm").GetInt32());
+    }
+
+    /// <summary>
+    /// Se a localidade do Candidato não existir na lista pré-definida, a consulta não devolve vagas, em vez de calcular a
+    /// distância a partir de coordenadas em falta. A chave estrangeira <c>candidate.location_id</c> impede este caso na
+    /// base; o teste chama o repositório com um Candidato por gravar.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task CandidateWithoutAKnownLocationGetsNoJobs()
+    {
+        await this.SeedJobAsync(5, WorkMode.Remote);
+        DateTimeOffset created = DateTimeOffset.UtcNow;
+        var user = new AppUser($"{Guid.NewGuid():N}@katch.pt", "hash", UserType.Candidate, created, created);
+        var candidate = new Candidate(user, "Ana Silva", "912345678", Guid.NewGuid());
+
+        using IServiceScope scope = this.factory.Services.CreateScope();
+        KatchDbContext context = scope.ServiceProvider.GetRequiredService<KatchDbContext>();
+        var repository = new JobRepository(context);
+
+        List<EligibleJob> eligible = await repository.ListEligibleForCandidateAsync(
+            candidate,
+            DateTimeOffset.UtcNow,
+            10,
+            TestContext.Current.CancellationToken);
+
+        Assert.Empty(eligible);
+    }
+
+    /// <summary>
     /// Com a quota de interesses esgotada, os cartões continuam a ser apresentados (UC05, A4).
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
@@ -413,7 +471,7 @@ public sealed class JobCardTests : IClassFixture<KatchWebApplicationFactory>
     /// </summary>
     /// <param name="kilometres">Distância a Braga, em km.</param>
     /// <returns>A localidade, por gravar.</returns>
-    private static Location LocationNorthOfBraga(int kilometres)
+    private static Location LocationNorthOfBraga(double kilometres)
     {
         decimal latitude = Math.Round(BragaLatitude + (decimal)(kilometres / (EarthRadiusKm * Math.PI / 180)), 6);
         return new Location($"Vaga {Guid.NewGuid():N}", "Braga", latitude, BragaLongitude);
@@ -444,7 +502,7 @@ public sealed class JobCardTests : IClassFixture<KatchWebApplicationFactory>
     }
 
     private async Task<Guid> SeedJobAsync(
-        int kilometresNorth,
+        double kilometresNorth,
         WorkMode workMode,
         decimal minSalary = 1000m,
         decimal maxSalary = 2000m,
