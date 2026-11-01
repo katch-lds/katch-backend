@@ -3,6 +3,7 @@
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
+using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
@@ -295,6 +296,87 @@ public sealed class CandidateProfileUpdateServiceTests
     }
 
     /// <summary>
+    /// Sem a lista <c>urls</c> o campo é indicado como obrigatório e o perfil não é gravado; a lista vazia, pelo
+    /// contrário, apaga as hiperligações (teste anterior).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task LinksWithoutTheListAreRequired()
+    {
+        ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
+            () => this.service.SetLinksAsync(this.candidate.Id, new SetLinksRequest(null), TestContext.Current.CancellationToken));
+
+        Assert.Equal(new FieldErrorDto("urls", FieldReasons.Required), Assert.Single(exception.Fields));
+        Assert.Equal(0, this.store.Saves);
+    }
+
+    /// <summary>
+    /// Se outro pedido do mesmo Candidato gravar as hiperligações entre a leitura e a gravação, a violação dos índices
+    /// únicos das hiperligações é convertida no ERR-41; a violação de outro índice sobe sem conversão.
+    /// </summary>
+    /// <param name="constraint">Nome do índice único violado.</param>
+    /// <param name="converted">Se a violação é convertida no ERR-41.</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData("uq_candidate_link_position", true)]
+    [InlineData("uq_candidate_link_url", true)]
+    [InlineData("uq_app_user_email", false)]
+    public async Task ConcurrentLinkWriteIsAConcurrencyConflict(string constraint, bool converted)
+    {
+        this.store.SaveFailure = new UniqueConstraintViolationException(constraint, new InvalidOperationException("23505"));
+
+        Exception? exception = await Record.ExceptionAsync(
+            () => this.service.SetLinksAsync(
+                this.candidate.Id,
+                new SetLinksRequest(["https://a.pt"]),
+                TestContext.Current.CancellationToken));
+
+        if (converted)
+        {
+            OperationConflictException conflict = Assert.IsType<OperationConflictException>(exception);
+            Assert.Equal(ApiErrorResponse.ConcurrencyConflictCode, conflict.Error.Code);
+        }
+        else
+        {
+            Assert.IsType<UniqueConstraintViolationException>(exception);
+        }
+    }
+
+    /// <summary>
+    /// Se o caminho do curriculum vitae estiver gravado mas o ficheiro já não existir no armazenamento, a obtenção dá o
+    /// ERR-20 em vez de um erro interno.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task GetCvWithTheFileMissingFromStorageIsNotFound()
+    {
+        this.candidate.CvPath = "curriculum_vitae/perdido.pdf";
+
+        await Assert.ThrowsAsync<ElementNotFoundException>(
+            () => this.service.GetCvAsync(this.candidate.Id, TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>
+    /// Se a eliminação do ficheiro anterior falhar com um erro de entrada e saída, o pedido conclui com sucesso: o novo
+    /// ficheiro já está gravado e associado ao Candidato.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task FailureToDeleteThePreviousPhotoDoesNotFailTheUpload()
+    {
+        this.candidate.ProfilePhotoPath = "profile_photo/antiga.png";
+        this.store.Existing.Add("profile_photo/antiga.png");
+        this.store.DeleteFailure = new IOException("Ficheiro em uso.");
+
+        string url = await this.service.UploadPhotoAsync(this.candidate.Id, File("nova.png", Png), TestContext.Current.CancellationToken);
+
+        Assert.StartsWith("/api/files/PROFILE_PHOTO/", url, StringComparison.Ordinal);
+        Assert.Equal(this.store.Saved.Single(), this.candidate.ProfilePhotoPath);
+        Assert.Contains("profile_photo/antiga.png", this.store.Existing);
+        Assert.Equal(1, this.store.Saves);
+    }
+
+    /// <summary>
     /// A fotografia é guardada, o caminho fica no Candidato, o URL é devolvido e o ficheiro anterior é eliminado depois
     /// de gravar.
     /// </summary>
@@ -400,6 +482,8 @@ public sealed class CandidateProfileUpdateServiceTests
 
         public Exception? SaveFailure { get; set; }
 
+        public Exception? DeleteFailure { get; set; }
+
         public int Saves { get; private set; }
 
         public List<string> Saved { get; } = [];
@@ -461,6 +545,11 @@ public sealed class CandidateProfileUpdateServiceTests
 
         public Task DeleteAsync(string path, CancellationToken cancellationToken = default)
         {
+            if (this.DeleteFailure is not null)
+            {
+                throw this.DeleteFailure;
+            }
+
             this.Deleted.Add(path);
             this.Existing.Remove(path);
             return Task.CompletedTask;
