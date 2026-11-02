@@ -26,7 +26,7 @@ public sealed class CompanyApprovalServiceTests
     private static long taxIdCounter = 509_100_000;
 
     private readonly FakeCompanies companies = new();
-    private readonly FakeReferenceData referenceData = new();
+    private readonly Location braga = new("Braga", "Braga", 41.545450m, -8.426507m);
     private readonly FakeOperationLogger logger = new();
     private readonly FakeUnitOfWork unitOfWork = new();
     private readonly CompanyAdminService service;
@@ -36,7 +36,14 @@ public sealed class CompanyApprovalServiceTests
     /// </summary>
     public CompanyApprovalServiceTests()
     {
-        this.service = new CompanyAdminService(this.companies, this.referenceData, this.logger, this.unitOfWork);
+        this.service = new CompanyAdminService(
+            this.companies,
+            new UnusedJobs(),
+            new UnusedMatches(),
+            this.logger,
+            this.unitOfWork,
+            new FakeClock { UtcNow = Created });
+        this.companies.Locations.AddRange([new Location("Porto", "Porto", 41.157944m, -8.629105m), this.braga]);
     }
 
     /// <summary>
@@ -114,7 +121,7 @@ public sealed class CompanyApprovalServiceTests
                 company.TaxId,
                 Industry.Technology,
                 "Avenida da Liberdade, 100, 4710-000 Braga",
-                this.referenceData.Braga.Id,
+                this.braga.Id,
                 "Braga (Braga)",
                 "geral@exemplo.pt",
                 "253000111",
@@ -337,7 +344,7 @@ public sealed class CompanyApprovalServiceTests
                 TaxId = Interlocked.Increment(ref taxIdCounter).ToString(CultureInfo.InvariantCulture),
                 Industry = Industry.Technology,
                 Address = "Avenida da Liberdade, 100, 4710-000 Braga",
-                LocationId = this.referenceData.Braga.Id,
+                LocationId = this.braga.Id,
                 ContactEmail = "geral@exemplo.pt",
                 ContactPhone = "253000111",
                 ResponsibleName = "Rui Matos",
@@ -373,6 +380,8 @@ public sealed class CompanyApprovalServiceTests
     {
         public List<Company> All { get; } = [];
 
+        public List<Location> Locations { get; } = [];
+
         public Task<Company?> GetByRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -393,22 +402,19 @@ public sealed class CompanyApprovalServiceTests
             return Task.FromResult(this.All.SingleOrDefault(company => company.Id == id));
         }
 
+        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            Company? company = this.All.SingleOrDefault(item => item.Id == id);
+            Location? location = company is null ? null : this.Locations.SingleOrDefault(item => item.Id == company.LocationId);
+            return Task.FromResult(company is null || location is null ? null : new CompanyWithLocation(company, location));
+        }
+
         public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.All.Where(company => company.Status == CompanyStatus.Pending).ToList());
         }
-    }
 
-    private sealed class FakeReferenceData : IReferenceDataRepository
-    {
-        public Location Braga { get; } = new("Braga", "Braga", 41.545450m, -8.426507m);
-
-        public Task<List<Location>> ListLocationsAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(new List<Location> { new("Porto", "Porto", 41.157944m, -8.629105m), this.Braga });
-        }
-
-        public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -460,5 +466,76 @@ public sealed class CompanyApprovalServiceTests
         {
             throw new NotSupportedException();
         }
+    }
+
+    private sealed class UnusedJobs : IJobRepository
+    {
+        public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddAsync(Job job, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Job>> ListByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class UnusedMatches : IMatchRepository
+    {
+        public Task<Match?> GetAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddAsync(Match match, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Match>> ListMatchesByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class FakeClock : IClock
+    {
+        public DateTimeOffset UtcNow { get; set; }
     }
 }

@@ -94,6 +94,7 @@ public sealed class CandidateSkillsTests
     [InlineData("C++", "C++")]
     [InlineData("Node.js", "Node.js")]
     [InlineData("Gestão de equipas", "Gestão de equipas")]
+    [InlineData("Análise de dados", "Análise de dados")]
     [InlineData("Front-end", "Front-end")]
     [InlineData("  Kotlin  ", "Kotlin")]
     public void ValidCustomSkillIsAccepted(string label, string expected)
@@ -123,13 +124,16 @@ public sealed class CandidateSkillsTests
     }
 
     /// <summary>
-    /// As designações fora do P07 são rejeitadas com o motivo (RF009: 1 carácter, 41 caracteres ou o carácter «@»).
+    /// As designações fora do P07 são rejeitadas com o motivo (RF009: 1 carácter, 41 caracteres ou o carácter «@»). Os
+    /// algarismos de outras escritas, como «٣» (U+0663), não contam como algarismos do P07.
     /// </summary>
     /// <param name="label">Designação inválida.</param>
     [Theory]
     [InlineData("C")]
     [InlineData("C@")]
     [InlineData("Java/Kotlin")]
+    [InlineData("abc\u0663")]
+    [InlineData("\u0663\u0664")]
     [InlineData("   ")]
     [InlineData("")]
     [InlineData(null)]

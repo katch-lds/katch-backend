@@ -247,8 +247,9 @@ public sealed class AdminCompanyRegistrationTests : IClassFixture<KatchWebApplic
             Assert.Equal(HttpStatusCode.NoContent, first.StatusCode);
         }
 
+        using HttpResponseMessage second = await this.SendAsync(HttpMethod.Post, $"{Route}/{company.Id}/approve", adminToken);
         await CompanyRegistrationTestData.AssertErrorAsync(
-            await this.SendAsync(HttpMethod.Post, $"{Route}/{company.Id}/approve", adminToken),
+            second,
             HttpStatusCode.Conflict,
             "ERR-30",
             "A operação não é permitida no estado atual: aprovada.");
@@ -350,8 +351,9 @@ public sealed class AdminCompanyRegistrationTests : IClassFixture<KatchWebApplic
 
         foreach (string token in new[] { candidateToken, recruiterToken })
         {
+            using HttpResponseMessage response = await this.SendAsync(new HttpMethod(method), path, token);
             await CompanyRegistrationTestData.AssertErrorAsync(
-                await this.SendAsync(new HttpMethod(method), path, token),
+                response,
                 HttpStatusCode.Forbidden,
                 "ERR-06",
                 Err06Message);
@@ -368,8 +370,9 @@ public sealed class AdminCompanyRegistrationTests : IClassFixture<KatchWebApplic
     [MemberData(nameof(Endpoints))]
     public async Task EndpointsRequireASession(string method, string path)
     {
+        using HttpResponseMessage response = await this.SendAsync(new HttpMethod(method), path, token: null);
         await CompanyRegistrationTestData.AssertErrorAsync(
-            await this.SendAsync(new HttpMethod(method), path, token: null),
+            response,
             HttpStatusCode.Unauthorized,
             "ERR-01",
             InvalidSessionMessage);
