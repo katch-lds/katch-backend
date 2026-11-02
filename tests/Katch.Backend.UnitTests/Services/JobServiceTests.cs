@@ -640,6 +640,21 @@ public sealed class JobServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        Task<Match?> IMatchRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeOperationLogger : IOperationLogger

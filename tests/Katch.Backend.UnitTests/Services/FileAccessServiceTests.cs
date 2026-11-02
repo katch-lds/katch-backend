@@ -243,7 +243,7 @@ public sealed class FileAccessServiceTests : IDisposable
         {
             throw new NotSupportedException();
         }
-        
+
         public Task<List<Match>> ListMatchesByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -253,7 +253,7 @@ public sealed class FileAccessServiceTests : IDisposable
         {
             throw new NotSupportedException();
         }
-        
+
         public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

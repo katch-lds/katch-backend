@@ -64,7 +64,7 @@ public sealed class MatchRepository : IMatchRepository
         // texto e o EF Core não a traduz; as listas são curtas (sem paginação, documentação da API v02, L-02).
         return waiting.OrderBy(interest => interest.InterestAt).ToList();
     }
-    
+
     /// <inheritdoc/>
     public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(
         IReadOnlyCollection<Guid> jobIds,

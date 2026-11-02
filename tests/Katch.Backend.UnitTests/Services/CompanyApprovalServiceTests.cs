@@ -494,6 +494,11 @@ public sealed class CompanyApprovalServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class UnusedMatches : IMatchRepository
@@ -524,6 +529,16 @@ public sealed class CompanyApprovalServiceTests
         }
 
         public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Match?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

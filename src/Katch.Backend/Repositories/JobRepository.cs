@@ -42,7 +42,7 @@ public sealed class JobRepository : IJobRepository
             .Include(job => job.Skills)
             .FirstOrDefaultAsync(job => job.Id == jobId, cancellationToken);
     }
-    
+
     /// <inheritdoc/>
     public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {

@@ -26,8 +26,8 @@ public interface IJobRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A vaga, ou <see langword="null"/> se não existir ou estiver eliminada.</returns>
     public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default);
-  
-    // <summary>
+
+    /// <summary>
     /// Obtém uma vaga com as competências e os benefícios, acompanhada pelo contexto, para a alterar. As vagas eliminadas
     /// não são devolvidas (DM-09).
     /// </summary>

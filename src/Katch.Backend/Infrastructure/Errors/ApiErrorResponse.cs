@@ -102,7 +102,7 @@ public static class ApiErrorResponse
     /// Código do erro de Candidato que já não está em espera na vaga.
     /// </summary>
     public const string CandidateAlreadyEvaluatedCode = "ERR-35";
-  
+
     /// <summary>
     /// Código do erro de eliminação de uma vaga com interesses registados.
     /// </summary>
@@ -408,7 +408,7 @@ public static class ApiErrorResponse
     {
         return new ApiErrorDto(CandidateAlreadyEvaluatedCode, CandidateAlreadyEvaluatedMessage);
     }
-  
+
     /// <summary>
     /// Cria o corpo do ERR-38 (409): a vaga tem pelo menos um interesse registado e só pode ser encerrada (RF058).
     /// </summary>

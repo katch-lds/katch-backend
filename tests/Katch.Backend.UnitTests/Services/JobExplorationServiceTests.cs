@@ -704,7 +704,7 @@ public sealed class JobExplorationServiceTests
         {
             throw new NotSupportedException();
         }
-      
+
         public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -857,7 +857,7 @@ public sealed class JobExplorationServiceTests
         {
             throw new NotSupportedException();
         }
-      
+
         public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -867,7 +867,7 @@ public sealed class JobExplorationServiceTests
         {
             throw new NotSupportedException();
         }
-      
+
         public Task<List<Match>> ListMatchesByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

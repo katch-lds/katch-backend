@@ -45,7 +45,7 @@ public interface IMatchRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Os interesses em espera da vaga; lista vazia se não houver.</returns>
     public Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default);
-  
+
     /// <summary>
     /// Conta os interesses em espera de decisão de cada vaga indicada (RF060), para o <c>waitingCandidates</c> das vagas
     /// do Recrutador. É uma contagem feita na base de dados, sem carregar as respostas.
