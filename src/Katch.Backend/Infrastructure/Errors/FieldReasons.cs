@@ -1,5 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Domain;
+
 namespace Katch.Backend.Infrastructure.Errors;
 
 /// <summary>
@@ -58,6 +60,17 @@ public static class FieldReasons
     public const string NotInList = "O valor não pertence à lista pré-definida.";
 
     /// <summary>
+    /// Competência da opção «Outro» fora do P07 (RF009), com o texto da validação da entidade.
+    /// </summary>
+    public const string CustomSkillFormat = CandidateCustomSkill.InvalidLabelMessage;
+
+    /// <summary>
+    /// Competência, da lista ou da opção «Outro», que já está no perfil do Candidato (RF008, RF009). A documentação da
+    /// API v02 (secção 6.2.4) prevê o erro sem fixar o texto.
+    /// </summary>
+    public const string SkillAlreadyAdded = "A competência já está associada ao perfil.";
+
+    /// <summary>
     /// Nome com mais de 150 caracteres (coluna <c>candidate.full_name</c>).
     /// </summary>
     public const string FullNameTooLong = "O nome tem no máximo 150 caracteres.";
@@ -76,6 +89,41 @@ public static class FieldReasons
     /// Número de identificação fiscal já registado noutra Empresa (RF042).
     /// </summary>
     public const string TaxIdTaken = "O número de identificação fiscal já está registado.";
+
+    /// <summary>
+    /// Valor salarial nulo ou negativo (documentação da API v02, secção 4.3; RF051).
+    /// </summary>
+    public const string SalaryNotPositive = "O valor tem de ser um número positivo em euros.";
+
+    /// <summary>
+    /// Valor salarial com mais de 2 casas decimais (documentação da API v02, secção 2.3).
+    /// </summary>
+    public const string SalaryDecimals = "O valor tem de ter no máximo 2 casas decimais.";
+
+    /// <summary>
+    /// Valor mínimo superior ao máximo (documentação da API v02, secção 4.3; RF051).
+    /// </summary>
+    public const string SalaryRange = "O valor mínimo não pode ser superior ao valor máximo.";
+
+    /// <summary>
+    /// Valor salarial acima do que a coluna <c>numeric(10,2)</c> guarda (documentação da API v02, secção 8.3).
+    /// </summary>
+    public const string SalaryTooHigh = "O valor não pode exceder 99 999 999,99 euros.";
+
+    /// <summary>
+    /// Data-limite da vaga igual ou anterior ao instante do pedido (documentação da API v02, secções 6.5.2 e 8.3).
+    /// </summary>
+    public const string ExpiresAtNotFuture = "A data-limite tem de ser posterior ao momento atual.";
+
+    /// <summary>
+    /// Identificador repetido numa lista de competências ou de benefícios (documentação da API v02, secção 8.3).
+    /// </summary>
+    public const string RepeatedInList = "O valor está repetido na lista.";
+
+    /// <summary>
+    /// Motivo da recusa do registo da Empresa fora dos 10 a 500 caracteres, sem os espaços nas extremidades (P12).
+    /// </summary>
+    public const string RejectionReasonLength = "O motivo tem de ter entre 10 e 500 caracteres.";
 
     /// <summary>
     /// Distância máxima fora de 1 a 500 ou não inteira (P06).

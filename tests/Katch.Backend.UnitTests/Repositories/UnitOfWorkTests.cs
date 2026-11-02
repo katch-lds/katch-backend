@@ -5,6 +5,7 @@ using Katch.Backend.Infrastructure.Persistence;
 using Katch.Backend.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Npgsql;
 
 namespace Katch.Backend.UnitTests.Repositories;
 
@@ -34,6 +35,46 @@ public sealed class UnitOfWorkTests
     }
 
     /// <summary>
+    /// A violação de um índice único (SQLSTATE 23505) é convertida em <see cref="UniqueConstraintViolationException"/>,
+    /// com o nome do índice.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task ConvertsUniqueViolationToUniqueConstraintViolation()
+    {
+        var original = new DbUpdateException("unique", CreatePostgresException("23505", "uq_candidate_custom_skill"));
+        using KatchDbContext context = CreateContext(new ThrowingInterceptor(original));
+        context.Locations.Add(new Location("Braga", "Braga", 41.545450m, -8.426507m));
+        var unitOfWork = new UnitOfWork(context);
+
+        UniqueConstraintViolationException exception = await Assert.ThrowsAsync<UniqueConstraintViolationException>(
+            () => unitOfWork.SaveChangesAsync(TestContext.Current.CancellationToken));
+
+        Assert.Equal("uq_candidate_custom_skill", exception.ConstraintName);
+        Assert.Same(original, exception.InnerException);
+    }
+
+    /// <summary>
+    /// A violação de uma restrição <c>CHECK</c> (SQLSTATE 23514) é convertida em
+    /// <see cref="CheckConstraintViolationException"/>, com o nome da restrição.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task ConvertsCheckViolationToCheckConstraintViolation()
+    {
+        var original = new DbUpdateException("check", CreatePostgresException("23514", "ck_candidate_custom_skill_label"));
+        using KatchDbContext context = CreateContext(new ThrowingInterceptor(original));
+        context.Locations.Add(new Location("Braga", "Braga", 41.545450m, -8.426507m));
+        var unitOfWork = new UnitOfWork(context);
+
+        CheckConstraintViolationException exception = await Assert.ThrowsAsync<CheckConstraintViolationException>(
+            () => unitOfWork.SaveChangesAsync(TestContext.Current.CancellationToken));
+
+        Assert.Equal("ck_candidate_custom_skill_label", exception.ConstraintName);
+        Assert.Same(original, exception.InnerException);
+    }
+
+    /// <summary>
     /// <see cref="UnitOfWork.DiscardChanges"/> deixa o contexto sem nenhuma entidade acompanhada.
     /// </summary>
     [Fact]
@@ -47,6 +88,16 @@ public sealed class UnitOfWorkTests
         unitOfWork.DiscardChanges();
 
         Assert.Empty(context.ChangeTracker.Entries());
+    }
+
+    private static PostgresException CreatePostgresException(string sqlState, string constraintName)
+    {
+        return new PostgresException(
+            "violação",
+            "ERROR",
+            "ERROR",
+            sqlState,
+            constraintName: constraintName);
     }
 
     private static KatchDbContext CreateContext(ISaveChangesInterceptor? interceptor)

@@ -435,6 +435,11 @@ public sealed class AuthServiceTests
             this.AddedRecruiters.Add(recruiter);
             return Task.CompletedTask;
         }
+
+        public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeCandidates : ICandidateRepository
@@ -455,6 +460,11 @@ public sealed class AuthServiceTests
         public Task<List<Candidate>> ListQuotaDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new List<Candidate>());
+        }
+
+        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
 
         public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
@@ -488,6 +498,21 @@ public sealed class AuthServiceTests
         }
 
         public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

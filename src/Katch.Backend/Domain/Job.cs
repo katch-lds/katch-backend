@@ -233,10 +233,18 @@ public sealed class Job
     /// com <see cref="PublishedAt"/> atualizado e <see cref="FirstPublishedAt"/> inalterado.
     /// </summary>
     /// <param name="now">Instante da nova publicação, em UTC.</param>
-    /// <exception cref="InvalidOperationException">Se a vaga não estiver suspensa ou se estiver eliminada.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Se a vaga não estiver suspensa, se estiver eliminada ou se a data-limite já tiver sido atingida, como na
+    /// primeira publicação (<see cref="Publish"/>).
+    /// </exception>
     public void Republish(DateTimeOffset now)
     {
         this.EnsureStatus(JobStatus.Suspended, "Só uma vaga suspensa pode voltar a ser publicada.");
+
+        if (this.IsExpired(now))
+        {
+            throw new InvalidOperationException("A data-limite da vaga já foi atingida.");
+        }
 
         this.PublishedAt = now;
         this.Status = JobStatus.Published;
