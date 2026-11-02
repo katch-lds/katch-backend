@@ -329,6 +329,75 @@ public sealed class JobServiceTests
     }
 
     /// <summary>
+    /// O encerramento é aceite a partir de qualquer estado que não seja o encerrado (RF056, RF113): a vaga fica
+    /// encerrada, a resposta traz o novo estado e a operação é registada e gravada uma vez.
+    /// </summary>
+    /// <param name="status">Estado da vaga antes do encerramento.</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData(JobStatus.Unpublished)]
+    [InlineData(JobStatus.Published)]
+    [InlineData(JobStatus.Suspended)]
+    public async Task CloseMovesTheJobToClosedFromAnyOpenState(JobStatus status)
+    {
+        Job job = this.AddJobWithDeadline(null, status);
+
+        JobDto closed = await this.Service().CloseAsync(this.recruiterId, job.Id, TestContext.Current.CancellationToken);
+
+        Assert.Equal(JobStatus.Closed, job.Status);
+        Assert.Equal(JobStatus.Closed, closed.Status);
+        Assert.Equal([(this.recruiterId, OperationType.JobClosed, job.Id)], this.operationLogger.Entries);
+        Assert.Equal(1, this.unitOfWork.Saves);
+    }
+
+    /// <summary>
+    /// O encerramento é definitivo: encerrar de novo dá ERR-30 com o estado atual, sem registar nem gravar.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task ClosingAClosedJobIsAnInvalidState()
+    {
+        Job job = this.AddJobWithDeadline(null, JobStatus.Closed);
+
+        OperationConflictException exception = await Assert.ThrowsAsync<OperationConflictException>(
+            () => this.Service().CloseAsync(this.recruiterId, job.Id, TestContext.Current.CancellationToken));
+
+        Assert.Equal(ApiErrorResponse.InvalidStateCode, exception.Error.Code);
+        Assert.Equal("A operação não é permitida no estado atual: encerrada.", exception.Error.Message);
+        Assert.Empty(this.operationLogger.Entries);
+        Assert.Equal(0, this.unitOfWork.Saves);
+    }
+
+    /// <summary>
+    /// Sem localidade e sem competências (lista ausente ou vazia), os dois campos são indicados como obrigatórios e a
+    /// vaga não é criada (RF050).
+    /// </summary>
+    /// <param name="emptySkills">Se a lista de competências vem vazia em vez de ausente.</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingLocationAndSkillsAreRequired(bool emptySkills)
+    {
+        JobRequest request = this.Valid() with
+        {
+            LocationId = Guid.Empty,
+            SkillIds = emptySkills ? [] : null,
+        };
+
+        ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
+            () => this.Service().CreateAsync(this.recruiterId, request, TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            [
+                new FieldErrorDto("locationId", FieldReasons.Required),
+                new FieldErrorDto("skillIds", FieldReasons.Required),
+            ],
+            exception.Fields);
+        Assert.Empty(this.store.Jobs);
+    }
+
+    /// <summary>
     /// A alteração de uma vaga encerrada dá ERR-30 mesmo com um pedido inválido: o estado é verificado primeiro.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
