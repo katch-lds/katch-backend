@@ -523,6 +523,11 @@ public sealed class AccountAdminServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeOperationLogger : IOperationLogger

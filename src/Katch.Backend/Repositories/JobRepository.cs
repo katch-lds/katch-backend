@@ -34,6 +34,16 @@ public sealed class JobRepository : IJobRepository
     }
 
     /// <inheritdoc/>
+    public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        // O filtro global das vagas exclui as eliminadas (DM-09).
+        return this.context.Jobs
+            .AsNoTracking()
+            .Include(job => job.Skills)
+            .FirstOrDefaultAsync(job => job.Id == jobId, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return this.context.Jobs

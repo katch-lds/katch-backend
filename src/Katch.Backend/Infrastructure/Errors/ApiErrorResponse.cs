@@ -99,6 +99,11 @@ public static class ApiErrorResponse
     public const string JobUnavailableCode = "ERR-33";
 
     /// <summary>
+    /// Código do erro de Candidato que já não está em espera na vaga.
+    /// </summary>
+    public const string CandidateAlreadyEvaluatedCode = "ERR-35";
+
+    /// <summary>
     /// Código do erro de conversa em modo apenas de consulta.
     /// </summary>
     public const string ConversationReadOnlyCode = "ERR-36";
@@ -202,6 +207,11 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-33.
     /// </summary>
     public const string JobUnavailableMessage = "A vaga já não está disponível.";
+
+    /// <summary>
+    /// Mensagem do ERR-35.
+    /// </summary>
+    public const string CandidateAlreadyEvaluatedMessage = "O Candidato já foi avaliado nesta vaga.";
 
     /// <summary>
     /// Mensagem do ERR-36.
@@ -440,6 +450,16 @@ public static class ApiErrorResponse
     public static ApiErrorDto PhotoLimitReached(int maxPhotos)
     {
         return new ApiErrorDto(PhotoLimitReachedCode, $"Foi atingido o número máximo de fotografias ({maxPhotos}).");
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-35 (409): o interesse já não está em espera, porque o Recrutador já registou a decisão
+    /// (RF117; UC12, E4), na abertura do perfil, na obtenção do curriculum vitae ou na decisão.
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto CandidateAlreadyEvaluated()
+    {
+        return new ApiErrorDto(CandidateAlreadyEvaluatedCode, CandidateAlreadyEvaluatedMessage);
     }
 
     /// <summary>

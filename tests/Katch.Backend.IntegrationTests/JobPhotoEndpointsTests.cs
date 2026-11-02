@@ -594,5 +594,10 @@ public sealed partial class JobPhotoEndpointsTests : IClassFixture<KatchWebAppli
         {
             throw new NotSupportedException();
         }
+
+        public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            return inner.GetWithSkillsAsync(jobId, cancellationToken);
+        }
     }
 }

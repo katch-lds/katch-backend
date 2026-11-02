@@ -19,6 +19,15 @@ public interface IJobRepository
     public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Obtém uma vaga com as competências pretendidas, só para leitura, para confirmar a Empresa da vaga e identificar
+    /// as competências do Candidato coincidentes (RF059, RF062). As vagas eliminadas não são devolvidas.
+    /// </summary>
+    /// <param name="jobId">Identificador da vaga.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>A vaga, ou <see langword="null"/> se não existir ou estiver eliminada.</returns>
+    public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Obtém uma vaga com as competências e os benefícios, acompanhada pelo contexto, para a alterar. As vagas eliminadas
     /// não são devolvidas (DM-09).
     /// </summary>
