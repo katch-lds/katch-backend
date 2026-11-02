@@ -28,6 +28,17 @@ public interface IMatchRepository
     public Task AddAsync(Match match, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Conta os interesses em espera de decisão de cada vaga indicada (RF060), para o <c>waitingCandidates</c> das vagas
+    /// do Recrutador. É uma contagem feita na base de dados, sem carregar as respostas.
+    /// </summary>
+    /// <param name="jobIds">Identificadores das vagas.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O número de interesses em espera por vaga; as vagas sem interesses em espera não aparecem.</returns>
+    public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(
+        IReadOnlyCollection<Guid> jobIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lista os matches das vagas de uma Empresa, acompanhados pelo contexto, para passar as conversas abertas a consulta
     /// quando a Empresa é suspensa (RF075, RF095). As alterações são gravadas no
     /// <see cref="IUnitOfWork.SaveChangesAsync"/> seguinte.

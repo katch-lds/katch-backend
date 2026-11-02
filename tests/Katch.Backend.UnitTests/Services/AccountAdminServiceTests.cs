@@ -455,6 +455,11 @@ public sealed class AccountAdminServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeMatches : IMatchRepository
@@ -485,6 +490,11 @@ public sealed class AccountAdminServiceTests
         }
 
         public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

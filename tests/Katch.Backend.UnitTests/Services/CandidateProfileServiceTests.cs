@@ -510,6 +510,11 @@ public sealed class CandidateProfileServiceTests
         {
             return Task.FromResult(this.skills.Find(skill => skill.Id == id));
         }
+
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

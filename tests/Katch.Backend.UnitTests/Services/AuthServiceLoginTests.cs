@@ -600,12 +600,17 @@ public sealed class AuthServiceLoginTests
             throw new NotSupportedException();
         }
 
-        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
+        public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

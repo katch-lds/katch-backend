@@ -505,5 +505,10 @@ public sealed class CandidateProfileUpdateServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 }
