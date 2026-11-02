@@ -46,6 +46,13 @@ Resultado esperado do `04-verify.sql`: 17 tabelas do modelo, `existe_notificatio
 
 Os scripts 01 a 03 podem ser executados de novo sem erros nem linhas duplicadas.
 
+## Locale da base
+
+A base tem de usar a codificação `UTF8` e uma locale UTF-8 (por exemplo, a predefinida do PostgreSQL no Windows ou
+`en_US.utf8` na imagem `postgres:18` da CI), e não a locale `C`. O CHECK `ck_candidate_custom_skill_label` usa a classe
+`[[:alnum:]]`, que depende da locale: com a locale `C`, recusa as letras acentuadas que o P07 admite (por exemplo,
+«Gestão de equipas»). A locale de uma base existente consulta-se com `SHOW lc_ctype;`.
+
 ## Repor a base
 
 ```powershell

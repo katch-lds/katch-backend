@@ -50,4 +50,10 @@ public sealed class ReferenceDataRepository : IReferenceDataRepository
     {
         return this.context.Benefits.FirstOrDefaultAsync(benefit => benefit.Id == id, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
+    {
+        return this.context.Skills.AsNoTracking().ToListAsync(cancellationToken);
+    }
 }
