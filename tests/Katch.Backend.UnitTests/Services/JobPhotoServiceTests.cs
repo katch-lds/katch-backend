@@ -479,6 +479,11 @@ public sealed class JobPhotoServiceTests : IDisposable
             return Task.FromResult(this.Jobs.Find(job => job.Id == id && job.DeletedAt is null));
         }
 
+        Task<Company?> ICompanyRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Company?> GetByRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Companies.Find(item => item.RecruiterId == recruiterId));
@@ -547,6 +552,26 @@ public sealed class JobPhotoServiceTests : IDisposable
         }
 
         public Task AddAsync(Company company, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

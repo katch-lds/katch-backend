@@ -94,4 +94,16 @@ public sealed class JobRepository : IJobRepository
 
         return rows == 1;
     }
+
+    /// <inheritdoc/>
+    public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+    {
+        // Um interesse é qualquer resposta do Candidato que não seja a recusa da vaga (RF098).
+        return this.context.Jobs.AsNoTracking()
+            .Where(job => job.Status == JobStatus.Published)
+            .Select(job => new JobWithCount(
+                job,
+                this.context.Matches.Count(match => match.JobId == job.Id && match.Status != MatchStatus.DeclinedByCandidate)))
+            .ToListAsync(cancellationToken);
+    }
 }

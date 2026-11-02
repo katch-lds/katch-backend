@@ -36,17 +36,19 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IReferenceListService, ReferenceListService>();
         services.AddScoped<ICandidateProfileService, CandidateProfileService>();
         services.AddScoped<ICompanyService, CompanyService>();
+        services.AddScoped<IAccountAdminService, AccountAdminService>();
+        services.AddScoped<ICompanyAdminService, CompanyAdminService>();
         services.AddScoped<IQuotaService, QuotaService>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IConflictRetryDelay, RandomConflictRetryDelay>();
         services.AddScoped<IJobExplorationService, JobExplorationService>();
+        services.AddScoped<IJobService, JobService>();
 
         services.AddOptions<FileStorageOptions>().BindConfiguration(FileStorageOptions.SectionName);
         services.AddSingleton<IFileStorage, LocalFileStorage>();
         services.AddSingleton<IFileValidator, FileValidator>();
         services.AddSingleton<IFileUrlBuilder, FileUrlBuilder>();
         services.AddScoped<IFileAccessService, FileAccessService>();
-        services.AddScoped<IJobService, JobService>();
         return services;
     }
 }

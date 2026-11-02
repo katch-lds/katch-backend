@@ -12,8 +12,8 @@ namespace Katch.Backend.Services;
 
 /// <summary>
 /// Implementação de <see cref="ICandidateProfileService"/> (modelo de classes do backend v02, secções 5.1 e 5.3). As
-/// regras que dependem só do perfil são do <see cref="Candidate"/>; este serviço valida o pedido, indicando todos os
-/// campos em erro, trata os ficheiros e grava.
+/// regras que dependem só do perfil (P07, competência repetida) são do <see cref="Candidate"/>; este serviço valida o
+/// pedido, indicando todos os campos em erro, confirma a competência na lista, trata os ficheiros e grava.
 /// </summary>
 public sealed class CandidateProfileService : ICandidateProfileService
 {
@@ -27,6 +27,11 @@ public sealed class CandidateProfileService : ICandidateProfileService
     // Índices que impedem hiperligações repetidas quando dois pedidos do mesmo Candidato chegam ao mesmo tempo.
     private const string LinkPositionUniqueIndex = "uq_candidate_link_position";
     private const string LinkUrlUniqueIndex = "uq_candidate_link_url";
+
+    // Índices que impedem a mesma competência duas vezes no perfil quando dois pedidos chegam ao mesmo tempo.
+    private const string SkillPrimaryKey = "pk_candidate_skill";
+    private const string CustomSkillUniqueIndex = "uq_candidate_custom_skill";
+    private const string CustomSkillLabelCheck = "ck_candidate_custom_skill_label";
 
     private static readonly StringComparer Alphabetical = StringComparer.Create(CultureInfo.GetCultureInfo("pt-PT"), ignoreCase: true);
 
@@ -275,6 +280,128 @@ public sealed class CandidateProfileService : ICandidateProfileService
         }
     }
 
+    /// <inheritdoc/>
+    public async Task<CandidateProfileDto> AddSkillAsync(
+        Guid candidateId,
+        AddSkillRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (request.SkillId is not { } skillId)
+        {
+            throw Invalid("skillId", FieldReasons.Required);
+        }
+
+        Candidate candidate = await this.LoadAsync(candidateId, cancellationToken);
+        Skill skill = await this.referenceData.GetSkillAsync(skillId, cancellationToken)
+            ?? throw Invalid("skillId", FieldReasons.NotInList);
+
+        if (candidate.Skills.Any(item => item.Id == skillId))
+        {
+            throw Invalid("skillId", FieldReasons.SkillAlreadyAdded);
+        }
+
+        candidate.AddSkill(skill);
+
+        try
+        {
+            await this.unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (UniqueConstraintViolationException exception) when (exception.ConstraintName == SkillPrimaryKey)
+        {
+            throw Invalid("skillId", FieldReasons.SkillAlreadyAdded);
+        }
+
+        return await this.ToDtoAsync(candidate, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task RemoveSkillAsync(Guid candidateId, Guid skillId, CancellationToken cancellationToken = default)
+    {
+        Candidate candidate = await this.LoadAsync(candidateId, cancellationToken);
+
+        try
+        {
+            candidate.RemoveSkill(skillId);
+        }
+        catch (KeyNotFoundException)
+        {
+            throw new ElementNotFoundException();
+        }
+
+        await this.SaveRemovalAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<CandidateProfileDto> AddCustomSkillAsync(
+        Guid candidateId,
+        AddCustomSkillRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (string.IsNullOrEmpty(request.Label))
+        {
+            throw Invalid("label", FieldReasons.Required);
+        }
+
+        // A validação do P07 é feita aqui, no servidor, e não depende do cliente (RF009). A entidade lança a mesma
+        // exceção para o formato e para a repetição; as verificações prévias distinguem os dois motivos.
+        string label;
+        try
+        {
+            label = CandidateCustomSkill.Normalize(request.Label);
+        }
+        catch (ArgumentException)
+        {
+            throw Invalid("label", FieldReasons.CustomSkillFormat);
+        }
+
+        Candidate candidate = await this.LoadAsync(candidateId, cancellationToken);
+
+        if (candidate.CustomSkills.Any(item => string.Equals(item.Label, label, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw Invalid("label", FieldReasons.SkillAlreadyAdded);
+        }
+
+        candidate.AddCustomSkill(label);
+
+        try
+        {
+            await this.unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (UniqueConstraintViolationException exception) when (exception.ConstraintName == CustomSkillUniqueIndex)
+        {
+            throw Invalid("label", FieldReasons.SkillAlreadyAdded);
+        }
+        catch (CheckConstraintViolationException exception) when (exception.ConstraintName == CustomSkillLabelCheck)
+        {
+            // O CHECK usa a classe [[:alnum:]], que depende da locale da base: com a locale C, por exemplo, recusa as
+            // letras acentuadas que o P07 admite. A recusa chega ao cliente como ERR-10 no campo, e não como ERR-50.
+            throw Invalid("label", FieldReasons.CustomSkillFormat);
+        }
+
+        return await this.ToDtoAsync(candidate, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task RemoveCustomSkillAsync(Guid candidateId, Guid customSkillId, CancellationToken cancellationToken = default)
+    {
+        Candidate candidate = await this.LoadAsync(candidateId, cancellationToken);
+
+        try
+        {
+            candidate.RemoveCustomSkill(customSkillId);
+        }
+        catch (KeyNotFoundException)
+        {
+            throw new ElementNotFoundException();
+        }
+
+        await this.SaveRemovalAsync(cancellationToken);
+    }
+
     private static string? TrimToNull(string? value)
     {
         string? trimmed = value?.Trim();
@@ -306,6 +433,11 @@ public sealed class CandidateProfileService : ICandidateProfileService
             candidate.MinSalaryExpectation,
             candidate.PreferredWorkModes.ToList(),
             candidate.PreferredContractTypes.ToList());
+    }
+
+    private static ValidationFailedException Invalid(string field, string reason)
+    {
+        return new ValidationFailedException([new FieldErrorDto(field, reason)]);
     }
 
     private async Task<Candidate> LoadAsync(Guid candidateId, CancellationToken cancellationToken)
@@ -417,6 +549,20 @@ public sealed class CandidateProfileService : ICandidateProfileService
         {
             // O ficheiro novo já está gravado e associado ao Candidato: falhar a eliminação do anterior não deve falhar o
             // pedido; fica um ficheiro sem referência na pasta de armazenamento.
+        }
+    }
+
+    private async Task SaveRemovalAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await this.unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            // Outro pedido retirou a mesma competência entre a leitura e a gravação: o resultado é o de um pedido sobre
+            // uma competência que já não está no perfil.
+            throw new ElementNotFoundException();
         }
     }
 }

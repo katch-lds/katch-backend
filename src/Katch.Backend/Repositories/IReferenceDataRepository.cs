@@ -5,8 +5,8 @@ using Katch.Backend.Domain;
 namespace Katch.Backend.Repositories;
 
 /// <summary>
-/// Acesso às listas pré-definidas (modelo de classes do backend v02, secção 4). As operações dos benefícios e da
-/// manutenção das listas são acrescentadas pelas Issues que as usam.
+/// Acesso às listas pré-definidas (modelo de classes do backend v02, secção 4). A consulta dos benefícios e a
+/// manutenção das listas são acrescentadas pela Issue dessas operações (I118).
 /// </summary>
 public interface IReferenceDataRepository
 {
@@ -34,7 +34,8 @@ public interface IReferenceDataRepository
     public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Obtém uma competência da lista pré-definida, acompanhada pelo contexto, para a associar a uma vaga (RF050).
+    /// Obtém uma competência da lista pré-definida, acompanhada pelo contexto, para a associar a um perfil (RF008) ou a
+    /// uma vaga (RF050).
     /// </summary>
     /// <param name="id">Identificador da competência.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -48,4 +49,11 @@ public interface IReferenceDataRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>O benefício, ou <see langword="null"/> se não existir na lista.</returns>
     public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista as competências da lista pré-definida, só para leitura (RF008, RF050).
+    /// </summary>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>As competências, sem ordem garantida.</returns>
+    public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default);
 }

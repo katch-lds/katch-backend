@@ -589,5 +589,10 @@ public sealed partial class JobPhotoEndpointsTests : IClassFixture<KatchWebAppli
         {
             throw new ConcurrencyConflictException(new InvalidOperationException("Conflito simulado."));
         }
+
+        public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 }
