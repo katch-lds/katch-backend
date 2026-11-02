@@ -32,4 +32,19 @@ public interface IReferenceDataRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A localidade, ou <see langword="null"/> se não existir.</returns>
     public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista as competências da lista pré-definida, só para leitura (RF008, RF050).
+    /// </summary>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>As competências, sem ordem garantida.</returns>
+    public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém uma competência da lista pré-definida, acompanhada pelo contexto, para a associar a um perfil (RF008).
+    /// </summary>
+    /// <param name="id">Identificador da competência.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>A competência, ou <see langword="null"/> se não existir na lista.</returns>
+    public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default);
 }

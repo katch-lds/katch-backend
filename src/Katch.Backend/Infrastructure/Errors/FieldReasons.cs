@@ -1,5 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Domain;
+
 namespace Katch.Backend.Infrastructure.Errors;
 
 /// <summary>
@@ -56,6 +58,17 @@ public static class FieldReasons
     /// Identificador fora da lista pré-definida (RF003, RF008, RF041, RF050).
     /// </summary>
     public const string NotInList = "O valor não pertence à lista pré-definida.";
+
+    /// <summary>
+    /// Competência da opção «Outro» fora do P07 (RF009), com o texto da validação da entidade.
+    /// </summary>
+    public const string CustomSkillFormat = CandidateCustomSkill.InvalidLabelMessage;
+
+    /// <summary>
+    /// Competência, da lista ou da opção «Outro», que já está no perfil do Candidato (RF008, RF009). A documentação da
+    /// API v02 (secção 6.2.4) prevê o erro sem fixar o texto.
+    /// </summary>
+    public const string SkillAlreadyAdded = "A competência já está associada ao perfil.";
 
     /// <summary>
     /// Nome com mais de 150 caracteres (coluna <c>candidate.full_name</c>).

@@ -38,4 +38,16 @@ public sealed class ReferenceDataRepository : IReferenceDataRepository
     {
         return this.context.Locations.AsNoTracking().FirstOrDefaultAsync(location => location.Id == id, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
+    {
+        return this.context.Skills.AsNoTracking().ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Skills.FirstOrDefaultAsync(skill => skill.Id == id, cancellationToken);
+    }
 }
