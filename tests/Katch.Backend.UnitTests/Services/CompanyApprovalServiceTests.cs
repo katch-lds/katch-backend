@@ -494,6 +494,11 @@ public sealed class CompanyApprovalServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class UnusedMatches : IMatchRepository

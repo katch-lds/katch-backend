@@ -77,6 +77,25 @@ public sealed class JobRepository : IJobRepository
     }
 
     /// <inheritdoc/>
+    public async Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        // Uma só instrução: o limite é verificado e o caminho acrescentado sob o bloqueio da linha, por isso pedidos
+        // simultâneos não perdem escritas. No SQLite dos testes (sem varchar[]), photo_paths é um texto JSON e as
+        // colunas mantêm os nomes das propriedades.
+        int rows = this.context.Database.IsNpgsql()
+            ? await this.context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE job SET photo_paths = array_append(photo_paths, {path}) WHERE id = {jobId} AND deleted_at IS NULL AND cardinality(photo_paths) < {maxPhotos}",
+                cancellationToken)
+            : await this.context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE job SET PhotoPaths = json_insert(PhotoPaths, '$[#]', {path}) WHERE Id = {jobId} AND DeletedAt IS NULL AND json_array_length(PhotoPaths) < {maxPhotos}",
+                cancellationToken);
+
+        return rows == 1;
+    }
+
+    /// <inheritdoc/>
     public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
     {
         // Um interesse é qualquer resposta do Candidato que não seja a recusa da vaga (RF098).

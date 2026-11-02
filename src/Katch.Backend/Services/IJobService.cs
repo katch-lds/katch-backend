@@ -8,8 +8,8 @@ namespace Katch.Backend.Services;
 /// Gestão das vagas pelo Recrutador da Empresa aprovada (modelo de classes do backend v02, secção 5.1; UC09, UC10). A
 /// Empresa é sempre a do Recrutador da credencial de sessão; uma vaga de outra Empresa dá
 /// <see cref="ElementForbiddenException"/> (RF059) e uma vaga inexistente ou eliminada dá
-/// <see cref="ElementNotFoundException"/>. O carregamento das fotografias (<c>AddPhotoAsync</c>) e o encerramento
-/// automático (<c>CloseExpiredAsync</c>) são acrescentados pelas Issues que os implementam (I105, I115).
+/// <see cref="ElementNotFoundException"/>. Também acrescenta fotografias à vaga (secção 6.5.9, I105); o encerramento
+/// automático (<c>CloseExpiredAsync</c>) é acrescentado pela Issue que o implementa (I115).
 /// </summary>
 public interface IJobService
 {
@@ -96,4 +96,19 @@ public interface IJobService
     /// <returns>Tarefa que termina quando a vaga foi eliminada.</returns>
     /// <exception cref="OperationConflictException">ERR-38, se a vaga tiver pelo menos um interesse.</exception>
     public Task DeleteAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Acrescenta uma fotografia ao fim da lista da vaga (documentação da API v02, secção 6.5.9; RF052; RNF015,
+    /// RNF016; P01, P13). As verificações seguem a ordem: titularidade, estado, limite e ficheiro; o limite é decidido
+    /// por uma atualização atómica, por isso pedidos simultâneos nunca ultrapassam as 5 fotografias nem deixam
+    /// ficheiros órfãos.
+    /// </summary>
+    /// <param name="recruiterId">Identificador do Recrutador da credencial de sessão.</param>
+    /// <param name="jobId">Identificador da vaga.</param>
+    /// <param name="file">Ficheiro enviado no campo <c>file</c>; <see langword="null"/> se faltar.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O URL da API que serve a fotografia.</returns>
+    /// <exception cref="OperationConflictException">ERR-30, se a vaga estiver encerrada; ERR-39, se já tiver 5 fotografias.</exception>
+    /// <exception cref="FileRejectedException">ERR-11, se o ficheiro faltar, não for JPEG nem PNG ou exceder 5 MB.</exception>
+    public Task<string> AddPhotoAsync(Guid recruiterId, Guid jobId, IFormFile? file, CancellationToken cancellationToken = default);
 }

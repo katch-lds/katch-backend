@@ -5,6 +5,7 @@ using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -486,7 +487,10 @@ public sealed class JobServiceTests
             this.store,
             this.operationLogger,
             this.unitOfWork,
-            clock ?? new FixedClock(Now));
+            clock ?? new FixedClock(Now),
+            new FileValidator(),
+            new UnusedFileStorage(),
+            new FileUrlBuilder());
     }
 
     private sealed class FixedClock : IClock
@@ -539,6 +543,16 @@ public sealed class JobServiceTests
         public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Waiting.Where(item => jobIds.Contains(item.Key)).ToDictionary());
+        }
+
+        public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
 
         public Task<Company?> GetByRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default)
@@ -616,11 +630,6 @@ public sealed class JobServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
         public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -637,6 +646,24 @@ public sealed class JobServiceTests
         }
 
         public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class UnusedFileStorage : IFileStorage
+    {
+        public Task<string> SaveAsync(Stream content, FileKind kind, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Stream> OpenReadAsync(string path, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task DeleteAsync(string path, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
