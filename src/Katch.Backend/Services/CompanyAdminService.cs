@@ -30,6 +30,15 @@ public sealed class CompanyAdminService : ICompanyAdminService
     private readonly IOperationLogger operationLogger;
     private readonly IUnitOfWork unitOfWork;
     private readonly IClock clock;
+/// antes, para responder com o ERR-30 e o estado atual. A mudança de estado da Empresa e a linha do <c>operation_log</c>
+/// (RF112) são gravadas numa única gravação, que é uma transação. A validação do motivo da recusa vem antes de carregar a
+/// Empresa, para que um pedido inválido não dependa do estado.
+/// </remarks>
+public sealed class CompanyAdminService : ICompanyAdminService
+{
+    private readonly ICompanyRepository companies;
+    private readonly IOperationLogger operationLogger;
+    private readonly IUnitOfWork unitOfWork;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CompanyAdminService"/> class.
@@ -91,6 +100,52 @@ public sealed class CompanyAdminService : ICompanyAdminService
     }
 
     /// <inheritdoc/>
+    public async Task<List<PendingCompanyDto>> ListPendingAsync(CancellationToken cancellationToken = default)
+    {
+        List<Company> pending = await this.companies.ListPendingAsync(cancellationToken);
+
+        // A ordenação é feita aqui, como nas restantes listas.
+        return pending
+            .Select(company => new PendingCompanyDto(company.Id, company.CompanyName, company.TaxId, company.SubmittedAt))
+            .OrderBy(item => item.SubmittedAt)
+            .ThenBy(item => item.CompanyId)
+            .ToList();
+    }
+
+    /// <inheritdoc/>
+    public async Task<CompanyRegistrationDto> GetSubmittedDataAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        CompanyWithLocation found = await this.companies.GetWithLocationAsync(companyId, cancellationToken)
+            ?? throw new ElementNotFoundException();
+        Company company = found.Company;
+
+        return new CompanyRegistrationDto(
+            company.Id,
+            company.CompanyName,
+            company.TaxId,
+            company.Industry,
+            company.Address,
+            company.LocationId,
+            ReferenceListService.DisplayName(found.Location),
+            company.ContactEmail,
+            company.ContactPhone,
+            company.ResponsibleName,
+            company.SubmittedAt);
+    }
+
+    /// <inheritdoc/>
+    public async Task ApproveAsync(Guid adminId, Guid companyId, CancellationToken cancellationToken = default)
+    {
+        Company company = await this.LoadAsync(companyId, cancellationToken);
+        EnsureStatus(company, CompanyStatus.Pending);
+
+        company.Approve();
+
+        await this.operationLogger.LogAsync(adminId, OperationType.CompanyApproved, company.Id, cancellationToken);
+        await this.SaveAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<List<CompanyAdminDto>> ListCompaniesAsync(CancellationToken cancellationToken = default)
     {
         List<CompanyWithCount> all = await this.companies.ListAllWithPublishedCountAsync(cancellationToken);
@@ -125,6 +180,41 @@ public sealed class CompanyAdminService : ICompanyAdminService
             .ToList();
     }
 
+    public async Task RejectAsync(
+        Guid adminId,
+        Guid companyId,
+        RejectCompanyRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        string reason = ValidateReason(request.Reason);
+        Company company = await this.LoadAsync(companyId, cancellationToken);
+        EnsureStatus(company, CompanyStatus.Pending);
+
+        company.Reject(reason);
+
+        await this.operationLogger.LogAsync(adminId, OperationType.CompanyRejected, company.Id, cancellationToken);
+        await this.SaveAsync(cancellationToken);
+    }
+
+    private static string ValidateReason(string? value)
+    {
+        string reason = value?.Trim() ?? string.Empty;
+
+        if (reason.Length == 0)
+        {
+            throw new ValidationFailedException([new FieldErrorDto("reason", FieldReasons.Required)]);
+        }
+
+        if (reason.Length < Company.MinReasonLength || reason.Length > Company.MaxReasonLength)
+        {
+            throw new ValidationFailedException([new FieldErrorDto("reason", FieldReasons.RejectionReasonLength)]);
+        }
+
+        return reason;
+    }
+
     private static void EnsureStatus(Company company, CompanyStatus expected)
     {
         if (company.Status != expected)
@@ -148,8 +238,9 @@ public sealed class CompanyAdminService : ICompanyAdminService
         }
         catch (ConcurrencyConflictException)
         {
-            // Uma das conversas foi alterada por outro pedido entre a leitura e a gravação: nada fica gravado e o
-            // Administrador repete a operação (modelo de dados, secção 7.3).
+            // A Empresa foi alterada por outro pedido entre a leitura e a gravação: a mudança de estado e o registo da
+            // operação, que fazem parte da mesma unidade de trabalho, não ficam gravados e o Administrador repete a
+            // operação (modelo de dados, secção 7.3).
             throw new OperationConflictException(ApiErrorResponse.ConcurrencyConflict());
         }
     }

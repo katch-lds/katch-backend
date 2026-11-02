@@ -6,8 +6,7 @@ namespace Katch.Backend.Repositories;
 
 /// <summary>
 /// Acesso às Empresas (<c>company</c>) (modelo de classes do backend v02, secção 4). As restantes operações do modelo
-/// (<c>GetByIdAsync</c>, <c>ListPendingAsync</c>, <c>ListAllWithPublishedCountAsync</c>, <c>CountByStatusAtAsync</c>)
-/// são acrescentadas pelas Issues que as usam.
+/// (<c>ListAllWithPublishedCountAsync</c>, <c>CountByStatusAtAsync</c>) são acrescentadas pelas Issues que as usam.
 /// </summary>
 public interface ICompanyRepository
 {
@@ -51,4 +50,17 @@ public interface ICompanyRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As Empresas com a contagem, sem ordem garantida.</returns>
     public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default);
+    /// Obtém uma Empresa com a sua localidade, só para leitura (RF092).
+    /// </summary>
+    /// <param name="id">Identificador da Empresa.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>A Empresa com a localidade, ou <see langword="null"/> se a Empresa não existir.</returns>
+    public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista as Empresas pendentes de aprovação, só para leitura (RF091).
+    /// </summary>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>As Empresas no estado pendente, sem ordem garantida.</returns>
+    public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default);
 }

@@ -61,6 +61,22 @@ public sealed class CompanyRepository : ICompanyRepository
             .Select(company => new CompanyWithCount(
                 company,
                 this.context.Jobs.Count(job => job.CompanyId == company.Id && job.Status == JobStatus.Published)))
+    public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        // A localidade é obrigatória (chave estrangeira de company.location_id): a junção não perde nenhuma Empresa.
+        return (from company in this.context.Companies.AsNoTracking()
+                join location in this.context.Locations.AsNoTracking() on company.LocationId equals location.Id
+                where company.Id == id
+                select new CompanyWithLocation(company, location))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
+    {
+        return this.context.Companies
+            .AsNoTracking()
+            .Where(company => company.Status == CompanyStatus.Pending)
             .ToListAsync(cancellationToken);
     }
 }

@@ -36,6 +36,19 @@ public sealed class CandidateRepository : ICandidateRepository
     }
 
     /// <inheritdoc/>
+    public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        // AsSplitQuery: as três coleções numa só consulta multiplicariam as linhas (hiperligações × competências).
+        return this.context.Candidates
+            .Include(candidate => candidate.User)
+            .Include(candidate => candidate.Links)
+            .Include(candidate => candidate.Skills)
+            .Include(candidate => candidate.CustomSkills)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<List<Candidate>> ListQuotaDueAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         // O CHECK da tabela só admite next_swipe_available_at preenchido com a quota a 0, por isso este filtro basta.
@@ -51,5 +64,12 @@ public sealed class CandidateRepository : ICandidateRepository
             .AsNoTracking()
             .Include(candidate => candidate.User)
             .ToListAsync(cancellationToken);
+    public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+
+        return this.context.Candidates
+            .AsNoTracking()
+            .FirstOrDefaultAsync(candidate => candidate.ProfilePhotoPath == path, cancellationToken);
     }
 }

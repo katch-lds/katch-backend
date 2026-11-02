@@ -752,6 +752,12 @@ public sealed class JobExplorationServiceTests
         }
 
         public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -824,6 +830,11 @@ public sealed class JobExplorationServiceTests
         }
 
         public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+      
+        public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

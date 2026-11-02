@@ -32,4 +32,10 @@ public sealed class ReferenceDataRepository : IReferenceDataRepository
     {
         return this.context.Locations.AnyAsync(location => location.Id == id, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Locations.AsNoTracking().FirstOrDefaultAsync(location => location.Id == id, cancellationToken);
+    }
 }

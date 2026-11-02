@@ -486,6 +486,15 @@ public sealed class CompanyServiceTests
         {
             throw new NotSupportedException();
         }
+        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeOperationLogger : IOperationLogger
@@ -520,6 +529,11 @@ public sealed class CompanyServiceTests
         public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(id == this.locationId);
+        }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 
