@@ -435,6 +435,11 @@ public sealed class AuthServiceTests
             this.AddedRecruiters.Add(recruiter);
             return Task.CompletedTask;
         }
+
+        public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeCandidates : ICandidateRepository
@@ -457,7 +462,17 @@ public sealed class AuthServiceTests
             return Task.FromResult(new List<Candidate>());
         }
 
+        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

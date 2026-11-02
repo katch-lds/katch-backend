@@ -56,4 +56,23 @@ public sealed class CandidateRepository : ICandidateRepository
             .Where(candidate => candidate.NextSwipeAvailableAt != null && candidate.NextSwipeAvailableAt <= now)
             .ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+    {
+        return this.context.Candidates
+            .AsNoTracking()
+            .Include(candidate => candidate.User)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+
+        return this.context.Candidates
+            .AsNoTracking()
+            .FirstOrDefaultAsync(candidate => candidate.ProfilePhotoPath == path, cancellationToken);
+    }
 }
