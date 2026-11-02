@@ -704,6 +704,36 @@ public sealed class JobExplorationServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddAsync(Job job, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Job>> ListByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeCandidates : ICandidateRepository
@@ -751,6 +781,11 @@ public sealed class JobExplorationServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -791,6 +826,31 @@ public sealed class JobExplorationServiceTests
             return Task.CompletedTask;
         }
 
+        public Task<Match?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Guid?> GetRecruiterIdAsync(Guid matchId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<MatchView>> ListMatchViewsByCandidateAsync(Guid candidateId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<MatchView>> ListMatchViewsByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<ConversationView>> ListConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             if (this.FailNextSaves.TryDequeue(out Exception? failure))
@@ -823,12 +883,22 @@ public sealed class JobExplorationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<Match?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
         public Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Match>> ListMatchesByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

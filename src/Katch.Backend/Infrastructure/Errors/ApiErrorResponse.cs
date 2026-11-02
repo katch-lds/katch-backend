@@ -109,6 +109,26 @@ public static class ApiErrorResponse
     public const string CandidateAlreadyEvaluatedCode = "ERR-35";
 
     /// <summary>
+    /// Código do erro de conversa em modo apenas de consulta.
+    /// </summary>
+    public const string ConversationReadOnlyCode = "ERR-36";
+
+    /// <summary>
+    /// Código do erro de conversa sem match.
+    /// </summary>
+    public const string ConversationWithoutMatchCode = "ERR-37";
+
+    /// <summary>
+    /// Código do erro de fotografia acima do número máximo da galeria ou da vaga.
+    /// </summary>
+    public const string PhotoLimitReachedCode = "ERR-39";
+
+    /// <summary>
+    /// Código do erro de eliminação de uma vaga com interesses registados.
+    /// </summary>
+    public const string JobHasInterestsCode = "ERR-38";
+
+    /// <summary>
     /// Código do erro de segundo registo de Empresa pelo mesmo Recrutador.
     /// </summary>
     public const string CompanyAlreadyRegisteredCode = "ERR-40";
@@ -149,6 +169,11 @@ public static class ApiErrorResponse
     public const string AccountTypeNotAllowedMessage = "A operação não está disponível para este tipo de conta.";
 
     /// <summary>
+    /// Mensagem do ERR-08.
+    /// </summary>
+    public const string ElementForbiddenMessage = "Não tem autorização para aceder a este elemento.";
+
+    /// <summary>
     /// Mensagem do ERR-10.
     /// </summary>
     public const string ValidationFailedMessage = "Os dados enviados não cumprem a validação automática.";
@@ -174,9 +199,9 @@ public static class ApiErrorResponse
     public const string NotFoundMessage = "O elemento pedido não existe ou não está disponível.";
 
     /// <summary>
-    /// Mensagem do ERR-08.
+    /// Mensagem do ERR-38.
     /// </summary>
-    public const string ElementForbiddenMessage = "Não tem autorização para aceder a este elemento.";
+    public const string JobHasInterestsMessage = "A vaga tem interesses registados e só pode ser encerrada.";
 
     /// <summary>
     /// Mensagem do ERR-32.
@@ -197,6 +222,16 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-35.
     /// </summary>
     public const string CandidateAlreadyEvaluatedMessage = "O Candidato já foi avaliado nesta vaga.";
+
+    /// <summary>
+    /// Mensagem do ERR-36.
+    /// </summary>
+    public const string ConversationReadOnlyMessage = "A conversa está em modo apenas de consulta.";
+
+    /// <summary>
+    /// Mensagem do ERR-37.
+    /// </summary>
+    public const string ConversationWithoutMatchMessage = "Não existe match para esta conversa.";
 
     /// <summary>
     /// Mensagem do ERR-40.
@@ -298,6 +333,15 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Cria o corpo do ERR-08 (403): o elemento é de outro utilizador ou de outra Empresa (RF059, RNF006).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ElementForbidden()
+    {
+        return new ApiErrorDto(ElementForbiddenCode, ElementForbiddenMessage);
+    }
+
+    /// <summary>
     /// Cria o corpo do ERR-10 (400): um ou mais campos não cumprem a validação automática (RF004, RF042, RNF008).
     /// </summary>
     /// <param name="fields">Um erro por campo em causa.</param>
@@ -391,12 +435,31 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
-    /// Cria o corpo do ERR-08 (403): o elemento é de outro utilizador ou de outra Empresa (RF059, RNF006).
+    /// Cria o corpo do ERR-36 (409): a conversa está em modo apenas de consulta (RF028, RF075).
     /// </summary>
     /// <returns>O corpo da resposta.</returns>
-    public static ApiErrorDto ElementForbidden()
+    public static ApiErrorDto ConversationReadOnly()
     {
-        return new ApiErrorDto(ElementForbiddenCode, ElementForbiddenMessage);
+        return new ApiErrorDto(ConversationReadOnlyCode, ConversationReadOnlyMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-37 (409): o identificador não corresponde a um match confirmado (RF026).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ConversationWithoutMatch()
+    {
+        return new ApiErrorDto(ConversationWithoutMatchCode, ConversationWithoutMatchMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-39 (409): a galeria ou a vaga já tem o número máximo de fotografias (RF048, RF052, P13).
+    /// </summary>
+    /// <param name="maxPhotos">Número máximo de fotografias, indicado na mensagem.</param>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto PhotoLimitReached(int maxPhotos)
+    {
+        return new ApiErrorDto(PhotoLimitReachedCode, $"Foi atingido o número máximo de fotografias ({maxPhotos}).");
     }
 
     /// <summary>
@@ -417,6 +480,15 @@ public static class ApiErrorResponse
     public static ApiErrorDto CandidateAlreadyEvaluated()
     {
         return new ApiErrorDto(CandidateAlreadyEvaluatedCode, CandidateAlreadyEvaluatedMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-38 (409): a vaga tem pelo menos um interesse registado e só pode ser encerrada (RF058).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto JobHasInterests()
+    {
+        return new ApiErrorDto(JobHasInterestsCode, JobHasInterestsMessage);
     }
 
     /// <summary>
@@ -477,6 +549,24 @@ public static class ApiErrorResponse
             CompanyStatus.Rejected => "recusada",
             CompanyStatus.Suspended => "suspensa",
             _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Estado de Empresa desconhecido."),
+        };
+    }
+
+    /// <summary>
+    /// Designação do estado da vaga nas mensagens do ERR-30 (documentação da API v02, secção 2.4).
+    /// </summary>
+    /// <param name="status">Estado da vaga.</param>
+    /// <returns>«não publicada», «publicada», «suspensa» ou «encerrada».</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Se o estado não for conhecido.</exception>
+    public static string JobStatusLabel(JobStatus status)
+    {
+        return status switch
+        {
+            JobStatus.Unpublished => "não publicada",
+            JobStatus.Published => "publicada",
+            JobStatus.Suspended => "suspensa",
+            JobStatus.Closed => "encerrada",
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Estado de vaga desconhecido."),
         };
     }
 

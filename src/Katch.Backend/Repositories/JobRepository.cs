@@ -1,6 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain;
+using Katch.Backend.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Repositories;
@@ -40,5 +41,79 @@ public sealed class JobRepository : IJobRepository
             .AsNoTracking()
             .Include(job => job.Skills)
             .FirstOrDefaultAsync(job => job.Id == jobId, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Jobs
+            .Include(job => job.Skills)
+            .Include(job => job.Benefits)
+            .FirstOrDefaultAsync(job => job.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task AddAsync(Job job, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(job);
+
+        await this.context.Jobs.AddAsync(job, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<Job>> ListByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        // O operation_log só recebe inserções e o seu identificador é sequencial, por isso a ordem do registo
+        // JOB_CREATED é a da data de criação (DM-22) e ordena na base de dados em qualquer fornecedor, sem ordenar por
+        // DateTimeOffset. As vagas sem esse registo (inseridas por SQL) ficam no fim.
+        return await this.context.Jobs
+            .AsNoTracking()
+            .Include(job => job.Skills)
+            .Include(job => job.Benefits)
+            .Where(job => job.CompanyId == companyId)
+            .OrderByDescending(job => this.context.OperationLogs
+                .Where(log => log.EntityId == job.Id && log.Operation == OperationType.JobCreated)
+                .Min(log => (long?)log.Id) ?? 0)
+            .ThenBy(job => job.Id)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.AnyAsync(
+            match => match.JobId == jobId && match.Status != MatchStatus.DeclinedByCandidate,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        // Uma só instrução: o limite é verificado e o caminho acrescentado sob o bloqueio da linha, por isso pedidos
+        // simultâneos não perdem escritas. No SQLite dos testes (sem varchar[]), photo_paths é um texto JSON e as
+        // colunas mantêm os nomes das propriedades.
+        int rows = this.context.Database.IsNpgsql()
+            ? await this.context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE job SET photo_paths = array_append(photo_paths, {path}) WHERE id = {jobId} AND deleted_at IS NULL AND cardinality(photo_paths) < {maxPhotos}",
+                cancellationToken)
+            : await this.context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE job SET PhotoPaths = json_insert(PhotoPaths, '$[#]', {path}) WHERE Id = {jobId} AND DeletedAt IS NULL AND json_array_length(PhotoPaths) < {maxPhotos}",
+                cancellationToken);
+
+        return rows == 1;
+    }
+
+    /// <inheritdoc/>
+    public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+    {
+        // Um interesse é qualquer resposta do Candidato que não seja a recusa da vaga (RF098).
+        return this.context.Jobs.AsNoTracking()
+            .Where(job => job.Status == JobStatus.Published)
+            .Select(job => new JobWithCount(
+                job,
+                this.context.Matches.Count(match => match.JobId == job.Id && match.Status != MatchStatus.DeclinedByCandidate)))
+            .ToListAsync(cancellationToken);
     }
 }

@@ -47,6 +47,37 @@ public interface IMatchRepository
     public Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Conta os interesses em espera de decisão de cada vaga indicada (RF060), para o <c>waitingCandidates</c> das vagas
+    /// do Recrutador. É uma contagem feita na base de dados, sem carregar as respostas.
+    /// </summary>
+    /// <param name="jobIds">Identificadores das vagas.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O número de interesses em espera por vaga; as vagas sem interesses em espera não aparecem.</returns>
+    public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(
+        IReadOnlyCollection<Guid> jobIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista os matches das vagas de uma Empresa, acompanhados pelo contexto, para passar as conversas abertas a consulta
+    /// quando a Empresa é suspensa (RF075, RF095). As alterações são gravadas no
+    /// <see cref="IUnitOfWork.SaveChangesAsync"/> seguinte.
+    /// </summary>
+    /// <param name="companyId">Identificador da Empresa.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Os registos no estado <c>MATCHED</c> das vagas da Empresa.</returns>
+    public Task<List<Match>> ListMatchesByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista as conversas abertas de uma conta, como Candidato ou como Recrutador da Empresa da vaga, acompanhadas pelo
+    /// contexto, para as passar a consulta quando a conta é bloqueada ou suspensa (RF075). As alterações são gravadas no
+    /// <see cref="IUnitOfWork.SaveChangesAsync"/> seguinte.
+    /// </summary>
+    /// <param name="userId">Identificador da conta.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Os registos no estado <c>MATCHED</c> com a conversa aberta em que a conta é uma das partes.</returns>
+    public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Indica se o Candidato tem um interesse registado numa vaga da Empresa do Recrutador, isto é, uma resposta que não
     /// seja a recusa da vaga pelo Candidato (RF061). A ligação do Recrutador à Empresa e às vagas é feita na consulta.
     /// </summary>
@@ -55,4 +86,38 @@ public interface IMatchRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><see langword="true"/> se existir esse interesse.</returns>
     public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém o Recrutador da Empresa dona da vaga do match, a parte do lado da Empresa na conversa (RF026).
+    /// </summary>
+    /// <param name="matchId">Identificador do match.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O identificador do Recrutador, ou <see langword="null"/> se o match não existir.</returns>
+    public Task<Guid?> GetRecruiterIdAsync(Guid matchId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista os matches confirmados do Candidato, com os dados da vaga e da Empresa, numa só consulta (RF024, RF025).
+    /// </summary>
+    /// <param name="candidateId">Identificador do Candidato.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Os matches no estado <c>MATCHED</c>, sem ordem definida.</returns>
+    public Task<List<MatchView>> ListMatchViewsByCandidateAsync(Guid candidateId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista os matches confirmados das vagas de uma Empresa, com os dados da vaga e do Candidato, numa só consulta
+    /// (RF067).
+    /// </summary>
+    /// <param name="companyId">Identificador da Empresa.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Os matches no estado <c>MATCHED</c>, sem ordem definida.</returns>
+    public Task<List<MatchView>> ListMatchViewsByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista as conversas de uma conta, abertas e em modo apenas de consulta, como Candidato ou como Recrutador da
+    /// Empresa da vaga, numa só consulta (RF027, RF029).
+    /// </summary>
+    /// <param name="userId">Identificador da conta.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>As conversas, sem ordem definida.</returns>
+    public Task<List<ConversationView>> ListConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default);
 }
