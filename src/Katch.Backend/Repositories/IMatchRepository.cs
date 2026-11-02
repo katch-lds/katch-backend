@@ -48,6 +48,25 @@ public interface IMatchRepository
     public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Obtém uma resposta pelo identificador, acompanhada pelo contexto: as alterações (por exemplo, o registo da
+    /// abertura do perfil) são gravadas no <see cref="IUnitOfWork.SaveChangesAsync"/> seguinte.
+    /// </summary>
+    /// <param name="id">Identificador da resposta (<c>match.id</c>).</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>A resposta, ou <see langword="null"/> se não existir.</returns>
+    public Task<Match?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista os interesses em espera (<see cref="Domain.Enums.MatchStatus.Waiting"/>) de uma vaga, com os dados do
+    /// Candidato apresentados na lista de candidatos em espera, do interesse mais antigo para o mais recente (RF060,
+    /// RF113). As recusas da vaga e os interesses já decididos não são devolvidos. Só para leitura.
+    /// </summary>
+    /// <param name="jobId">Identificador da vaga.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Os interesses em espera da vaga; lista vazia se não houver.</returns>
+    public Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Conta os interesses em espera de decisão de cada vaga indicada (RF060), para o <c>waitingCandidates</c> das vagas
     /// do Recrutador. É uma contagem feita na base de dados, sem carregar as respostas.
     /// </summary>
@@ -87,4 +106,38 @@ public interface IMatchRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><see langword="true"/> se existir esse interesse.</returns>
     public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém o Recrutador da Empresa dona da vaga do match, a parte do lado da Empresa na conversa (RF026).
+    /// </summary>
+    /// <param name="matchId">Identificador do match.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O identificador do Recrutador, ou <see langword="null"/> se o match não existir.</returns>
+    public Task<Guid?> GetRecruiterIdAsync(Guid matchId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista os matches confirmados do Candidato, com os dados da vaga e da Empresa, numa só consulta (RF024, RF025).
+    /// </summary>
+    /// <param name="candidateId">Identificador do Candidato.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Os matches no estado <c>MATCHED</c>, sem ordem definida.</returns>
+    public Task<List<MatchView>> ListMatchViewsByCandidateAsync(Guid candidateId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista os matches confirmados das vagas de uma Empresa, com os dados da vaga e do Candidato, numa só consulta
+    /// (RF067).
+    /// </summary>
+    /// <param name="companyId">Identificador da Empresa.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Os matches no estado <c>MATCHED</c>, sem ordem definida.</returns>
+    public Task<List<MatchView>> ListMatchViewsByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista as conversas de uma conta, abertas e em modo apenas de consulta, como Candidato ou como Recrutador da
+    /// Empresa da vaga, numa só consulta (RF027, RF029).
+    /// </summary>
+    /// <param name="userId">Identificador da conta.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>As conversas, sem ordem definida.</returns>
+    public Task<List<ConversationView>> ListConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default);
 }

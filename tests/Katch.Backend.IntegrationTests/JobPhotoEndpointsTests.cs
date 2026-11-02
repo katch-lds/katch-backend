@@ -599,5 +599,10 @@ public sealed partial class JobPhotoEndpointsTests : IClassFixture<KatchWebAppli
         {
             return inner.CountFirstPublishedAsync(periodStart, periodEnd, cancellationToken);
         }
+
+        public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            return inner.GetWithSkillsAsync(jobId, cancellationToken);
+        }
     }
 }

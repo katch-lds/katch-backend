@@ -694,6 +694,41 @@ public sealed class JobServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        Task<Match?> IMatchRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Guid?> GetRecruiterIdAsync(Guid matchId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<MatchView>> ListMatchViewsByCandidateAsync(Guid candidateId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<MatchView>> ListMatchViewsByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<ConversationView>> ListConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class UnusedFileStorage : IFileStorage

@@ -585,5 +585,10 @@ public sealed class JobPhotoServiceTests : IDisposable
         {
             throw new NotSupportedException();
         }
+
+        public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 }
