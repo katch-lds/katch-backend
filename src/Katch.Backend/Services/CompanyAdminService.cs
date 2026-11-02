@@ -17,9 +17,9 @@ namespace Katch.Backend.Services;
 /// As transições de estado são as da <see cref="Company"/> (documentação da API v02, secção 6.11): o serviço verifica-as
 /// antes, para responder com o ERR-30 e o estado atual. A mudança de estado da Empresa, o encerramento das conversas
 /// abertas (RF075) e a linha do <c>operation_log</c> (RF112) são gravados numa única gravação, que é uma transação. A
+/// validação do motivo da recusa vem antes de carregar a Empresa, para que um pedido inválido não dependa do estado. A
 /// exploração de vagas lê o estado da Empresa em cada pedido, por isso as vagas da Empresa suspensa deixam de ser
-/// apresentadas e voltam a ser depois da reativação sem mais alterações (RF014, RF116). A validação do motivo da recusa
-/// vem antes de carregar a Empresa, para que um pedido inválido não dependa do estado.
+/// apresentadas e voltam a ser depois da reativação sem mais alterações (RF014, RF116).
 /// </remarks>
 public sealed class CompanyAdminService : ICompanyAdminService
 {
@@ -55,6 +55,71 @@ public sealed class CompanyAdminService : ICompanyAdminService
         this.operationLogger = operationLogger;
         this.unitOfWork = unitOfWork;
         this.clock = clock;
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<PendingCompanyDto>> ListPendingAsync(CancellationToken cancellationToken = default)
+    {
+        List<Company> pending = await this.companies.ListPendingAsync(cancellationToken);
+
+        // A ordenação é feita aqui, como nas restantes listas.
+        return pending
+            .Select(company => new PendingCompanyDto(company.Id, company.CompanyName, company.TaxId, company.SubmittedAt))
+            .OrderBy(item => item.SubmittedAt)
+            .ThenBy(item => item.CompanyId)
+            .ToList();
+    }
+
+    /// <inheritdoc/>
+    public async Task<CompanyRegistrationDto> GetSubmittedDataAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        CompanyWithLocation found = await this.companies.GetWithLocationAsync(companyId, cancellationToken)
+            ?? throw new ElementNotFoundException();
+        Company company = found.Company;
+
+        return new CompanyRegistrationDto(
+            company.Id,
+            company.CompanyName,
+            company.TaxId,
+            company.Industry,
+            company.Address,
+            company.LocationId,
+            ReferenceListService.DisplayName(found.Location),
+            company.ContactEmail,
+            company.ContactPhone,
+            company.ResponsibleName,
+            company.SubmittedAt);
+    }
+
+    /// <inheritdoc/>
+    public async Task ApproveAsync(Guid adminId, Guid companyId, CancellationToken cancellationToken = default)
+    {
+        Company company = await this.LoadAsync(companyId, cancellationToken);
+        EnsureStatus(company, CompanyStatus.Pending);
+
+        company.Approve();
+
+        await this.operationLogger.LogAsync(adminId, OperationType.CompanyApproved, company.Id, cancellationToken);
+        await this.SaveAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task RejectAsync(
+        Guid adminId,
+        Guid companyId,
+        RejectCompanyRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        string reason = ValidateReason(request.Reason);
+        Company company = await this.LoadAsync(companyId, cancellationToken);
+        EnsureStatus(company, CompanyStatus.Pending);
+
+        company.Reject(reason);
+
+        await this.operationLogger.LogAsync(adminId, OperationType.CompanyRejected, company.Id, cancellationToken);
+        await this.SaveAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -126,80 +191,6 @@ public sealed class CompanyAdminService : ICompanyAdminService
             .ToList();
     }
 
-    /// <inheritdoc/>
-    public async Task<List<PendingCompanyDto>> ListPendingAsync(CancellationToken cancellationToken = default)
-    {
-        List<Company> pending = await this.companies.ListPendingAsync(cancellationToken);
-
-        // A ordenação é feita aqui, como nas restantes listas.
-        return pending
-            .Select(company => new PendingCompanyDto(company.Id, company.CompanyName, company.TaxId, company.SubmittedAt))
-            .OrderBy(item => item.SubmittedAt)
-            .ThenBy(item => item.CompanyId)
-            .ToList();
-    }
-
-    /// <inheritdoc/>
-    public async Task<CompanyRegistrationDto> GetSubmittedDataAsync(Guid companyId, CancellationToken cancellationToken = default)
-    {
-        CompanyWithLocation found = await this.companies.GetWithLocationAsync(companyId, cancellationToken)
-            ?? throw new ElementNotFoundException();
-        Company company = found.Company;
-
-        return new CompanyRegistrationDto(
-            company.Id,
-            company.CompanyName,
-            company.TaxId,
-            company.Industry,
-            company.Address,
-            company.LocationId,
-            ReferenceListService.DisplayName(found.Location),
-            company.ContactEmail,
-            company.ContactPhone,
-            company.ResponsibleName,
-            company.SubmittedAt);
-    }
-
-    /// <inheritdoc/>
-    public async Task ApproveAsync(Guid adminId, Guid companyId, CancellationToken cancellationToken = default)
-    {
-        Company company = await this.LoadAsync(companyId, cancellationToken);
-        EnsureStatus(company, CompanyStatus.Pending);
-
-        company.Approve();
-
-        await this.operationLogger.LogAsync(adminId, OperationType.CompanyApproved, company.Id, cancellationToken);
-        await this.SaveAsync(cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public async Task RejectAsync(
-        Guid adminId,
-        Guid companyId,
-        RejectCompanyRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        string reason = ValidateReason(request.Reason);
-        Company company = await this.LoadAsync(companyId, cancellationToken);
-        EnsureStatus(company, CompanyStatus.Pending);
-
-        company.Reject(reason);
-
-        await this.operationLogger.LogAsync(adminId, OperationType.CompanyRejected, company.Id, cancellationToken);
-        await this.SaveAsync(cancellationToken);
-    }
-
-    private static void EnsureStatus(Company company, CompanyStatus expected)
-    {
-        if (company.Status != expected)
-        {
-            throw new OperationConflictException(
-                ApiErrorResponse.InvalidState(ApiErrorResponse.CompanyStatusLabel(company.Status)));
-        }
-    }
-
     private static string ValidateReason(string? value)
     {
         string reason = value?.Trim() ?? string.Empty;
@@ -217,6 +208,15 @@ public sealed class CompanyAdminService : ICompanyAdminService
         return reason;
     }
 
+    private static void EnsureStatus(Company company, CompanyStatus expected)
+    {
+        if (company.Status != expected)
+        {
+            throw new OperationConflictException(
+                ApiErrorResponse.InvalidState(ApiErrorResponse.CompanyStatusLabel(company.Status)));
+        }
+    }
+
     private async Task<Company> LoadAsync(Guid companyId, CancellationToken cancellationToken)
     {
         return await this.companies.GetByIdAsync(companyId, cancellationToken)
@@ -231,9 +231,8 @@ public sealed class CompanyAdminService : ICompanyAdminService
         }
         catch (ConcurrencyConflictException)
         {
-            // A Empresa ou uma das conversas foi alterada por outro pedido entre a leitura e a gravação: a mudança de
-            // estado e o registo da operação, que fazem parte da mesma unidade de trabalho, não ficam gravados e o
-            // Administrador repete a operação (modelo de dados, secção 7.3).
+            // A Empresa ou uma das conversas foi alterada por outro pedido entre a leitura e a gravação: nada fica
+            // gravado e o Administrador repete a operação (modelo de dados, secção 7.3).
             throw new OperationConflictException(ApiErrorResponse.ConcurrencyConflict());
         }
     }

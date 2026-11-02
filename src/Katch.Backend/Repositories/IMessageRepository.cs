@@ -5,11 +5,20 @@ using Katch.Backend.Domain;
 namespace Katch.Backend.Repositories;
 
 /// <summary>
-/// Acesso às mensagens das conversas (<c>message</c>) (modelo de classes do backend v02, secção 4): envio, consulta e
-/// marcação das mensagens como lidas (I116) e contagem das conversas iniciadas para os indicadores (I118).
+/// Acesso às mensagens das conversas (<c>message</c>) (modelo de classes do backend v02, secção 4).
 /// </summary>
 public interface IMessageRepository
 {
+    /// <summary>
+    /// Conta as conversas cuja primeira mensagem foi enviada no período (RF096). Só usa o identificador da conversa e a
+    /// data de envio: o texto das mensagens nunca é lido (RF103).
+    /// </summary>
+    /// <param name="periodStart">Início do período, inclusive.</param>
+    /// <param name="periodEnd">Fim do período, exclusivo.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O número de conversas iniciadas.</returns>
+    public Task<int> CountConversationsStartedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Acrescenta uma mensagem nova, gravada no <see cref="IUnitOfWork.SaveChangesAsync"/> seguinte.
     /// </summary>
@@ -37,14 +46,4 @@ public interface IMessageRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>O número de mensagens marcadas.</returns>
     public Task<int> MarkReadAsync(Guid matchId, Guid readerId, DateTimeOffset now, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Conta as conversas cuja primeira mensagem foi enviada no período (RF096). Só usa o identificador da conversa e a
-    /// data de envio: o texto das mensagens nunca é lido (RF103).
-    /// </summary>
-    /// <param name="periodStart">Início do período, inclusive.</param>
-    /// <param name="periodEnd">Fim do período, exclusivo.</param>
-    /// <param name="cancellationToken">Cancelamento do pedido.</param>
-    /// <returns>O número de conversas iniciadas.</returns>
-    public Task<int> CountConversationsStartedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
 }

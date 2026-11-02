@@ -40,15 +40,12 @@ public sealed class JobRepository : IJobRepository
     }
 
     /// <inheritdoc/>
-    public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+    public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
     {
-        // Um interesse é qualquer resposta do Candidato que não seja a recusa da vaga (RF098).
-        return this.context.Jobs.AsNoTracking()
-            .Where(job => job.Status == JobStatus.Published)
-            .Select(job => new JobWithCount(
-                job,
-                this.context.Matches.Count(match => match.JobId == job.Id && match.Status != MatchStatus.DeclinedByCandidate)))
-            .ToListAsync(cancellationToken);
+        // Sem o filtro global das vagas eliminadas (DM-09): a primeira publicação aconteceu no período.
+        return this.context.Jobs
+            .IgnoreQueryFilters()
+            .CountAsync(job => job.FirstPublishedAt >= periodStart && job.FirstPublishedAt < periodEnd, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -105,16 +102,6 @@ public sealed class JobRepository : IJobRepository
     }
 
     /// <inheritdoc/>
-    public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
-    {
-        // O filtro global exclui as vagas eliminadas (DM-09); no PostgreSQL, a consulta usa o índice ix_job_expiry, só
-        // das vagas publicadas. As datas são timestamptz, por isso a comparação é entre instantes, sem fuso horário.
-        return this.context.Jobs
-            .Where(job => job.Status == JobStatus.Published && job.ExpiresAt != null && job.ExpiresAt <= now)
-            .ToListAsync(cancellationToken);
-    }
-
-    /// <inheritdoc/>
     public async Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -131,6 +118,18 @@ public sealed class JobRepository : IJobRepository
                 cancellationToken);
 
         return rows == 1;
+    }
+
+    /// <inheritdoc/>
+    public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+    {
+        // Um interesse é qualquer resposta do Candidato que não seja a recusa da vaga (RF098).
+        return this.context.Jobs.AsNoTracking()
+            .Where(job => job.Status == JobStatus.Published)
+            .Select(job => new JobWithCount(
+                job,
+                this.context.Matches.Count(match => match.JobId == job.Id && match.Status != MatchStatus.DeclinedByCandidate)))
+            .ToListAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -215,15 +214,6 @@ public sealed class JobRepository : IJobRepository
         return found
             .Select(item => new EligibleJob(item.Job, (int)Math.Round(item.Distance, MidpointRounding.AwayFromZero)))
             .ToList();
-    }
-
-    /// <inheritdoc/>
-    public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
-    {
-        // Sem o filtro global das vagas eliminadas (DM-09): a primeira publicação aconteceu no período.
-        return this.context.Jobs
-            .IgnoreQueryFilters()
-            .CountAsync(job => job.FirstPublishedAt >= periodStart && job.FirstPublishedAt < periodEnd, cancellationToken);
     }
 
     private static double ToRadians(double degrees)

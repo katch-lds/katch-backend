@@ -5,10 +5,9 @@ using Katch.Backend.Dtos;
 namespace Katch.Backend.Services;
 
 /// <summary>
-/// Aprovação, recusa e supervisão das Empresas e das vagas pelo Administrador (modelo de classes do backend v02, secção
-/// 5.1; documentação da API v02, secção 6.11; UC16 e UC17): consulta das Empresas pendentes e dos dados submetidos,
-/// decisão sobre o registo (6.11.1 a 6.11.4, I055), suspensão e reativação da Empresa e listas globais (6.11.5 a
-/// 6.11.8, I117).
+/// Supervisão das Empresas e das vagas pelo Administrador (modelo de classes do backend v02, secção 5.1; documentação da
+/// API v02, secção 6.11; UC16 e UC17): consulta das Empresas pendentes e dos dados submetidos, decisão sobre o registo,
+/// suspensão e reativação da Empresa e listas globais (6.11.1 a 6.11.8).
 /// </summary>
 public interface ICompanyAdminService
 {

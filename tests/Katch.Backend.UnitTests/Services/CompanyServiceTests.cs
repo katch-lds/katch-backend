@@ -4,7 +4,6 @@ using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
-using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -39,10 +38,7 @@ public sealed class CompanyServiceTests
             new FakeReferenceData(Braga),
             this.logger,
             this.unitOfWork,
-            this.clock,
-            new UnusedFileStorage(),
-            new FileValidator(),
-            new FileUrlBuilder());
+            this.clock);
     }
 
     /// <summary>
@@ -486,12 +482,7 @@ public sealed class CompanyServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
+        public Task<int> CountByStatusAtAsync(CompanyStatus status, DateTimeOffset at, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -501,7 +492,12 @@ public sealed class CompanyServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<int> CountByStatusAtAsync(CompanyStatus status, DateTimeOffset at, CancellationToken cancellationToken = default)
+        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -541,7 +537,7 @@ public sealed class CompanyServiceTests
             return Task.FromResult(id == this.locationId);
         }
 
-        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -552,16 +548,6 @@ public sealed class CompanyServiceTests
         }
 
         public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -582,6 +568,16 @@ public sealed class CompanyServiceTests
         }
 
         public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -618,23 +614,5 @@ public sealed class CompanyServiceTests
     private sealed class FakeClock : IClock
     {
         public DateTimeOffset UtcNow { get; set; }
-    }
-
-    private sealed class UnusedFileStorage : IFileStorage
-    {
-        public Task<string> SaveAsync(Stream content, FileKind kind, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<Stream> OpenReadAsync(string path, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task DeleteAsync(string path, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
     }
 }

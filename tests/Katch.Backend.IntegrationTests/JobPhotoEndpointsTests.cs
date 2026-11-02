@@ -599,6 +599,11 @@ public sealed partial class JobPhotoEndpointsTests : IClassFixture<KatchWebAppli
             return inner.ListEligibleForCandidateAsync(candidate, now, take, cancellationToken);
         }
 
+        public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
         {
             return inner.CountFirstPublishedAsync(periodStart, periodEnd, cancellationToken);
@@ -607,16 +612,6 @@ public sealed partial class JobPhotoEndpointsTests : IClassFixture<KatchWebAppli
         public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             return inner.GetWithSkillsAsync(jobId, cancellationToken);
-        }
-
-        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
-        {
-            return inner.ListExpiredAsync(now, cancellationToken);
-        }
-
-        public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
-        {
-            return inner.ListPublishedWithInterestCountAsync(cancellationToken);
         }
     }
 }

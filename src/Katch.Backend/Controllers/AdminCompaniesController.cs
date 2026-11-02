@@ -11,8 +11,9 @@ namespace Katch.Backend.Controllers;
 
 /// <summary>
 /// Supervisão das Empresas e das vagas (documentação da API v02, secção 6.11; modelo de classes do backend v02, secção 6;
-/// UC16 e UC17). Só o Administrador acede (RF104); as outras contas recebem <c>403</c> (ERR-06). Tem as operações 6.11.1
-/// a 6.11.4 (I055) e 6.11.5 a 6.11.8 (I117).
+/// UC16 e UC17). Só o Administrador acede (RF104); as outras contas recebem <c>403</c> (ERR-06). Tem a consulta das
+/// Empresas pendentes e dos dados submetidos, a aprovação e a recusa do registo, a suspensão e a reativação e as listas
+/// globais (6.11.1 a 6.11.8).
 /// </summary>
 [ApiController]
 [Route("api/admin/companies")]

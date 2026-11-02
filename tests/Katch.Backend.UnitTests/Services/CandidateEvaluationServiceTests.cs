@@ -542,29 +542,22 @@ public sealed class CandidateEvaluationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+        public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+        public Task<List<Match>> ListMatchesByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(
-            IReadOnlyCollection<Guid> jobIds,
-            CancellationToken cancellationToken = default)
+        public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
         public Task<Guid?> GetRecruiterIdAsync(Guid matchId, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<List<ConversationView>> ListConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -579,12 +572,17 @@ public sealed class CandidateEvaluationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<List<Match>> ListMatchesByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        public Task<List<ConversationView>> ListConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -726,7 +724,7 @@ public sealed class CandidateEvaluationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -736,7 +734,7 @@ public sealed class CandidateEvaluationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        public Task AddAsync(Job job, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -746,16 +744,7 @@ public sealed class CandidateEvaluationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<List<EligibleJob>> ListEligibleForCandidateAsync(
-            Candidate candidate,
-            DateTimeOffset now,
-            int take,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+        public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -765,22 +754,7 @@ public sealed class CandidateEvaluationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<int> CountByStatusAtAsync(CompanyStatus status, DateTimeOffset at, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
         Task<Company?> ICompanyRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -790,32 +764,12 @@ public sealed class CandidateEvaluationServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task AddSkillAsync(Skill skill, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<bool> BenefitNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -825,7 +779,7 @@ public sealed class CandidateEvaluationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -835,12 +789,47 @@ public sealed class CandidateEvaluationServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<int> CountByStatusAtAsync(CompanyStatus status, DateTimeOffset at, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<bool> SkillNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        Task IJobRepository.AddAsync(Job job, CancellationToken cancellationToken)
+        public Task<bool> BenefitNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddSkillAsync(Skill skill, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<EligibleJob>> ListEligibleForCandidateAsync(Candidate candidate, DateTimeOffset now, int take, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

@@ -428,11 +428,6 @@ public sealed class CandidateProfileUpdateServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             if (this.SaveFailure is not null)
@@ -491,6 +486,11 @@ public sealed class CandidateProfileUpdateServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public void DiscardChanges()
         {
             throw new NotSupportedException();
@@ -506,17 +506,7 @@ public sealed class CandidateProfileUpdateServiceTests
             throw new NotSupportedException();
         }
 
-        public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task AddSkillAsync(Skill skill, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<bool> BenefitNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -526,12 +516,22 @@ public sealed class CandidateProfileUpdateServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
+        public Task<bool> SkillNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<bool> SkillNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        public Task<bool> BenefitNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddSkillAsync(Skill skill, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

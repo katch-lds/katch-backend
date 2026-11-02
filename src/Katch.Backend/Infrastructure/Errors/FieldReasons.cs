@@ -91,9 +91,60 @@ public static class FieldReasons
     public const string TaxIdTaken = "O número de identificação fiscal já está registado.";
 
     /// <summary>
-    /// Número de identificação fiscal diferente do registado, na alteração dos dados da Empresa aprovada (RF049).
+    /// Designação de uma competência ou de um benefício vazia (documentação da API v02, secção 4.3; RF099 a RF102).
     /// </summary>
-    public const string TaxIdImmutable = "O número de identificação fiscal não pode ser alterado depois da aprovação.";
+    public const string ReferenceNameRequired = "A designação é obrigatória.";
+
+    /// <summary>
+    /// Designação que já existe na lista, sem distinção de maiúsculas (documentação da API v02, secção 4.3; RF099 a
+    /// RF102).
+    /// </summary>
+    public const string ReferenceNameTaken = "A designação já existe na lista.";
+
+    /// <summary>
+    /// Data dos indicadores fora do formato <c>yyyy-MM-dd</c> (documentação da API v02, secções 2.3 e 6.12.1).
+    /// </summary>
+    public const string DateFormat = "A data tem de ter o formato aaaa-mm-dd.";
+
+    /// <summary>
+    /// Data inicial dos indicadores posterior à data final (documentação da API v02, secção 6.12.1).
+    /// </summary>
+    public const string PeriodStartAfterEnd = "A data inicial não pode ser posterior à data final.";
+
+    /// <summary>
+    /// Data final dos indicadores posterior à data atual (documentação da API v02, secção 6.12.1).
+    /// </summary>
+    public const string PeriodEndInFuture = "A data final não pode ser posterior à data atual.";
+
+    /// <summary>
+    /// Valor salarial nulo ou negativo (documentação da API v02, secção 4.3; RF051).
+    /// </summary>
+    public const string SalaryNotPositive = "O valor tem de ser um número positivo em euros.";
+
+    /// <summary>
+    /// Valor salarial com mais de 2 casas decimais (documentação da API v02, secção 2.3).
+    /// </summary>
+    public const string SalaryDecimals = "O valor tem de ter no máximo 2 casas decimais.";
+
+    /// <summary>
+    /// Valor mínimo superior ao máximo (documentação da API v02, secção 4.3; RF051).
+    /// </summary>
+    public const string SalaryRange = "O valor mínimo não pode ser superior ao valor máximo.";
+
+    /// <summary>
+    /// Valor salarial acima do que a coluna <c>numeric(10,2)</c> guarda (documentação da API v02, secção 8.3).
+    /// </summary>
+    public const string SalaryTooHigh = "O valor não pode exceder 99 999 999,99 euros.";
+
+    /// <summary>
+    /// Data-limite da vaga igual ou anterior ao instante do pedido (documentação da API v02, secções 6.5.2 e 8.3).
+    /// </summary>
+    public const string ExpiresAtNotFuture = "A data-limite tem de ser posterior ao momento atual.";
+
+    /// <summary>
+    /// Identificador repetido numa lista de competências ou de benefícios (documentação da API v02, secção 8.3).
+    /// </summary>
+    public const string RepeatedInList = "O valor está repetido na lista.";
 
     /// <summary>
     /// Motivo da recusa do registo da Empresa fora dos 10 a 500 caracteres, sem os espaços nas extremidades (P12).
@@ -129,62 +180,6 @@ public static class FieldReasons
     /// Ficheiro que não está em PDF (RNF016).
     /// </summary>
     public const string FileMustBePdf = "O ficheiro tem de estar no formato PDF.";
-
-    /// <summary>
-    /// Valor salarial nulo ou negativo (documentação da API v02, secção 4.3; RF051).
-    /// </summary>
-    public const string SalaryNotPositive = "O valor tem de ser um número positivo em euros.";
-
-    /// <summary>
-    /// Valor salarial com mais de 2 casas decimais (documentação da API v02, secção 2.3).
-    /// </summary>
-    public const string SalaryDecimals = "O valor tem de ter no máximo 2 casas decimais.";
-
-    /// <summary>
-    /// Valor mínimo superior ao máximo (documentação da API v02, secção 4.3; RF051).
-    /// </summary>
-    public const string SalaryRange = "O valor mínimo não pode ser superior ao valor máximo.";
-
-    /// <summary>
-    /// Valor salarial acima do que a coluna <c>numeric(10,2)</c> guarda (documentação da API v02, secção 8.3).
-    /// </summary>
-    public const string SalaryTooHigh = "O valor não pode exceder 99 999 999,99 euros.";
-
-    /// <summary>
-    /// Data-limite da vaga igual ou anterior ao instante do pedido (documentação da API v02, secções 6.5.2 e 8.3).
-    /// </summary>
-    public const string ExpiresAtNotFuture = "A data-limite tem de ser posterior ao momento atual.";
-
-    /// <summary>
-    /// Identificador repetido numa lista de competências ou de benefícios (documentação da API v02, secção 8.3).
-    /// </summary>
-    public const string RepeatedInList = "O valor está repetido na lista.";
-
-    /// <summary>
-    /// Designação de uma competência ou de um benefício vazia (documentação da API v02, secção 4.3; RF099 a RF102).
-    /// </summary>
-    public const string ReferenceNameRequired = "A designação é obrigatória.";
-
-    /// <summary>
-    /// Designação que já existe na lista, sem distinção de maiúsculas (documentação da API v02, secção 4.3; RF099 a
-    /// RF102).
-    /// </summary>
-    public const string ReferenceNameTaken = "A designação já existe na lista.";
-
-    /// <summary>
-    /// Data dos indicadores fora do formato <c>yyyy-MM-dd</c> (documentação da API v02, secções 2.3 e 6.12.1).
-    /// </summary>
-    public const string DateFormat = "A data tem de ter o formato aaaa-mm-dd.";
-
-    /// <summary>
-    /// Data inicial dos indicadores posterior à data final (documentação da API v02, secção 6.12.1).
-    /// </summary>
-    public const string PeriodStartAfterEnd = "A data inicial não pode ser posterior à data final.";
-
-    /// <summary>
-    /// Data final dos indicadores posterior à data atual (documentação da API v02, secção 6.12.1).
-    /// </summary>
-    public const string PeriodEndInFuture = "A data final não pode ser posterior à data atual.";
 
     /// <summary>
     /// Compõe o motivo de um ficheiro acima da dimensão máxima do tipo («O ficheiro excede 5 MB.»).
