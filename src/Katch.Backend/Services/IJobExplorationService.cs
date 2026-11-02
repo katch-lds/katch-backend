@@ -5,8 +5,8 @@ using Katch.Backend.Dtos;
 namespace Katch.Backend.Services;
 
 /// <summary>
-/// Exploração de vagas pelo Candidato (modelo de classes do backend v02, secção 5). Tem o cartão de vaga seguinte, as
-/// respostas à vaga, a quota, o detalhe de uma vaga e a página de apresentação da Empresa.
+/// Exploração de vagas pelo Candidato (modelo de classes do backend v02, secção 5). Tem as respostas à vaga, a quota e a
+/// página de apresentação da Empresa; o cartão e o detalhe são acrescentados por outras Issues.
 /// </summary>
 public interface IJobExplorationService
 {

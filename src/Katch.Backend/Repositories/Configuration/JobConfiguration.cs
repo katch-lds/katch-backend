@@ -93,10 +93,9 @@ public sealed class JobConfiguration : IEntityTypeConfiguration<Job>
         else
         {
             // O SQLite guarda o DateTimeOffset como texto e o EF Core não traduz comparações sobre ele, que a consulta das
-            // vagas elegíveis para o Candidato (ListEligibleForCandidateAsync, N2) e a das vagas a encerrar (ListExpiredAsync)
-            // usam. Guardado como ticks UTC, a ordem é a do instante, como na coluna next_swipe_available_at
-            // (CandidateConfiguration). Só vale para os testes sobre SQLite: no PostgreSQL a coluna é timestamptz, sem
-            // conversão.
+            // vagas a encerrar (ListExpiredAsync) usa. Guardado como ticks UTC, a ordem é a do instante, como na coluna
+            // next_swipe_available_at (CandidateConfiguration). Só vale para os testes sobre SQLite: no PostgreSQL a
+            // coluna é timestamptz, sem conversão.
             builder.Property(job => job.ExpiresAt)
                 .HasConversion(new ValueConverter<DateTimeOffset, long>(
                     instant => instant.UtcTicks,
