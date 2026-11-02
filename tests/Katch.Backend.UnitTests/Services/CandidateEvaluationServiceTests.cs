@@ -833,6 +833,11 @@ public sealed class CandidateEvaluationServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<List<EligibleJob>> ListEligibleForCandidateAsync(Candidate candidate, DateTimeOffset now, int take, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FixedClock : IClock
