@@ -99,16 +99,6 @@ public static class ApiErrorResponse
     public const string JobUnavailableCode = "ERR-33";
 
     /// <summary>
-    /// Código do erro de fotografia acima do número máximo da galeria ou da vaga.
-    /// </summary>
-    public const string PhotoLimitReachedCode = "ERR-39";
-
-    /// <summary>
-    /// Código do erro de eliminação de uma vaga com interesses registados.
-    /// </summary>
-    public const string JobHasInterestsCode = "ERR-38";
-
-    /// <summary>
     /// Código do erro de decisão sobre um Candidato cujo perfil completo ainda não foi aberto.
     /// </summary>
     public const string ProfileNotOpenedCode = "ERR-34";
@@ -127,6 +117,16 @@ public static class ApiErrorResponse
     /// Código do erro de conversa sem match.
     /// </summary>
     public const string ConversationWithoutMatchCode = "ERR-37";
+
+    /// <summary>
+    /// Código do erro de fotografia acima do número máximo da galeria ou da vaga.
+    /// </summary>
+    public const string PhotoLimitReachedCode = "ERR-39";
+
+    /// <summary>
+    /// Código do erro de eliminação de uma vaga com interesses registados.
+    /// </summary>
+    public const string JobHasInterestsCode = "ERR-38";
 
     /// <summary>
     /// Código do erro de segundo registo de Empresa pelo mesmo Recrutador.
@@ -435,6 +435,24 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Cria o corpo do ERR-36 (409): a conversa está em modo apenas de consulta (RF028, RF075).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ConversationReadOnly()
+    {
+        return new ApiErrorDto(ConversationReadOnlyCode, ConversationReadOnlyMessage);
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-37 (409): o identificador não corresponde a um match confirmado (RF026).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ConversationWithoutMatch()
+    {
+        return new ApiErrorDto(ConversationWithoutMatchCode, ConversationWithoutMatchMessage);
+    }
+
+    /// <summary>
     /// Cria o corpo do ERR-39 (409): a galeria ou a vaga já tem o número máximo de fotografias (RF048, RF052, P13).
     /// </summary>
     /// <param name="maxPhotos">Número máximo de fotografias, indicado na mensagem.</param>
@@ -442,15 +460,6 @@ public static class ApiErrorResponse
     public static ApiErrorDto PhotoLimitReached(int maxPhotos)
     {
         return new ApiErrorDto(PhotoLimitReachedCode, $"Foi atingido o número máximo de fotografias ({maxPhotos}).");
-    }
-
-    /// <summary>
-    /// Cria o corpo do ERR-38 (409): a vaga tem pelo menos um interesse registado e só pode ser encerrada (RF058).
-    /// </summary>
-    /// <returns>O corpo da resposta.</returns>
-    public static ApiErrorDto JobHasInterests()
-    {
-        return new ApiErrorDto(JobHasInterestsCode, JobHasInterestsMessage);
     }
 
     /// <summary>
@@ -474,21 +483,12 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
-    /// Cria o corpo do ERR-36 (409): a conversa está em modo apenas de consulta (RF028, RF075).
+    /// Cria o corpo do ERR-38 (409): a vaga tem pelo menos um interesse registado e só pode ser encerrada (RF058).
     /// </summary>
     /// <returns>O corpo da resposta.</returns>
-    public static ApiErrorDto ConversationReadOnly()
+    public static ApiErrorDto JobHasInterests()
     {
-        return new ApiErrorDto(ConversationReadOnlyCode, ConversationReadOnlyMessage);
-    }
-
-    /// <summary>
-    /// Cria o corpo do ERR-37 (409): o identificador não corresponde a um match confirmado (RF026).
-    /// </summary>
-    /// <returns>O corpo da resposta.</returns>
-    public static ApiErrorDto ConversationWithoutMatch()
-    {
-        return new ApiErrorDto(ConversationWithoutMatchCode, ConversationWithoutMatchMessage);
+        return new ApiErrorDto(JobHasInterestsCode, JobHasInterestsMessage);
     }
 
     /// <summary>
@@ -531,6 +531,16 @@ public static class ApiErrorResponse
     public static string CompanyNotApprovedMessage(CompanyStatus? status)
     {
         return $"A operação exige a Empresa aprovada. Estado atual da Empresa: {CompanyStatusLabel(status)}.";
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-07 (403) para uma Empresa que deixou de estar aprovada durante a operação.
+    /// </summary>
+    /// <param name="status">Estado atual da Empresa.</param>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto CompanyNotApproved(CompanyStatus? status)
+    {
+        return new ApiErrorDto(CompanyNotApprovedCode, CompanyNotApprovedMessage(status));
     }
 
     /// <summary>

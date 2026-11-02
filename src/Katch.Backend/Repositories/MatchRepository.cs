@@ -38,6 +38,26 @@ public sealed class MatchRepository : IMatchRepository
     }
 
     /// <inheritdoc/>
+    public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.CountAsync(
+            match => match.Status != MatchStatus.DeclinedByCandidate
+                && match.CandidateActionAt >= periodStart
+                && match.CandidateActionAt < periodEnd,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.CountAsync(
+            match => match.Status == MatchStatus.Matched
+                && match.RecruiterActionAt >= periodStart
+                && match.RecruiterActionAt < periodEnd,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<Match?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return this.context.Matches.FirstOrDefaultAsync(match => match.Id == id, cancellationToken);
@@ -63,19 +83,6 @@ public sealed class MatchRepository : IMatchRepository
         // A ordenação é feita depois da leitura porque o SQLite dos testes de integração guarda o DateTimeOffset como
         // texto e o EF Core não a traduz; as listas são curtas (sem paginação, documentação da API v02, L-02).
         return waiting.OrderBy(interest => interest.InterestAt).ToList();
-    }
-
-    /// <inheritdoc/>
-    public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
-    {
-        return (from match in this.context.Matches
-                join job in this.context.Jobs on match.JobId equals job.Id
-                join company in this.context.Companies on job.CompanyId equals company.Id
-                where match.CandidateId == candidateId
-                    && match.Status != MatchStatus.DeclinedByCandidate
-                    && company.RecruiterId == recruiterId
-                select match.Id)
-            .AnyAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -112,6 +119,19 @@ public sealed class MatchRepository : IMatchRepository
                     || this.context.Jobs.Any(job => job.Id == match.JobId
                         && this.context.Companies.Any(company => company.Id == job.CompanyId && company.RecruiterId == userId))))
             .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
+    {
+        return (from match in this.context.Matches
+                join job in this.context.Jobs on match.JobId equals job.Id
+                join company in this.context.Companies on job.CompanyId equals company.Id
+                where match.CandidateId == candidateId
+                    && match.Status != MatchStatus.DeclinedByCandidate
+                    && company.RecruiterId == recruiterId
+                select match.Id)
+            .AnyAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -155,26 +175,6 @@ public sealed class MatchRepository : IMatchRepository
                     this.context.Messages.Where(message => message.MatchId == match.Id).Max(message => (DateTimeOffset?)message.SentAt),
                     this.context.Messages.Count(message => message.MatchId == match.Id && message.SenderId != userId && message.ReadAt == null)))
             .ToListAsync(cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
-    {
-        return this.context.Matches.CountAsync(
-            match => match.Status != MatchStatus.DeclinedByCandidate
-                && match.CandidateActionAt >= periodStart
-                && match.CandidateActionAt < periodEnd,
-            cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
-    {
-        return this.context.Matches.CountAsync(
-            match => match.Status == MatchStatus.Matched
-                && match.RecruiterActionAt >= periodStart
-                && match.RecruiterActionAt < periodEnd,
-            cancellationToken);
     }
 
     private IQueryable<MatchView> QueryMatchViews(Guid? candidateId, Guid? companyId)

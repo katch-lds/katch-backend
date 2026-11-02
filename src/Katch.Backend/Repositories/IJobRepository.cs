@@ -19,6 +19,16 @@ public interface IJobRepository
     public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Conta as vagas publicadas pela primeira vez no período, pela data da primeira publicação, que não muda numa nova
+    /// publicação (RF096; modelo de dados v02, DM-10). As vagas eliminadas também contam, porque foram publicadas.
+    /// </summary>
+    /// <param name="periodStart">Início do período, inclusive.</param>
+    /// <param name="periodEnd">Fim do período, exclusivo.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O número de vagas.</returns>
+    public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Obtém uma vaga com as competências pretendidas, só para leitura, para confirmar a Empresa da vaga e identificar
     /// as competências do Candidato coincidentes (RF059, RF062). As vagas eliminadas não são devolvidas.
     /// </summary>
@@ -64,6 +74,16 @@ public interface IJobRepository
     public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Lista, com acompanhamento de alterações, as vagas publicadas e não eliminadas cuja data-limite foi atingida no
+    /// instante indicado (<c>expires_at &lt;= now</c>), para o encerramento automático (RF057; modelo de classes do
+    /// backend v02, secção 4). A regra é a de <see cref="Job.IsExpired(DateTimeOffset)"/>.
+    /// </summary>
+    /// <param name="now">Instante da verificação, em UTC.</param>
+    /// <param name="cancellationToken">Cancelamento da execução.</param>
+    /// <returns>As vagas a encerrar.</returns>
+    public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Acrescenta o caminho de uma fotografia ao fim de <c>photo_paths</c> da vaga, numa única instrução atómica na base
     /// de dados que também verifica o limite (RF052; P13). Ao contrário de ler a vaga e gravá-la, não perde escritas de
     /// pedidos simultâneos e nunca ultrapassa o limite. Não altera a entidade acompanhada pelo contexto.
@@ -101,30 +121,10 @@ public interface IJobRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Lista, com acompanhamento de alterações, as vagas publicadas e não eliminadas cuja data-limite foi atingida no
-    /// instante indicado (<c>expires_at &lt;= now</c>), para o encerramento automático (RF057; modelo de classes do
-    /// backend v02, secção 4). A regra é a de <see cref="Job.IsExpired(DateTimeOffset)"/>.
-    /// </summary>
-    /// <param name="now">Instante da verificação, em UTC.</param>
-    /// <param name="cancellationToken">Cancelamento da execução.</param>
-    /// <returns>As vagas a encerrar.</returns>
-    public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Lista as vagas no estado publicada de todas as Empresas, com o número de interesses (todos os estados da decisão),
     /// só para leitura (RF098).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As vagas publicadas com a contagem, sem ordem garantida.</returns>
     public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Conta as vagas publicadas pela primeira vez no período, pela data da primeira publicação, que não muda numa nova
-    /// publicação (RF096; modelo de dados v02, DM-10). As vagas eliminadas também contam, porque foram publicadas.
-    /// </summary>
-    /// <param name="periodStart">Início do período, inclusive.</param>
-    /// <param name="periodEnd">Fim do período, exclusivo.</param>
-    /// <param name="cancellationToken">Cancelamento do pedido.</param>
-    /// <returns>O número de vagas.</returns>
-    public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
 }

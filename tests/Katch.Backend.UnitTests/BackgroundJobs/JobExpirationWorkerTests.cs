@@ -316,14 +316,14 @@ public sealed class JobExpirationWorkerTests
             throw new NotSupportedException();
         }
 
-        public void Dispose()
-        {
-            this.probe.ScopeDisposed();
-        }
-
         public Task<string> AddPhotoAsync(Guid recruiterId, Guid jobId, IFormFile? file, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
+        }
+
+        public void Dispose()
+        {
+            this.probe.ScopeDisposed();
         }
     }
 

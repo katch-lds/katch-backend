@@ -470,11 +470,6 @@ public sealed class CompanyServiceTests
             return Task.FromResult(this.Existing.Concat(this.Added).SingleOrDefault(c => c.RecruiterId == recruiterId));
         }
 
-        public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
         public Task<bool> TaxIdExistsAsync(string taxId, Guid? exceptId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Existing.Any(c => c.TaxId == taxId && c.Id != exceptId));
@@ -486,12 +481,12 @@ public sealed class CompanyServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<int> CountByStatusAtAsync(CompanyStatus status, DateTimeOffset at, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
+        public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -501,7 +496,12 @@ public sealed class CompanyServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<int> CountByStatusAtAsync(CompanyStatus status, DateTimeOffset at, CancellationToken cancellationToken = default)
+        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -541,7 +541,7 @@ public sealed class CompanyServiceTests
             return Task.FromResult(id == this.locationId);
         }
 
-        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -552,16 +552,6 @@ public sealed class CompanyServiceTests
         }
 
         public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -582,6 +572,16 @@ public sealed class CompanyServiceTests
         }
 
         public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

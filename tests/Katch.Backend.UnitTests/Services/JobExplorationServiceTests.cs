@@ -697,63 +697,6 @@ public sealed class JobExplorationServiceTests
     }
 
     /// <summary>
-    /// A página de uma Empresa aprovada traz a designação, a descrição, o sítio na Internet, o logótipo e a galeria, com
-    /// os URL da API, e nunca os contactos (RF017, RF025).
-    /// </summary>
-    /// <returns>Tarefa do teste.</returns>
-    [Fact]
-    public async Task CompanyPageOfAnApprovedCompanyIsReturned()
-    {
-        Fixture fixture = new();
-        Company company = fixture.AddCompany(CompanyStatus.Approved);
-        company.UpdatePage("Software de gestão de frotas.", "https://www.lumen-exemplo.pt");
-        company.SetLogo("company_logo/0123456789abcdef0123456789abcdef.png");
-        company.AddGalleryPhoto("company_photo/11111111111111111111111111111111.jpg");
-
-        CompanyPageDto page = await fixture.Service.GetCompanyPageAsync(company.Id, TestContext.Current.CancellationToken);
-
-        Assert.Equal(company.Id, page.CompanyId);
-        Assert.Equal("Lumen Software, Lda.", page.CompanyName);
-        Assert.Equal("Software de gestão de frotas.", page.Description);
-        Assert.Equal("https://www.lumen-exemplo.pt", page.Website);
-        Assert.Equal("/api/files/COMPANY_LOGO/0123456789abcdef0123456789abcdef.png", page.LogoUrl);
-        Assert.Equal(["/api/files/COMPANY_PHOTO/11111111111111111111111111111111.jpg"], page.PhotoUrls);
-        Assert.Equal(0, fixture.Store.Saves);
-    }
-
-    /// <summary>
-    /// A página de uma Empresa pendente, recusada ou suspensa não é visível ao Candidato: o mesmo ERR-20 que a
-    /// Empresa inexistente (6.3.3).
-    /// </summary>
-    /// <param name="status">Estado da Empresa.</param>
-    /// <returns>Tarefa do teste.</returns>
-    [Theory]
-    [InlineData(CompanyStatus.Pending)]
-    [InlineData(CompanyStatus.Rejected)]
-    [InlineData(CompanyStatus.Suspended)]
-    public async Task CompanyPageOfACompanyThatIsNotApprovedReturnsErr20(CompanyStatus status)
-    {
-        Fixture fixture = new();
-        Company company = fixture.AddCompany(status);
-
-        await Assert.ThrowsAsync<ElementNotFoundException>(
-            () => fixture.Service.GetCompanyPageAsync(company.Id, TestContext.Current.CancellationToken));
-    }
-
-    /// <summary>
-    /// A página de uma Empresa inexistente dá o ERR-20.
-    /// </summary>
-    /// <returns>Tarefa do teste.</returns>
-    [Fact]
-    public async Task CompanyPageOfAnUnknownCompanyReturnsErr20()
-    {
-        Fixture fixture = new();
-
-        await Assert.ThrowsAsync<ElementNotFoundException>(
-            () => fixture.Service.GetCompanyPageAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
-    }
-
-    /// <summary>
     /// O detalhe tem o cartão (com a distância calculada entre a localidade do Candidato e a da vaga), a descrição completa,
     /// as designações das competências e dos benefícios por ordem alfabética e o identificador da Empresa (RF016). Não
     /// grava nada nem usa a consulta das vagas elegíveis.
@@ -1108,42 +1051,6 @@ public sealed class JobExplorationServiceTests
             this.jobs[job.Id] = new JobWithCompanyStatus(job, CompanyStatus.Approved);
             return job;
         }
-
-        public Company AddCompany(CompanyStatus status)
-        {
-            var company = new Company(
-                Guid.NewGuid(),
-                new CompanyRegistration
-                {
-                    CompanyName = "Lumen Software, Lda.",
-                    TaxId = "509123456",
-                    Industry = Industry.Technology,
-                    Address = "Avenida da Liberdade, 100, 4710-000 Braga",
-                    LocationId = Guid.NewGuid(),
-                    ContactEmail = "geral@lumen-exemplo.pt",
-                    ContactPhone = "253000111",
-                    ResponsibleName = "Rui Matos",
-                },
-                Now);
-
-            if (status is CompanyStatus.Approved or CompanyStatus.Suspended)
-            {
-                company.Approve();
-            }
-
-            if (status == CompanyStatus.Suspended)
-            {
-                company.Suspend();
-            }
-
-            if (status == CompanyStatus.Rejected)
-            {
-                company.Reject("A morada indicada não corresponde à certidão permanente.");
-            }
-
-            this.References.Companies.Add(company);
-            return company;
-        }
     }
 
     private sealed class FakeJobs : IJobRepository
@@ -1168,11 +1075,6 @@ public sealed class JobExplorationServiceTests
         public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.jobs.GetValueOrDefault(jobId));
-        }
-
-        public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
         }
 
         public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
@@ -1200,11 +1102,6 @@ public sealed class JobExplorationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
         public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -1224,6 +1121,16 @@ public sealed class JobExplorationServiceTests
         }
 
         public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -1285,12 +1192,12 @@ public sealed class JobExplorationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
+        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -1300,17 +1207,7 @@ public sealed class JobExplorationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task AddSkillAsync(Skill skill, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<bool> BenefitNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -1320,12 +1217,22 @@ public sealed class JobExplorationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
+        public Task<bool> SkillNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<bool> SkillNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        public Task<bool> BenefitNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddSkillAsync(Skill skill, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -1376,17 +1283,17 @@ public sealed class JobExplorationServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
         public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -1478,17 +1385,22 @@ public sealed class JobExplorationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default)
+        public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
+        public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
         public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -1503,12 +1415,7 @@ public sealed class JobExplorationServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+        public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

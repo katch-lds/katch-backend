@@ -44,17 +44,17 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IConflictRetryDelay, RandomConflictRetryDelay>();
         services.AddSingleton<IDistanceCalculator, HaversineDistanceCalculator>();
         services.AddScoped<IJobExplorationService, JobExplorationService>();
+        services.AddScoped<IIndicatorService, IndicatorService>();
         services.AddScoped<IMatchService, MatchService>();
         services.AddScoped<IConversationService, ConversationService>();
+        services.AddScoped<IJobService, JobService>();
 
         services.AddOptions<FileStorageOptions>().BindConfiguration(FileStorageOptions.SectionName);
         services.AddSingleton<IFileStorage, LocalFileStorage>();
         services.AddSingleton<IFileValidator, FileValidator>();
         services.AddSingleton<IFileUrlBuilder, FileUrlBuilder>();
         services.AddScoped<IFileAccessService, FileAccessService>();
-        services.AddScoped<IJobService, JobService>();
         services.AddScoped<ICandidateEvaluationService, CandidateEvaluationService>();
-        services.AddScoped<IIndicatorService, IndicatorService>();
         return services;
     }
 }

@@ -28,6 +28,26 @@ public interface IMatchRepository
     public Task AddAsync(Match match, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Conta os interesses manifestados no período: respostas com estado diferente de recusada pelo Candidato, pela data
+    /// da resposta (RF096; modelo de dados v02, DM-21).
+    /// </summary>
+    /// <param name="periodStart">Início do período, inclusive.</param>
+    /// <param name="periodEnd">Fim do período, exclusivo.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O número de interesses.</returns>
+    public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Conta os matches confirmados no período, pela data da aceitação pelo Recrutador (RF096; modelo de dados v02,
+    /// DM-24).
+    /// </summary>
+    /// <param name="periodStart">Início do período, inclusive.</param>
+    /// <param name="periodEnd">Fim do período, exclusivo.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O número de matches.</returns>
+    public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Obtém uma resposta pelo identificador, acompanhada pelo contexto: as alterações (por exemplo, o registo da
     /// abertura do perfil) são gravadas no <see cref="IUnitOfWork.SaveChangesAsync"/> seguinte.
     /// </summary>
@@ -45,16 +65,6 @@ public interface IMatchRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Os interesses em espera da vaga; lista vazia se não houver.</returns>
     public Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Indica se o Candidato tem um interesse registado numa vaga da Empresa do Recrutador, isto é, uma resposta que não
-    /// seja a recusa da vaga pelo Candidato (RF061). A ligação do Recrutador à Empresa e às vagas é feita na consulta.
-    /// </summary>
-    /// <param name="candidateId">Identificador do Candidato.</param>
-    /// <param name="recruiterId">Identificador do Recrutador.</param>
-    /// <param name="cancellationToken">Cancelamento do pedido.</param>
-    /// <returns><see langword="true"/> se existir esse interesse.</returns>
-    public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Conta os interesses em espera de decisão de cada vaga indicada (RF060), para o <c>waitingCandidates</c> das vagas
@@ -86,6 +96,16 @@ public interface IMatchRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Os registos no estado <c>MATCHED</c> com a conversa aberta em que a conta é uma das partes.</returns>
     public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Indica se o Candidato tem um interesse registado numa vaga da Empresa do Recrutador, isto é, uma resposta que não
+    /// seja a recusa da vaga pelo Candidato (RF061). A ligação do Recrutador à Empresa e às vagas é feita na consulta.
+    /// </summary>
+    /// <param name="candidateId">Identificador do Candidato.</param>
+    /// <param name="recruiterId">Identificador do Recrutador.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><see langword="true"/> se existir esse interesse.</returns>
+    public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Obtém o Recrutador da Empresa dona da vaga do match, a parte do lado da Empresa na conversa (RF026).
@@ -120,24 +140,4 @@ public interface IMatchRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As conversas, sem ordem definida.</returns>
     public Task<List<ConversationView>> ListConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Conta os interesses manifestados no período: respostas com estado diferente de recusada pelo Candidato, pela data
-    /// da resposta (RF096; modelo de dados v02, DM-21).
-    /// </summary>
-    /// <param name="periodStart">Início do período, inclusive.</param>
-    /// <param name="periodEnd">Fim do período, exclusivo.</param>
-    /// <param name="cancellationToken">Cancelamento do pedido.</param>
-    /// <returns>O número de interesses.</returns>
-    public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Conta os matches confirmados no período, pela data da aceitação pelo Recrutador (RF096; modelo de dados v02,
-    /// DM-24).
-    /// </summary>
-    /// <param name="periodStart">Início do período, inclusive.</param>
-    /// <param name="periodEnd">Fim do período, exclusivo.</param>
-    /// <param name="cancellationToken">Cancelamento do pedido.</param>
-    /// <returns>O número de matches.</returns>
-    public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
 }

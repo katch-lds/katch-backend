@@ -12,7 +12,6 @@ namespace Katch.Backend.Repositories;
 public sealed class UnitOfWork : IUnitOfWork
 {
     private const string UniqueViolation = "23505";
-
     private const string CheckViolation = "23514";
 
     private readonly KatchDbContext context;

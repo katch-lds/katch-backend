@@ -436,12 +436,12 @@ public sealed class AuthServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default)
+        public Task<int> CountActiveCandidatesAtAsync(DateTimeOffset at, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<int> CountActiveCandidatesAtAsync(DateTimeOffset at, CancellationToken cancellationToken = default)
+        public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -467,17 +467,17 @@ public sealed class AuthServiceTests
             return Task.FromResult(new List<Candidate>());
         }
 
+        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
         public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -502,7 +502,7 @@ public sealed class AuthServiceTests
             return Task.FromResult(id == this.locationId);
         }
 
-        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -513,16 +513,6 @@ public sealed class AuthServiceTests
         }
 
         public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -543,6 +533,16 @@ public sealed class AuthServiceTests
         }
 
         public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
