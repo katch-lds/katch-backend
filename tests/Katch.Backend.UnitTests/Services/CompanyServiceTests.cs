@@ -482,6 +482,11 @@ public sealed class CompanyServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

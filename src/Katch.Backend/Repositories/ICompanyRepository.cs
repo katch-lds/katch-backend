@@ -45,6 +45,13 @@ public interface ICompanyRepository
     public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Lista todas as Empresas, em qualquer estado, com o número das suas vagas publicadas, só para leitura (RF097).
+    /// </summary>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>As Empresas com a contagem, sem ordem garantida.</returns>
+    public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Obtém uma Empresa com a sua localidade, só para leitura (RF092).
     /// </summary>
     /// <param name="id">Identificador da Empresa.</param>

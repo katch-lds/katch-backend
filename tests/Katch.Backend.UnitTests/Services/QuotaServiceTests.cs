@@ -207,6 +207,11 @@ public sealed class QuotaServiceTests
             return Task.FromResult(this.due);
         }
 
+        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
