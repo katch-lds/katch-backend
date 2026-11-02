@@ -109,6 +109,16 @@ public static class ApiErrorResponse
     public const string ConversationWithoutMatchCode = "ERR-37";
 
     /// <summary>
+    /// Código do erro de fotografia acima do número máximo da galeria ou da vaga.
+    /// </summary>
+    public const string PhotoLimitReachedCode = "ERR-39";
+
+    /// <summary>
+    /// Código do erro de eliminação de uma vaga com interesses registados.
+    /// </summary>
+    public const string JobHasInterestsCode = "ERR-38";
+
+    /// <summary>
     /// Código do erro de segundo registo de Empresa pelo mesmo Recrutador.
     /// </summary>
     public const string CompanyAlreadyRegisteredCode = "ERR-40";
@@ -177,6 +187,11 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-20.
     /// </summary>
     public const string NotFoundMessage = "O elemento pedido não existe ou não está disponível.";
+
+    /// <summary>
+    /// Mensagem do ERR-38.
+    /// </summary>
+    public const string JobHasInterestsMessage = "A vaga tem interesses registados e só pode ser encerrada.";
 
     /// <summary>
     /// Mensagem do ERR-32.
@@ -418,6 +433,25 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Cria o corpo do ERR-39 (409): a galeria ou a vaga já tem o número máximo de fotografias (RF048, RF052, P13).
+    /// </summary>
+    /// <param name="maxPhotos">Número máximo de fotografias, indicado na mensagem.</param>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto PhotoLimitReached(int maxPhotos)
+    {
+        return new ApiErrorDto(PhotoLimitReachedCode, $"Foi atingido o número máximo de fotografias ({maxPhotos}).");
+    }
+
+    /// <summary>
+    /// Cria o corpo do ERR-38 (409): a vaga tem pelo menos um interesse registado e só pode ser encerrada (RF058).
+    /// </summary>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto JobHasInterests()
+    {
+        return new ApiErrorDto(JobHasInterestsCode, JobHasInterestsMessage);
+    }
+
+    /// <summary>
     /// Cria o corpo do ERR-40 (409): o Recrutador já registou uma Empresa.
     /// </summary>
     /// <returns>O corpo da resposta.</returns>
@@ -475,6 +509,24 @@ public static class ApiErrorResponse
             CompanyStatus.Rejected => "recusada",
             CompanyStatus.Suspended => "suspensa",
             _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Estado de Empresa desconhecido."),
+        };
+    }
+
+    /// <summary>
+    /// Designação do estado da vaga nas mensagens do ERR-30 (documentação da API v02, secção 2.4).
+    /// </summary>
+    /// <param name="status">Estado da vaga.</param>
+    /// <returns>«não publicada», «publicada», «suspensa» ou «encerrada».</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Se o estado não for conhecido.</exception>
+    public static string JobStatusLabel(JobStatus status)
+    {
+        return status switch
+        {
+            JobStatus.Unpublished => "não publicada",
+            JobStatus.Published => "publicada",
+            JobStatus.Suspended => "suspensa",
+            JobStatus.Closed => "encerrada",
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Estado de vaga desconhecido."),
         };
     }
 

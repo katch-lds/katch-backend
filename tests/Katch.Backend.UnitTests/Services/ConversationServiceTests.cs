@@ -415,5 +415,10 @@ public sealed class ConversationServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

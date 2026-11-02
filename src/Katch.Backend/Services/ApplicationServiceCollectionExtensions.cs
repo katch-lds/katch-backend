@@ -45,6 +45,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IJobExplorationService, JobExplorationService>();
         services.AddScoped<IMatchService, MatchService>();
         services.AddScoped<IConversationService, ConversationService>();
+        services.AddScoped<IJobService, JobService>();
 
         services.AddOptions<FileStorageOptions>().BindConfiguration(FileStorageOptions.SectionName);
         services.AddSingleton<IFileStorage, LocalFileStorage>();

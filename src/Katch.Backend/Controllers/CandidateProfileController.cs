@@ -12,8 +12,8 @@ using Microsoft.Net.Http.Headers;
 namespace Katch.Backend.Controllers;
 
 /// <summary>
-/// Perfil profissional do Candidato (documentação da API v02, secções 6.2.1 a 6.2.3 e 6.2.6 a 6.2.9; modelo de classes
-/// do backend v02, secção 6). O Candidato é sempre o da credencial de sessão (claim <c>sub</c>), nunca o do pedido.
+/// Perfil profissional do Candidato (documentação da API v02, secções 6.2.1 a 6.2.11; modelo de classes do backend
+/// v02, secção 6). O Candidato é sempre o da credencial de sessão (claim <c>sub</c>), nunca o do pedido.
 /// </summary>
 [ApiController]
 [Route("api/candidate/profile")]
@@ -21,9 +21,12 @@ namespace Katch.Backend.Controllers;
 [Produces("application/json")]
 public sealed class CandidateProfileController : ControllerBase
 {
-    // 6 MB (5 MB do ficheiro mais a margem para que um ficheiro entre 5 e 6 MB chegue ao validador e receba o ERR-11) e
-    // 4 KB para as fronteiras e os cabeçalhos do multipart/form-data.
-    private const long MaxUploadRequestBytes = (6L * 1024 * 1024) + (4 * 1024);
+    /// <summary>
+    /// Dimensão máxima do pedido de carregamento de um ficheiro: 6 MB (5 MB do ficheiro mais a margem para que um
+    /// ficheiro entre 5 e 6 MB chegue ao validador e receba o ERR-11) e 4 KB para as fronteiras e os cabeçalhos do
+    /// <c>multipart/form-data</c>. Também é usada pelo carregamento das fotografias da vaga.
+    /// </summary>
+    internal const long MaxUploadRequestBytes = (6L * 1024 * 1024) + (4 * 1024);
 
     private const string UploadFileField = "file";
 
@@ -180,6 +183,90 @@ public sealed class CandidateProfileController : ControllerBase
     {
         FileContent cv = await this.profileService.GetCvAsync(this.GetCandidateId(), cancellationToken);
         return this.File(cv.Content, cv.ContentType);
+    }
+
+    /// <summary>
+    /// Associa ao perfil uma competência da lista pré-definida (RF008).
+    /// </summary>
+    /// <param name="request">Competência a acrescentar; sem corpo, o campo é indicado como obrigatório.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>
+    /// <c>201</c> com o perfil atualizado, ou <c>400</c> (ERR-10) se <c>skillId</c> faltar, não pertencer à lista ou já
+    /// estiver associada ao perfil.
+    /// </returns>
+    [HttpPost("skills")]
+    [ProducesResponseType<CandidateProfileDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<CandidateProfileDto>> AddSkill(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AddSkillRequest? request,
+        CancellationToken cancellationToken)
+    {
+        CandidateProfileDto profile = await this.profileService.AddSkillAsync(
+            this.GetCandidateId(),
+            request ?? AddSkillRequest.Empty,
+            cancellationToken);
+        return this.StatusCode(StatusCodes.Status201Created, profile);
+    }
+
+    /// <summary>
+    /// Retira do perfil uma competência da lista pré-definida (RF008).
+    /// </summary>
+    /// <param name="skillId">Identificador da competência associada ao perfil.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><c>204</c>, ou <c>404</c> (ERR-20) se a competência não estiver associada ao perfil.</returns>
+    [HttpDelete("skills/{skillId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveSkill(Guid skillId, CancellationToken cancellationToken)
+    {
+        await this.profileService.RemoveSkillAsync(this.GetCandidateId(), skillId, cancellationToken);
+        return this.NoContent();
+    }
+
+    /// <summary>
+    /// Acrescenta ao perfil uma competência da opção «Outro», validada no servidor segundo o P07 (RF009).
+    /// </summary>
+    /// <param name="request">Designação da competência; sem corpo, o campo é indicado como obrigatório.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>
+    /// <c>201</c> com o perfil atualizado, ou <c>400</c> (ERR-10) se <c>label</c> faltar, não cumprir o P07 ou já
+    /// estiver indicada no perfil.
+    /// </returns>
+    [HttpPost("custom-skills")]
+    [ProducesResponseType<CandidateProfileDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<CandidateProfileDto>> AddCustomSkill(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AddCustomSkillRequest? request,
+        CancellationToken cancellationToken)
+    {
+        CandidateProfileDto profile = await this.profileService.AddCustomSkillAsync(
+            this.GetCandidateId(),
+            request ?? AddCustomSkillRequest.Empty,
+            cancellationToken);
+        return this.StatusCode(StatusCodes.Status201Created, profile);
+    }
+
+    /// <summary>
+    /// Retira do perfil uma competência da opção «Outro» (RF009).
+    /// </summary>
+    /// <param name="customSkillId">Identificador da competência «Outro».</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><c>204</c>, ou <c>404</c> (ERR-20) se a competência «Outro» não existir no perfil.</returns>
+    [HttpDelete("custom-skills/{customSkillId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveCustomSkill(Guid customSkillId, CancellationToken cancellationToken)
+    {
+        await this.profileService.RemoveCustomSkillAsync(this.GetCandidateId(), customSkillId, cancellationToken);
+        return this.NoContent();
     }
 
     /// <summary>
