@@ -44,6 +44,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IConflictRetryDelay, RandomConflictRetryDelay>();
         services.AddScoped<IJobExplorationService, JobExplorationService>();
         services.AddScoped<IIndicatorService, IndicatorService>();
+        services.AddScoped<IJobService, JobService>();
 
         services.AddOptions<FileStorageOptions>().BindConfiguration(FileStorageOptions.SectionName);
         services.AddSingleton<IFileStorage, LocalFileStorage>();

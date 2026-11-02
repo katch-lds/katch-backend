@@ -26,7 +26,7 @@ public interface IReferenceDataRepository
     public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Obtém uma localidade da lista pré-definida, só para leitura, para apresentar a designação no perfil.
+    /// Obtém uma localidade da lista pré-definida, só para leitura, para apresentar a designação no perfil e na vaga.
     /// </summary>
     /// <param name="id">Identificador da localidade.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -34,8 +34,8 @@ public interface IReferenceDataRepository
     public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Obtém uma competência da lista pré-definida, acompanhada pelo contexto, para a associar a um perfil (RF008) ou
-    /// alterar a designação (RF100).
+    /// Obtém uma competência da lista pré-definida, acompanhada pelo contexto, para a associar a um perfil (RF008) ou a
+    /// uma vaga (RF050), ou alterar a designação (RF100).
     /// </summary>
     /// <param name="id">Identificador da competência.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -43,7 +43,8 @@ public interface IReferenceDataRepository
     public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Obtém um benefício da lista pré-definida, acompanhado pelo contexto, para alterar a designação (RF102).
+    /// Obtém um benefício da lista pré-definida, acompanhado pelo contexto, para o associar a uma vaga (RF050) ou
+    /// alterar a designação (RF102).
     /// </summary>
     /// <param name="id">Identificador do benefício.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
