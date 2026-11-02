@@ -423,6 +423,16 @@ public sealed class CandidateProfileUpdateServiceTests
             return Task.FromResult<Location?>(id == this.location.Id ? this.location : null);
         }
 
+        public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             if (this.SaveFailure is not null)
@@ -486,11 +496,6 @@ public sealed class CandidateProfileUpdateServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
         public void DiscardChanges()
         {
             throw new NotSupportedException();
@@ -502,11 +507,6 @@ public sealed class CandidateProfileUpdateServiceTests
         }
 
         public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

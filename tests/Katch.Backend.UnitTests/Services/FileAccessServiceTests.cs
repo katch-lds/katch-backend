@@ -229,6 +229,11 @@ public sealed class FileAccessServiceTests : IDisposable
             return Task.FromResult(this.InterestedRecruiters.Contains((candidateId, recruiterId)));
         }
 
+        public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Match?> GetAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -255,11 +260,6 @@ public sealed class FileAccessServiceTests : IDisposable
         }
 
         public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<Dictionary<Guid, int>> CountWaitingByJobAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
