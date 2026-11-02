@@ -155,6 +155,19 @@ public sealed class JobExplorationService : IJobExplorationService
         return this.RetryOnConflictAsync(() => this.TryGetQuotaAsync(candidateId, cancellationToken), cancellationToken);
     }
 
+    /// <inheritdoc/>
+    public async Task<CompanyPageDto> GetCompanyPageAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        // Uma Empresa pendente, recusada ou suspensa não é visível ao Candidato: a mesma resposta que a inexistente.
+        Company? company = await this.companies.GetByIdAsync(companyId, cancellationToken);
+        if (company is null || !company.IsApproved())
+        {
+            throw new ElementNotFoundException();
+        }
+
+        return CompanyPageMapper.ToPage(company, this.fileUrlBuilder);
+    }
+
     private static QuotaDto ToQuota(Candidate candidate)
     {
         return new QuotaDto(candidate.SwipeRightsRemaining, Candidate.MaxInterests, candidate.NextSwipeAvailableAt);

@@ -336,6 +336,12 @@ Um valor inválido impede a API de arrancar, com uma mensagem a dizer como corri
 registada e repetida no intervalo seguinte. Se um interesse e a reposição gravarem ao mesmo tempo, a marca de
 concorrência `xmin` faz falhar o segundo, que repete com os valores atuais.
 
+Com o mesmo intervalo, a tarefa periódica `JobExpirationWorker` encerra as vagas publicadas cuja data-limite foi
+atingida (RF057; `IJobService.CloseExpiredAsync` e `Job.Expire`) e regista cada uma no `operation_log` como
+`JOB_CLOSED` sem autor. As vagas suspensas, não publicadas ou eliminadas não são alteradas. A comparação é entre
+instantes (`timestamptz`), com o relógio do servidor. Também aqui a tarefa não é a garantia: a exploração e o interesse
+já não aceitam uma vaga expirada antes de a tarefa correr (DM-17).
+
 ## 13. Recusa, interesse e quota do Candidato
 
 Três endpoints do `JobExplorationController` (`api/candidate/jobs`, API v02, secções 6.3.4 a 6.3.6), todos com a política

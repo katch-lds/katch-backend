@@ -91,6 +91,11 @@ public static class FieldReasons
     public const string TaxIdTaken = "O número de identificação fiscal já está registado.";
 
     /// <summary>
+    /// Número de identificação fiscal diferente do registado, na alteração dos dados da Empresa aprovada (RF049).
+    /// </summary>
+    public const string TaxIdImmutable = "O número de identificação fiscal não pode ser alterado depois da aprovação.";
+
+    /// <summary>
     /// Designação de uma competência ou de um benefício vazia (documentação da API v02, secção 4.3; RF099 a RF102).
     /// </summary>
     public const string ReferenceNameRequired = "A designação é obrigatória.";

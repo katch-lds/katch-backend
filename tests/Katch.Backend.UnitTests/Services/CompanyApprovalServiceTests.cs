@@ -419,6 +419,11 @@ public sealed class CompanyApprovalServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<int> CountByStatusAtAsync(CompanyStatus status, DateTimeOffset at, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -496,6 +501,11 @@ public sealed class CompanyApprovalServiceTests
         }
 
         public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

@@ -374,6 +374,11 @@ public sealed class CompanyAdminServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

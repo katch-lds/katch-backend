@@ -584,272 +584,60 @@ public sealed class JobExplorationServiceTests
     }
 
     /// <summary>
-    /// O cartão traz os dados da vaga, a designação e o logótipo da Empresa, a localidade no formato «Localidade
-    /// (Distrito)», a distância calculada pela consulta e os URLs das fotografias, pela ordem de carregamento (RF013).
+    /// A página de uma Empresa aprovada traz a designação, a descrição, o sítio na Internet, o logótipo e a galeria, com
+    /// os URL da API, e nunca os contactos (RF017, RF025).
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
-    public async Task NextCardHasTheJobTheCompanyTheLocationTheDistanceAndTheFiles()
+    public async Task CompanyPageOfAnApprovedCompanyIsReturned()
     {
         Fixture fixture = new();
-        Company company = fixture.AddCompany("Lumen Software, Lda.", "company_logo/" + new string('a', 32) + ".png");
-        Location location = fixture.AddLocation("Braga", "Braga");
-        Job job = NewJob(company.Id, location.Id, isUrgent: true);
-        job.AddPhoto("job_photo/" + new string('1', 32) + ".jpg");
-        job.AddPhoto("job_photo/" + new string('2', 32) + ".png");
-        fixture.Jobs.Eligible.Add(new EligibleJob(job, 22));
+        Company company = fixture.AddCompany(CompanyStatus.Approved);
+        company.UpdatePage("Software de gestão de frotas.", "https://www.lumen-exemplo.pt");
+        company.SetLogo("company_logo/0123456789abcdef0123456789abcdef.png");
+        company.AddGalleryPhoto("company_photo/11111111111111111111111111111111.jpg");
 
-        JobCardDto? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+        CompanyPageDto page = await fixture.Service.GetCompanyPageAsync(company.Id, TestContext.Current.CancellationToken);
 
-        Assert.NotNull(card);
-        Assert.Equal(job.Id, card.JobId);
-        Assert.Equal("Programador Backend .NET", card.Title);
-        Assert.Equal("Lumen Software, Lda.", card.CompanyName);
-        Assert.Equal("/api/files/COMPANY_LOGO/" + new string('a', 32) + ".png", card.LogoUrl);
-        Assert.Equal(1600.00m, card.MinSalary);
-        Assert.Equal(2100.00m, card.MaxSalary);
-        Assert.Equal("Braga (Braga)", card.LocationName);
-        Assert.Equal(22, card.DistanceKm);
-        Assert.Equal(ContractType.Permanent, card.ContractType);
-        Assert.Equal(WorkMode.Hybrid, card.WorkMode);
-        Assert.True(card.IsUrgent);
-        Assert.Equal(
-            ["/api/files/JOB_PHOTO/" + new string('1', 32) + ".jpg", "/api/files/JOB_PHOTO/" + new string('2', 32) + ".png"],
-            card.PhotoUrls);
-    }
-
-    /// <summary>
-    /// Sem logótipo nem fotografias registados, o cartão tem os restantes dados, com <c>logoUrl</c> nulo e a lista de
-    /// fotografias vazia (RF013).
-    /// </summary>
-    /// <returns>Tarefa do teste.</returns>
-    [Fact]
-    public async Task NextCardWithoutLogoNorPhotosHasTheRemainingData()
-    {
-        Fixture fixture = new();
-        Company company = fixture.AddCompany("Zeta Logística, S.A.", logoPath: null);
-        Location location = fixture.AddLocation("Porto", "Porto");
-        Job job = NewJob(company.Id, location.Id, isUrgent: false);
-        fixture.Jobs.Eligible.Add(new EligibleJob(job, 0));
-
-        JobCardDto? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
-
-        Assert.NotNull(card);
-        Assert.Null(card.LogoUrl);
-        Assert.Empty(card.PhotoUrls);
-        Assert.Equal("Zeta Logística, S.A.", card.CompanyName);
-        Assert.Equal("Porto (Porto)", card.LocationName);
-        Assert.Equal(0, card.DistanceKm);
-        Assert.False(card.IsUrgent);
-    }
-
-    /// <summary>
-    /// Sem vagas que cumpram o filtro, não há cartão (o controller responde 204; UC05, A6).
-    /// </summary>
-    /// <returns>Tarefa do teste.</returns>
-    [Fact]
-    public async Task NextCardIsNullWhenNoJobIsEligible()
-    {
-        Fixture fixture = new();
-
-        JobCardDto? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
-
-        Assert.Null(card);
-        Assert.Equal(1, fixture.Jobs.EligibleQueries);
-    }
-
-    /// <summary>
-    /// O serviço pede à consulta uma só vaga (os cartões são apresentados um de cada vez), com o Candidato lido da base e o
-    /// instante do relógio do servidor, e não grava nada.
-    /// </summary>
-    /// <returns>Tarefa do teste.</returns>
-    [Fact]
-    public async Task NextCardAsksTheQueryForOneJobWithTheCandidateAndTheServerInstant()
-    {
-        Fixture fixture = new();
-        using var source = new CancellationTokenSource();
-
-        await fixture.Service.GetNextCardAsync(fixture.CandidateId, source.Token);
-
-        Assert.Equal(1, fixture.Jobs.LastTake);
-        Assert.Equal(Now, fixture.Jobs.LastNow);
-        Assert.Same(fixture.Candidates.Current, fixture.Jobs.LastCandidate);
-        Assert.Equal(source.Token, fixture.Candidates.LoadedWith);
+        Assert.Equal(company.Id, page.CompanyId);
+        Assert.Equal("Lumen Software, Lda.", page.CompanyName);
+        Assert.Equal("Software de gestão de frotas.", page.Description);
+        Assert.Equal("https://www.lumen-exemplo.pt", page.Website);
+        Assert.Equal("/api/files/COMPANY_LOGO/0123456789abcdef0123456789abcdef.png", page.LogoUrl);
+        Assert.Equal(["/api/files/COMPANY_PHOTO/11111111111111111111111111111111.jpg"], page.PhotoUrls);
         Assert.Equal(0, fixture.Store.Saves);
     }
 
     /// <summary>
-    /// Com a quota esgotada, o cartão continua a ser apresentado (UC05, A4): a quota só é verificada no interesse.
+    /// A página de uma Empresa pendente, recusada ou suspensa não é visível ao Candidato: o mesmo ERR-20 que a
+    /// Empresa inexistente (6.3.3).
     /// </summary>
-    /// <returns>Tarefa do teste.</returns>
-    [Fact]
-    public async Task NextCardIsShownWithTheQuotaExhausted()
-    {
-        Fixture fixture = new(() => ExhaustedAt(Now.AddHours(-1)));
-        Company company = fixture.AddCompany("Lumen Software, Lda.", logoPath: null);
-        Location location = fixture.AddLocation("Braga", "Braga");
-        fixture.Jobs.Eligible.Add(new EligibleJob(NewJob(company.Id, location.Id, isUrgent: false), 5));
-
-        JobCardDto? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
-
-        Assert.NotNull(card);
-        Assert.Equal(0, fixture.Candidates.Current!.SwipeRightsRemaining);
-    }
-
-    /// <summary>
-    /// O detalhe tem o cartão (com a distância calculada entre a localidade do Candidato e a da vaga), a descrição completa,
-    /// as designações das competências e dos benefícios por ordem alfabética e o identificador da Empresa (RF016). Não
-    /// grava nada nem usa a consulta das vagas elegíveis.
-    /// </summary>
-    /// <returns>Tarefa do teste.</returns>
-    [Fact]
-    public async Task DetailHasTheCardTheDescriptionTheSkillsTheBenefitsAndTheCompany()
-    {
-        Location home = NewHome();
-        Fixture fixture = new(() => CandidateAt(home.Id));
-        fixture.References.Locations.Add(home);
-        Company company = fixture.AddCompany("Lumen Software, Lda.", "company_logo/" + new string('a', 32) + ".png");
-        Location location = fixture.AddLocation("Vila Verde", "Braga", kilometresNorth: 22);
-        Job job = fixture.AddJobForDetail(NewJob(company.Id, location.Id, isUrgent: true));
-        job.AddPhoto("job_photo/" + new string('1', 32) + ".jpg");
-        job.Skills.Add(new Skill("SQL"));
-        job.Skills.Add(new Skill("C#"));
-        job.Skills.Add(new Skill("Docker"));
-        job.Benefits.Add(new Benefit("Seguro de saúde"));
-        job.Benefits.Add(new Benefit("Ginásio"));
-
-        JobDetailDto detail = await fixture.Service.GetDetailAsync(fixture.CandidateId, job.Id, TestContext.Current.CancellationToken);
-
-        JobCardDto card = detail.Card;
-        Assert.Equal(job.Id, card.JobId);
-        Assert.Equal("Programador Backend .NET", card.Title);
-        Assert.Equal("Lumen Software, Lda.", card.CompanyName);
-        Assert.Equal("/api/files/COMPANY_LOGO/" + new string('a', 32) + ".png", card.LogoUrl);
-        Assert.Equal(1600.00m, card.MinSalary);
-        Assert.Equal(2100.00m, card.MaxSalary);
-        Assert.Equal("Vila Verde (Braga)", card.LocationName);
-        Assert.Equal(22, card.DistanceKm);
-        Assert.Equal(ContractType.Permanent, card.ContractType);
-        Assert.Equal(WorkMode.Hybrid, card.WorkMode);
-        Assert.True(card.IsUrgent);
-        Assert.Equal(["/api/files/JOB_PHOTO/" + new string('1', 32) + ".jpg"], card.PhotoUrls);
-        Assert.Equal("Descrição da vaga.", detail.Description);
-        Assert.Equal(["C#", "Docker", "SQL"], detail.Skills);
-        Assert.Equal(["Ginásio", "Seguro de saúde"], detail.Benefits);
-        Assert.Equal(company.Id, detail.CompanyId);
-        Assert.Equal(0, fixture.Store.Saves);
-        Assert.Equal(0, fixture.Jobs.EligibleQueries);
-    }
-
-    /// <summary>
-    /// O detalhe não depende das preferências de procura: uma vaga presencial a 22 km, abaixo da pretensão mínima e fora
-    /// dos regimes e dos contratos preferidos tem detalhe para um Candidato com distância máxima de 5 km. Sem logótipo,
-    /// fotografias, competências nem benefícios, os campos ficam nulos ou vazios.
-    /// </summary>
-    /// <returns>Tarefa do teste.</returns>
-    [Fact]
-    public async Task DetailIgnoresTheSearchPreferences()
-    {
-        Location home = NewHome();
-        Fixture fixture = new(() =>
-        {
-            Candidate candidate = CandidateAt(home.Id);
-            candidate.MaxDistanceKm = 5;
-            candidate.MinSalaryExpectation = 3000m;
-            candidate.PreferredWorkModes = [WorkMode.Remote];
-            candidate.PreferredContractTypes = [ContractType.Internship];
-            return candidate;
-        });
-        fixture.References.Locations.Add(home);
-        Company company = fixture.AddCompany("Lumen Software, Lda.", logoPath: null);
-        Location location = fixture.AddLocation("Vila Verde", "Braga", kilometresNorth: 22);
-        Job job = fixture.AddJobForDetail(NewJob(company.Id, location.Id, isUrgent: false));
-
-        JobDetailDto detail = await fixture.Service.GetDetailAsync(fixture.CandidateId, job.Id, TestContext.Current.CancellationToken);
-
-        Assert.Equal(22, detail.Card.DistanceKm);
-        Assert.Null(detail.Card.LogoUrl);
-        Assert.Empty(detail.Card.PhotoUrls);
-        Assert.Empty(detail.Skills);
-        Assert.Empty(detail.Benefits);
-    }
-
-    /// <summary>
-    /// Uma vaga inexistente, eliminada, por publicar, suspensa, encerrada ou expirada, ou de uma Empresa suspensa, não tem
-    /// detalhe: <see cref="ElementNotFoundException"/> (404 ERR-20), sem ler o Candidato nem gravar.
-    /// </summary>
-    /// <param name="state">Estado da vaga ou da Empresa.</param>
+    /// <param name="status">Estado da Empresa.</param>
     /// <returns>Tarefa do teste.</returns>
     [Theory]
-    [InlineData("inexistente")]
-    [InlineData("eliminada")]
-    [InlineData("por publicar")]
-    [InlineData("suspensa")]
-    [InlineData("encerrada")]
-    [InlineData("expirada")]
-    [InlineData("Empresa suspensa")]
-    public async Task DetailOfAJobNotAvailableToCandidatesIsNotFound(string state)
+    [InlineData(CompanyStatus.Pending)]
+    [InlineData(CompanyStatus.Rejected)]
+    [InlineData(CompanyStatus.Suspended)]
+    public async Task CompanyPageOfACompanyThatIsNotApprovedReturnsErr20(CompanyStatus status)
     {
-        Location home = NewHome();
-        Fixture fixture = new(() => CandidateAt(home.Id));
-        fixture.References.Locations.Add(home);
-        Company company = fixture.AddCompany("Lumen Software, Lda.", logoPath: null);
-        Location location = fixture.AddLocation("Vila Verde", "Braga", kilometresNorth: 22);
-        Job job = state switch
-        {
-            "por publicar" => NewJob(company.Id, location.Id, isUrgent: false, publish: false),
-            "expirada" => NewJob(company.Id, location.Id, isUrgent: false, expiresAt: Now),
-            _ => NewJob(company.Id, location.Id, isUrgent: false),
-        };
-        switch (state)
-        {
-            case "eliminada":
-                job.MarkDeleted(Now.AddDays(-1));
-                break;
-            case "suspensa":
-                job.Suspend(Now.AddDays(-1));
-                break;
-            case "encerrada":
-                job.Close();
-                break;
-            case "Empresa suspensa":
-                company.Suspend();
-                break;
-        }
-
-        Guid jobId = Guid.NewGuid();
-        if (state != "inexistente")
-        {
-            jobId = fixture.AddJobForDetail(job).Id;
-        }
+        Fixture fixture = new();
+        Company company = fixture.AddCompany(status);
 
         await Assert.ThrowsAsync<ElementNotFoundException>(
-            () => fixture.Service.GetDetailAsync(fixture.CandidateId, jobId, TestContext.Current.CancellationToken));
-        Assert.Equal(0, fixture.Candidates.Loads);
-        Assert.Equal(0, fixture.Store.Saves);
+            () => fixture.Service.GetCompanyPageAsync(company.Id, TestContext.Current.CancellationToken));
     }
 
     /// <summary>
-    /// A data-limite é comparada com o instante do relógio do servidor: um segundo antes, a vaga tem detalhe; no instante
-    /// da data-limite, já não (N2; DM-17).
+    /// A página de uma Empresa inexistente dá o ERR-20.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
-    public async Task DetailUsesTheServerClockForTheDeadline()
+    public async Task CompanyPageOfAnUnknownCompanyReturnsErr20()
     {
-        Location home = NewHome();
-        Fixture fixture = new(() => CandidateAt(home.Id));
-        fixture.References.Locations.Add(home);
-        Company company = fixture.AddCompany("Lumen Software, Lda.", logoPath: null);
-        Location location = fixture.AddLocation("Braga", "Braga");
-        Job job = fixture.AddJobForDetail(NewJob(company.Id, location.Id, isUrgent: false, expiresAt: Now.AddSeconds(1)));
+        Fixture fixture = new();
 
-        JobDetailDto detail = await fixture.Service.GetDetailAsync(fixture.CandidateId, job.Id, TestContext.Current.CancellationToken);
-
-        Assert.Equal(0, detail.Card.DistanceKm);
-        fixture.Clock.UtcNow = Now.AddSeconds(1);
         await Assert.ThrowsAsync<ElementNotFoundException>(
-            () => fixture.Service.GetDetailAsync(fixture.CandidateId, job.Id, TestContext.Current.CancellationToken));
+            () => fixture.Service.GetCompanyPageAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     private static async Task AssertRejectedAsync(Fixture fixture, bool interest, Guid jobId, JobAnswerRejection expected)
@@ -955,15 +743,11 @@ public sealed class JobExplorationServiceTests
                 this.Clock,
                 this.Time,
                 this.Delay,
-                this.References,
-                this.References,
-                new FileUrlBuilder(),
-                new HaversineDistanceCalculator());
+                this.Companies,
+                new FileUrlBuilder());
         }
 
-        public FakeJobs Jobs { get; }
-
-        public FakeReferences References { get; }
+        public FakeCompanies Companies { get; } = new();
 
         public FakeCandidates Candidates { get; }
 
@@ -1009,47 +793,85 @@ public sealed class JobExplorationServiceTests
             return job.Id;
         }
 
-        public Company AddCompany(string name, string? logoPath)
+        public Company AddCompany(CompanyStatus status)
         {
             var company = new Company(
                 Guid.NewGuid(),
                 new CompanyRegistration
                 {
-                    CompanyName = name,
+                    CompanyName = "Lumen Software, Lda.",
                     TaxId = "509123456",
                     Industry = Industry.Technology,
                     Address = "Avenida da Liberdade, 100, 4710-000 Braga",
                     LocationId = Guid.NewGuid(),
-                    ContactEmail = "geral@exemplo.pt",
+                    ContactEmail = "geral@lumen-exemplo.pt",
                     ContactPhone = "253000111",
                     ResponsibleName = "Rui Matos",
                 },
-                Now.AddDays(-30));
-            company.Approve();
-            if (logoPath is not null)
+                Now);
+
+            if (status is CompanyStatus.Approved or CompanyStatus.Suspended)
             {
-                company.SetLogo(logoPath);
+                company.Approve();
             }
 
-            this.References.Companies.Add(company);
+            if (status == CompanyStatus.Suspended)
+            {
+                company.Suspend();
+            }
+
+            if (status == CompanyStatus.Rejected)
+            {
+                company.Reject("A morada indicada não corresponde à certidão permanente.");
+            }
+
+            this.Companies.All.Add(company);
             return company;
         }
+    }
 
-        public Location AddLocation(string name, string district, double kilometresNorth = 0)
+    private sealed class FakeCompanies : ICompanyRepository
+    {
+        public List<Company> All { get; } = [];
+
+        public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            // Ao longo do meridiano a distância de Haversine é R·Δφ, por isso a localidade fica a kilometresNorth de Braga.
-            decimal latitude = Math.Round(
-                BragaLatitude + (decimal)(kilometresNorth / (HaversineDistanceCalculator.EarthRadiusKm * Math.PI / 180)),
-                6);
-            var location = new Location(name, district, latitude, BragaLongitude);
-            this.References.Locations.Add(location);
-            return location;
+            return Task.FromResult(this.All.SingleOrDefault(company => company.Id == id));
         }
 
-        public Job AddJobForDetail(Job job)
+        public Task<Company?> GetByRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default)
         {
-            this.jobs[job.Id] = new JobWithCompanyStatus(job, CompanyStatus.Approved);
-            return job;
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> TaxIdExistsAsync(string taxId, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddAsync(Company company, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<int> CountByStatusAtAsync(CompanyStatus status, DateTimeOffset at, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 
@@ -1098,6 +920,11 @@ public sealed class JobExplorationServiceTests
         }
 
         public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

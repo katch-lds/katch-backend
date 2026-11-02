@@ -5,8 +5,8 @@ using Katch.Backend.Dtos;
 namespace Katch.Backend.Services;
 
 /// <summary>
-/// Exploração de vagas pelo Candidato (modelo de classes do backend v02, secção 5). Tem o cartão de vaga seguinte, as
-/// respostas à vaga, a quota e o detalhe de uma vaga; a página da Empresa é acrescentada por outra Issue.
+/// Exploração de vagas pelo Candidato (modelo de classes do backend v02, secção 5). Tem as respostas à vaga, a quota e a
+/// página de apresentação da Empresa; o cartão e o detalhe são acrescentados por outras Issues.
 /// </summary>
 public interface IJobExplorationService
 {
@@ -64,4 +64,16 @@ public interface IJobExplorationService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A quota atual.</returns>
     public Task<QuotaDto> GetQuotaAsync(Guid candidateId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Devolve a página de apresentação de uma Empresa aprovada, sem os contactos, que o Candidato só vê depois do match
+    /// (documentação da API v02, secção 6.3.3; RF017, RF025).
+    /// </summary>
+    /// <param name="companyId">Identificador da Empresa.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>A página de apresentação.</returns>
+    /// <exception cref="ElementNotFoundException">
+    /// ERR-20, se a Empresa não existir ou não estiver aprovada (pendente, recusada ou suspensa).
+    /// </exception>
+    public Task<CompanyPageDto> GetCompanyPageAsync(Guid companyId, CancellationToken cancellationToken = default);
 }
