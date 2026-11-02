@@ -9,10 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Katch.Backend.Controllers;
 
 /// <summary>
-/// Cartão de vaga seguinte, detalhe da vaga, respostas do Candidato às vagas e consulta da quota de interesses
-/// (documentação da API v02, secções 6.3.1, 6.3.2 e 6.3.4 a 6.3.6; modelo de classes do backend v02, secção 6). A página
-/// da Empresa (6.3.3) é acrescentada por outra Issue. O Candidato é sempre o da credencial de sessão (claim <c>sub</c>),
-/// nunca o do pedido.
+/// Cartão de vaga seguinte, detalhe da vaga, página de apresentação da Empresa, respostas do Candidato às vagas e
+/// consulta da quota de interesses (documentação da API v02, secções 6.3.1 a 6.3.6; modelo de classes do backend v02,
+/// secção 6). O Candidato é sempre o da credencial de sessão (claim <c>sub</c>), nunca o do pedido.
 /// </summary>
 [ApiController]
 [Route("api/candidate/jobs")]

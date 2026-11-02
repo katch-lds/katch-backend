@@ -60,6 +60,7 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
         builder.ConfigureServices(services =>
         {
             services.AddControllers().AddApplicationPart(typeof(AuthorizationProbeController).Assembly);
+            services.AddSingleton<IStartupFilter>(new EndpointHitRecorder());
             services.RemoveAll<IClock>();
             services.AddSingleton<IClock>(this.Clock);
 
@@ -69,6 +70,19 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
             this.connection.Open();
             services.AddDbContext<KatchDbContext>(options => options.UseSqlite(this.connection));
         });
+    }
+
+    /// <inheritdoc/>
+    protected override void ConfigureClient(HttpClient client)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        base.ConfigureClient(client);
+
+        // Só com o registo dos endpoints ativo (I064): identifica o teste que criou o cliente.
+        if (EndpointHitRecorder.IsEnabled)
+        {
+            client.DefaultRequestHeaders.Add(EndpointHitRecorder.TestHeader, EndpointHitRecorder.CurrentTest());
+        }
     }
 
     /// <inheritdoc/>

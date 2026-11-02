@@ -8,8 +8,8 @@ namespace Katch.Backend.Services;
 /// Gestão das vagas pelo Recrutador da Empresa aprovada (modelo de classes do backend v02, secção 5.1; UC09, UC10). A
 /// Empresa é sempre a do Recrutador da credencial de sessão; uma vaga de outra Empresa dá
 /// <see cref="ElementForbiddenException"/> (RF059) e uma vaga inexistente ou eliminada dá
-/// <see cref="ElementNotFoundException"/>. Também acrescenta fotografias à vaga (secção 6.5.9, I105); o
-/// encerramento automático (<see cref="CloseExpiredAsync"/>) é chamado pela tarefa periódica.
+/// <see cref="ElementNotFoundException"/>. Também acrescenta fotografias à vaga (secção 6.5.9, I105); o encerramento
+/// automático (<see cref="CloseExpiredAsync"/>, I115) é chamado pela tarefa periódica.
 /// </summary>
 public interface IJobService
 {
@@ -98,16 +98,6 @@ public interface IJobService
     public Task DeleteAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Encerra as vagas publicadas cuja data-limite foi atingida (RF057; documentação da API v02, secção 6.5, tarefa
-    /// periódica), com <see cref="Katch.Backend.Domain.Job.Expire(DateTimeOffset)"/>, e regista cada uma no
-    /// <c>operation_log</c> como <c>JOB_CLOSED</c> sem autor (RF112). As vagas sem data-limite, com a data futura, suspensas, não publicadas,
-    /// encerradas ou eliminadas não são alteradas. O instante é o do relógio do servidor, em UTC.
-    /// </summary>
-    /// <param name="cancellationToken">Cancelamento da execução.</param>
-    /// <returns>O número de vagas encerradas.</returns>
-    public Task<int> CloseExpiredAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Acrescenta uma fotografia ao fim da lista da vaga (documentação da API v02, secção 6.5.9; RF052; RNF015,
     /// RNF016; P01, P13). As verificações seguem a ordem: titularidade, estado, limite e ficheiro; o limite é decidido
     /// por uma atualização atómica, por isso pedidos simultâneos nunca ultrapassam as 5 fotografias nem deixam
@@ -121,4 +111,14 @@ public interface IJobService
     /// <exception cref="OperationConflictException">ERR-30, se a vaga estiver encerrada; ERR-39, se já tiver 5 fotografias.</exception>
     /// <exception cref="FileRejectedException">ERR-11, se o ficheiro faltar, não for JPEG nem PNG ou exceder 5 MB.</exception>
     public Task<string> AddPhotoAsync(Guid recruiterId, Guid jobId, IFormFile? file, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Encerra as vagas publicadas cuja data-limite foi atingida (RF057; documentação da API v02, secção 6.5, tarefa
+    /// periódica), com <see cref="Katch.Backend.Domain.Job.Expire(DateTimeOffset)"/>, e regista cada uma no
+    /// <c>operation_log</c> como <c>JOB_CLOSED</c> sem autor (RF112). As vagas sem data-limite, com a data futura, suspensas, não publicadas,
+    /// encerradas ou eliminadas não são alteradas. O instante é o do relógio do servidor, em UTC.
+    /// </summary>
+    /// <param name="cancellationToken">Cancelamento da execução.</param>
+    /// <returns>O número de vagas encerradas.</returns>
+    public Task<int> CloseExpiredAsync(CancellationToken cancellationToken = default);
 }
