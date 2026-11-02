@@ -57,6 +57,9 @@ public sealed class MatchRepository : IMatchRepository
                     || this.context.Jobs.Any(job => job.Id == match.JobId
                         && this.context.Companies.Any(company => company.Id == job.CompanyId && company.RecruiterId == userId))))
             .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
     {
         return (from match in this.context.Matches

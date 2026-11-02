@@ -752,6 +752,10 @@ public sealed class JobExplorationServiceTests
         }
 
         public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -833,7 +837,7 @@ public sealed class JobExplorationServiceTests
         {
             throw new NotSupportedException();
         }
-      
+
         public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

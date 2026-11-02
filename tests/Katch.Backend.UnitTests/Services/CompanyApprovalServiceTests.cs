@@ -36,7 +36,13 @@ public sealed class CompanyApprovalServiceTests
     /// </summary>
     public CompanyApprovalServiceTests()
     {
-        this.service = new CompanyAdminService(this.companies, this.logger, this.unitOfWork);
+        this.service = new CompanyAdminService(
+            this.companies,
+            new UnusedJobs(),
+            new UnusedMatches(),
+            this.logger,
+            this.unitOfWork,
+            new FakeClock { UtcNow = Created });
         this.companies.Locations.AddRange([new Location("Porto", "Porto", 41.157944m, -8.629105m), this.braga]);
     }
 
@@ -407,6 +413,11 @@ public sealed class CompanyApprovalServiceTests
         {
             return Task.FromResult(this.All.Where(company => company.Status == CompanyStatus.Pending).ToList());
         }
+
+        public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeOperationLogger : IOperationLogger
@@ -450,5 +461,51 @@ public sealed class CompanyApprovalServiceTests
         {
             throw new NotSupportedException();
         }
+    }
+
+    private sealed class UnusedJobs : IJobRepository
+    {
+        public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class UnusedMatches : IMatchRepository
+    {
+        public Task<Match?> GetAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddAsync(Match match, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Match>> ListMatchesByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class FakeClock : IClock
+    {
+        public DateTimeOffset UtcNow { get; set; }
     }
 }

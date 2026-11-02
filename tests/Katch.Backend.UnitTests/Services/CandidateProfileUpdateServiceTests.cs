@@ -490,5 +490,10 @@ public sealed class CandidateProfileUpdateServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

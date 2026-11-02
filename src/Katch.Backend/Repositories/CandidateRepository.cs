@@ -64,6 +64,9 @@ public sealed class CandidateRepository : ICandidateRepository
             .AsNoTracking()
             .Include(candidate => candidate.User)
             .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(path);

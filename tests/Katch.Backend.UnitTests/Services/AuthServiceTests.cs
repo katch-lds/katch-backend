@@ -466,6 +466,7 @@ public sealed class AuthServiceTests
         {
             throw new NotSupportedException();
         }
+
         public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

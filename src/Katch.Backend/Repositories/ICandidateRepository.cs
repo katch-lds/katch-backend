@@ -51,6 +51,8 @@ public interface ICandidateRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Os Candidatos, com <see cref="Candidate.User"/> carregado e sem ordem garantida.</returns>
     public Task<List<Candidate>> ListForAdminAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Obtém o Candidato dono de uma fotografia de perfil, pelo caminho guardado (RF061), só para leitura.
     /// </summary>
     /// <param name="path">Caminho relativo <c>&lt;tipo&gt;/&lt;nome&gt;</c> da fotografia.</param>

@@ -323,6 +323,16 @@ public sealed class CompanyAdminServiceTests
                 .Select(company => new CompanyWithCount(company, this.PublishedJobs.GetValueOrDefault(company.Id)))
                 .ToList());
         }
+
+        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeJobs : IJobRepository
@@ -363,6 +373,11 @@ public sealed class CompanyAdminServiceTests
         }
 
         public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

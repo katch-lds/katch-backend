@@ -415,6 +415,16 @@ public sealed class AccountAdminServiceTests
         {
             return Task.FromResult(this.All.ToList());
         }
+
+        public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeReferenceData : IReferenceDataRepository
@@ -427,6 +437,11 @@ public sealed class AccountAdminServiceTests
         }
 
         public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -457,6 +472,11 @@ public sealed class AccountAdminServiceTests
         {
             this.Queries++;
             return Task.FromResult(this.OpenByUser.GetValueOrDefault(userId) ?? []);
+        }
+
+        public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 

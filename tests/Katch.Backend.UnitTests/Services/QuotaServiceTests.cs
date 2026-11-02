@@ -211,7 +211,7 @@ public sealed class QuotaServiceTests
         {
             throw new NotSupportedException();
         }
-      
+
         public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
