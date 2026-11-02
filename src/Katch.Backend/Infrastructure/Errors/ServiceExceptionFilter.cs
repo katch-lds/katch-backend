@@ -9,7 +9,8 @@ namespace Katch.Backend.Infrastructure.Errors;
 /// <summary>
 /// Converte as exceções de estado lançadas pelos serviços nas respostas de erro do catálogo:
 /// <see cref="ElementNotFoundException"/> em <c>404</c> ERR-20, <see cref="ElementForbiddenException"/> em <c>403</c>
-/// ERR-08 e <see cref="OperationConflictException"/> em <c>409</c> com o erro que transporta.
+/// ERR-08, <see cref="CompanyNotApprovedException"/> em <c>403</c> ERR-07 e <see cref="OperationConflictException"/>
+/// em <c>409</c> com o erro que transporta.
 /// </summary>
 internal sealed class ServiceExceptionFilter : IExceptionFilter
 {
@@ -26,6 +27,13 @@ internal sealed class ServiceExceptionFilter : IExceptionFilter
                 break;
             case ElementForbiddenException:
                 context.Result = new ObjectResult(ApiErrorResponse.ElementForbidden())
+                {
+                    StatusCode = StatusCodes.Status403Forbidden,
+                };
+                context.ExceptionHandled = true;
+                break;
+            case CompanyNotApprovedException notApproved:
+                context.Result = new ObjectResult(ApiErrorResponse.CompanyNotApproved(notApproved.Status))
                 {
                     StatusCode = StatusCodes.Status403Forbidden,
                 };
