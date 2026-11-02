@@ -165,7 +165,7 @@ public sealed class JobExplorationService : IJobExplorationService
             throw new ElementNotFoundException();
         }
 
-        return CompanyPageMapper.ToPage(company, this.fileUrlBuilder);
+        return CompanyPageMapper.ToPage(company, this.fileUrls);
     }
 
     private static QuotaDto ToQuota(Candidate candidate)

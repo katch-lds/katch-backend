@@ -399,5 +399,10 @@ public sealed class IndicatorServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<List<EligibleJob>> ListEligibleForCandidateAsync(Candidate candidate, DateTimeOffset now, int take, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 }
