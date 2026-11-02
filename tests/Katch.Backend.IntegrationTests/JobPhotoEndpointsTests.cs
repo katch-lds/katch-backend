@@ -604,5 +604,10 @@ public sealed partial class JobPhotoEndpointsTests : IClassFixture<KatchWebAppli
         {
             return inner.GetWithSkillsAsync(jobId, cancellationToken);
         }
+
+        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+        {
+            return inner.ListExpiredAsync(now, cancellationToken);
+        }
     }
 }

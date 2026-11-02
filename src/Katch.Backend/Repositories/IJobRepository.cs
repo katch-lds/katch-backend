@@ -74,6 +74,16 @@ public interface IJobRepository
     public Task<bool> HasInterestsAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Lista, com acompanhamento de alterações, as vagas publicadas e não eliminadas cuja data-limite foi atingida no
+    /// instante indicado (<c>expires_at &lt;= now</c>), para o encerramento automático (RF057; modelo de classes do
+    /// backend v02, secção 4). A regra é a de <see cref="Job.IsExpired(DateTimeOffset)"/>.
+    /// </summary>
+    /// <param name="now">Instante da verificação, em UTC.</param>
+    /// <param name="cancellationToken">Cancelamento da execução.</param>
+    /// <returns>As vagas a encerrar.</returns>
+    public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Acrescenta o caminho de uma fotografia ao fim de <c>photo_paths</c> da vaga, numa única instrução atómica na base
     /// de dados que também verifica o limite (RF052; P13). Ao contrário de ler a vaga e gravá-la, não perde escritas de
     /// pedidos simultâneos e nunca ultrapassa o limite. Não altera a entidade acompanhada pelo contexto.

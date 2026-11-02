@@ -394,5 +394,10 @@ public sealed class IndicatorServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

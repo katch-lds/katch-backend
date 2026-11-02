@@ -725,6 +725,11 @@ public sealed class JobExplorationServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

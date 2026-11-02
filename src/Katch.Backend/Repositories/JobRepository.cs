@@ -96,6 +96,16 @@ public sealed class JobRepository : IJobRepository
     }
 
     /// <inheritdoc/>
+    public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        // O filtro global exclui as vagas eliminadas (DM-09); no PostgreSQL, a consulta usa o índice ix_job_expiry, só
+        // das vagas publicadas. As datas são timestamptz, por isso a comparação é entre instantes, sem fuso horário.
+        return this.context.Jobs
+            .Where(job => job.Status == JobStatus.Published && job.ExpiresAt != null && job.ExpiresAt <= now)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
