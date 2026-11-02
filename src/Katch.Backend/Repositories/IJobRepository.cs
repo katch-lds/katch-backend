@@ -25,4 +25,12 @@ public interface IJobRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>O número de vagas.</returns>
     public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista as vagas no estado publicada de todas as Empresas, com o número de interesses (todos os estados da decisão),
+    /// só para leitura (RF098).
+    /// </summary>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>As vagas publicadas com a contagem, sem ordem garantida.</returns>
+    public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default);
 }

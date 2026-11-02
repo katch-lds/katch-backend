@@ -63,6 +63,25 @@ public sealed class UserRepository : IUserRepository
     }
 
     /// <inheritdoc/>
+    public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+
+        IQueryable<AppUser> accounts = this.context.Users.AsNoTracking();
+        if (filter.UserType is { } userType)
+        {
+            accounts = accounts.Where(user => user.UserType == userType);
+        }
+
+        if (filter.Status is { } status)
+        {
+            accounts = accounts.Where(user => user.Status == status);
+        }
+
+        return accounts.ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<int> CountActiveCandidatesAtAsync(DateTimeOffset at, CancellationToken cancellationToken = default)
     {
         // Cada operação de conta tem um único estado anterior: o bloqueio e a suspensão partem de uma conta ativa e a

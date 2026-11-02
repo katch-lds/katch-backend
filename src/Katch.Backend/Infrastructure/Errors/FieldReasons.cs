@@ -1,5 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Domain;
+
 namespace Katch.Backend.Infrastructure.Errors;
 
 /// <summary>
@@ -58,6 +60,17 @@ public static class FieldReasons
     public const string NotInList = "O valor não pertence à lista pré-definida.";
 
     /// <summary>
+    /// Competência da opção «Outro» fora do P07 (RF009), com o texto da validação da entidade.
+    /// </summary>
+    public const string CustomSkillFormat = CandidateCustomSkill.InvalidLabelMessage;
+
+    /// <summary>
+    /// Competência, da lista ou da opção «Outro», que já está no perfil do Candidato (RF008, RF009). A documentação da
+    /// API v02 (secção 6.2.4) prevê o erro sem fixar o texto.
+    /// </summary>
+    public const string SkillAlreadyAdded = "A competência já está associada ao perfil.";
+
+    /// <summary>
     /// Nome com mais de 150 caracteres (coluna <c>candidate.full_name</c>).
     /// </summary>
     public const string FullNameTooLong = "O nome tem no máximo 150 caracteres.";
@@ -102,6 +115,51 @@ public static class FieldReasons
     /// Data final dos indicadores posterior à data atual (documentação da API v02, secção 6.12.1).
     /// </summary>
     public const string PeriodEndInFuture = "A data final não pode ser posterior à data atual.";
+
+    /// <summary>
+    /// Motivo da recusa do registo da Empresa fora dos 10 a 500 caracteres, sem os espaços nas extremidades (P12).
+    /// </summary>
+    public const string RejectionReasonLength = "O motivo tem de ter entre 10 e 500 caracteres.";
+
+    /// <summary>
+    /// Distância máxima fora de 1 a 500 ou não inteira (P06).
+    /// </summary>
+    public const string MaxDistance = "A distância máxima tem de ser um número inteiro entre 1 e 500.";
+
+    /// <summary>
+    /// Pretensão salarial mínima negativa ou que não é um número (P09).
+    /// </summary>
+    public const string MinSalary = "O valor tem de ser um número positivo em euros.";
+
+    /// <summary>
+    /// Mais de três hiperligações profissionais (P10).
+    /// </summary>
+    public const string TooManyLinks = "São permitidas no máximo 3 hiperligações.";
+
+    /// <summary>
+    /// Hiperligação que não começa por <c>http://</c> ou <c>https://</c> (P10).
+    /// </summary>
+    public const string LinkScheme = "O endereço tem de começar por http:// ou https://.";
+
+    /// <summary>
+    /// Ficheiro de imagem que não está em JPEG nem em PNG (RNF016).
+    /// </summary>
+    public const string FileMustBeImage = "O ficheiro tem de estar no formato JPEG ou PNG.";
+
+    /// <summary>
+    /// Ficheiro que não está em PDF (RNF016).
+    /// </summary>
+    public const string FileMustBePdf = "O ficheiro tem de estar no formato PDF.";
+
+    /// <summary>
+    /// Compõe o motivo de um ficheiro acima da dimensão máxima do tipo («O ficheiro excede 5 MB.»).
+    /// </summary>
+    /// <param name="megabytes">Dimensão máxima, em megabytes.</param>
+    /// <returns>O motivo.</returns>
+    public static string FileTooLarge(int megabytes)
+    {
+        return $"O ficheiro excede {megabytes} MB.";
+    }
 
     /// <summary>
     /// Compõe o motivo de um texto acima do comprimento máximo da coluna, no formato do catálogo («O texto não pode

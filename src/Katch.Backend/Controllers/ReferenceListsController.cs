@@ -11,8 +11,7 @@ namespace Katch.Backend.Controllers;
 
 /// <summary>
 /// Consulta e manutenção das listas pré-definidas (documentação da API v02, secção 6.13; modelo de classes do backend
-/// v02, secção 6; UC20). A escrita nas listas é reservada ao Administrador (RF104). A consulta das competências é
-/// acrescentada pela Issue da gestão das competências (I062).
+/// v02, secção 6; UC20). A escrita nas listas é reservada ao Administrador (RF104).
 /// </summary>
 [ApiController]
 [Route("api/reference-lists")]
@@ -42,6 +41,21 @@ public sealed class ReferenceListsController : ControllerBase
     public async Task<ActionResult<List<ReferenceItemDto>>> ListLocations(CancellationToken cancellationToken)
     {
         return this.Ok(await this.referenceListService.ListLocationsAsync(cancellationToken));
+    }
+
+    /// <summary>
+    /// Consulta as competências da lista pré-definida, com sessão iniciada de qualquer tipo de conta (RF008, RF050).
+    /// </summary>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><c>200</c> com as competências por ordem alfabética, ou <c>401</c> (ERR-01) sem credencial válida.</returns>
+    [HttpGet("skills")]
+    [Authorize]
+    [ProducesResponseType<List<ReferenceItemDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<List<ReferenceItemDto>>> ListSkills(CancellationToken cancellationToken)
+    {
+        return this.Ok(await this.referenceListService.ListSkillsAsync(cancellationToken));
     }
 
     /// <summary>

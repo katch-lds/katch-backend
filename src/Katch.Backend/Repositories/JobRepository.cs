@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Katch.Backend.Repositories;
@@ -38,5 +39,17 @@ public sealed class JobRepository : IJobRepository
         return this.context.Jobs
             .IgnoreQueryFilters()
             .CountAsync(job => job.FirstPublishedAt >= periodStart && job.FirstPublishedAt < periodEnd, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+    {
+        // Um interesse é qualquer resposta do Candidato que não seja a recusa da vaga (RF098).
+        return this.context.Jobs.AsNoTracking()
+            .Where(job => job.Status == JobStatus.Published)
+            .Select(job => new JobWithCount(
+                job,
+                this.context.Matches.Count(match => match.JobId == job.Id && match.Status != MatchStatus.DeclinedByCandidate)))
+            .ToListAsync(cancellationToken);
     }
 }

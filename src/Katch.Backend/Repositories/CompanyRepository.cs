@@ -85,6 +85,44 @@ public sealed class CompanyRepository : ICompanyRepository
                 cancellationToken);
     }
 
+    /// <inheritdoc/>
+    public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.Companies.SingleOrDefaultAsync(company => company.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
+    {
+        // O filtro global das vagas exclui as eliminadas (DM-09) também nesta contagem.
+        return this.context.Companies
+            .AsNoTracking()
+            .Select(company => new CompanyWithCount(
+                company,
+                this.context.Jobs.Count(job => job.CompanyId == company.Id && job.Status == JobStatus.Published)))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        // A localidade é obrigatória (chave estrangeira de company.location_id): a junção não perde nenhuma Empresa.
+        return (from company in this.context.Companies.AsNoTracking()
+                join location in this.context.Locations.AsNoTracking() on company.LocationId equals location.Id
+                where company.Id == id
+                select new CompanyWithLocation(company, location))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
+    {
+        return this.context.Companies
+            .AsNoTracking()
+            .Where(company => company.Status == CompanyStatus.Pending)
+            .ToListAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Operações cujo estado anterior é o indicado. Cada operação tem um único estado anterior (diagrama de estados da
     /// Empresa): a aprovação e a recusa partem de pendente, a suspensão de aprovada, a reativação de suspensa e a nova

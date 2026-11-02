@@ -245,6 +245,11 @@ public sealed class IndicatorServiceTests
             throw new NotSupportedException();
         }
 
+        Task<Company?> ICompanyRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<bool> TaxIdExistsAsync(string taxId, Guid? exceptId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -266,6 +271,46 @@ public sealed class IndicatorServiceTests
         }
 
         public Task AddAsync(Match match, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Match>> ListMatchesByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Match>> ListOpenConversationsByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<AppUser>> ListAsync(AccountFilter filter, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

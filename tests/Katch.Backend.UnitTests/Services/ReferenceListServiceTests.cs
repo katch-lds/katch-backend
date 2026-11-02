@@ -12,9 +12,9 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace Katch.Backend.UnitTests.Services;
 
 /// <summary>
-/// Testes de <see cref="ReferenceListService"/>: consulta das localidades e dos benefícios e manutenção das competências
-/// e dos benefícios pelo Administrador (documentação da API v02, secções 6.13.1 e 6.13.3 a 6.13.7; RF099 a RF102,
-/// RF112).
+/// Testes de <see cref="ReferenceListService"/>: consulta das localidades, das competências e dos benefícios e
+/// manutenção das competências e dos benefícios pelo Administrador (documentação da API v02, secções 6.13.1 a 6.13.7;
+/// RF008, RF099 a RF102, RF112).
 /// </summary>
 public sealed class ReferenceListServiceTests
 {
@@ -68,6 +68,34 @@ public sealed class ReferenceListServiceTests
     public void DisplayNameIncludesTheDistrict()
     {
         Assert.Equal("Almada (Setúbal)", ReferenceListService.DisplayName(new Location("Almada", "Setúbal", 38.68m, -9.16m)));
+    }
+
+    /// <summary>
+    /// As competências vêm só com o identificador e a designação, por ordem alfabética portuguesa e sem distinção de
+    /// maiúsculas (RF008).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task SkillsAreSortedAlphabetically()
+    {
+        var sql = new Skill("SQL");
+        var csharp = new Skill("C#");
+        var angular = new Skill("angular");
+        var ethics = new Skill("Éticas de engenharia");
+        var docker = new Skill("Docker");
+        this.referenceData.Skills.AddRange([sql, csharp, ethics, angular, docker]);
+
+        List<ReferenceItemDto> items = await this.Service().ListSkillsAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            [
+                new ReferenceItemDto(angular.Id, "angular"),
+                new ReferenceItemDto(csharp.Id, "C#"),
+                new ReferenceItemDto(docker.Id, "Docker"),
+                new ReferenceItemDto(ethics.Id, "Éticas de engenharia"),
+                new ReferenceItemDto(sql.Id, "SQL"),
+            ],
+            items);
     }
 
     /// <summary>
@@ -483,6 +511,16 @@ public sealed class ReferenceListServiceTests
         {
             this.Benefits.Add(benefit);
             return Task.CompletedTask;
+        }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(this.Skills.ToList());
         }
 
         private static bool SameName(string stored, string requested)

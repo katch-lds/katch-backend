@@ -39,9 +39,9 @@ public sealed class ReferenceDataRepository : IReferenceDataRepository
     }
 
     /// <inheritdoc/>
-    public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
+    public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return this.context.Benefits.AsNoTracking().ToListAsync(cancellationToken);
+        return this.context.Locations.AsNoTracking().FirstOrDefaultAsync(location => location.Id == id, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -54,6 +54,18 @@ public sealed class ReferenceDataRepository : IReferenceDataRepository
     public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return this.context.Benefits.FirstOrDefaultAsync(benefit => benefit.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
+    {
+        return this.context.Skills.AsNoTracking().ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
+    {
+        return this.context.Benefits.AsNoTracking().ToListAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
