@@ -724,7 +724,7 @@ public sealed class JobExplorationServiceTests
         {
             throw new NotSupportedException();
         }
-      
+
         public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
