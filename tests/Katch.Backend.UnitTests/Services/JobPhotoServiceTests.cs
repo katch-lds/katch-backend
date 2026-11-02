@@ -546,6 +546,15 @@ public sealed class JobPhotoServiceTests : IDisposable
             throw new NotSupportedException();
         }
 
+        public Task<List<EligibleJob>> ListEligibleForCandidateAsync(
+            Candidate candidate,
+            DateTimeOffset now,
+            int take,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<bool> TaxIdExistsAsync(string taxId, Guid? exceptId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

@@ -12,13 +12,16 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace Katch.Backend.UnitTests.Services;
 
 /// <summary>
-/// Testes de <see cref="JobExplorationService"/>: recusa, interesse e consulta da quota (RF014, RF018 a RF022, RF112,
-/// RF113, P11), com os repositórios simulados e o instante do relógio do servidor fixado em cada teste. A concorrência
+/// Testes de <see cref="JobExplorationService"/>: cartão de vaga seguinte (RF013 a RF015), detalhe da vaga (RF016), recusa, interesse e consulta
+/// da quota (RF014, RF018 a RF022, RF112, RF113, P11), com os repositórios simulados e o instante do relógio do servidor fixado em cada teste. A concorrência
 /// (<c>xmin</c>) e o índice <c>uq_match_candidate_job</c> só se exercitam aqui, porque o SQLite dos testes de integração
 /// não os tem.
 /// </summary>
 public sealed class JobExplorationServiceTests
 {
+    private const decimal BragaLatitude = 41.545450m;
+    private const decimal BragaLongitude = -8.426507m;
+
     private static readonly DateTimeOffset Now = new(2026, 10, 25, 12, 0, 0, TimeSpan.Zero);
 
     /// <summary>
@@ -650,10 +653,51 @@ public sealed class JobExplorationServiceTests
         Assert.Equal(committed, fixture.Store.Committed.Count);
     }
 
+    private static Job NewJob(
+        Guid companyId,
+        Guid locationId,
+        bool isUrgent,
+        bool publish = true,
+        DateTimeOffset? expiresAt = null)
+    {
+        var job = new Job(
+            companyId,
+            new JobData
+            {
+                Title = "Programador Backend .NET",
+                Description = "Descrição da vaga.",
+                MinSalary = 1600.00m,
+                MaxSalary = 2100.00m,
+                LocationId = locationId,
+                ContractType = ContractType.Permanent,
+                WorkMode = WorkMode.Hybrid,
+                IsUrgent = isUrgent,
+                ExpiresAt = expiresAt,
+            });
+        if (publish)
+        {
+            job.Publish(Now.AddDays(-3));
+        }
+
+        return job;
+    }
+
     private static Candidate NewCandidate()
     {
         var user = new AppUser("candidato@katch.pt", "hash", UserType.Candidate, Now.AddYears(-1), Now.AddYears(-1));
         return new Candidate(user, "Ana Silva", "912345678", Guid.NewGuid());
+    }
+
+    private static Location NewHome()
+    {
+        return new Location("Braga", "Braga", BragaLatitude, BragaLongitude);
+    }
+
+    private static Candidate CandidateAt(Guid locationId)
+    {
+        Candidate candidate = NewCandidate();
+        candidate.LocationId = locationId;
+        return candidate;
     }
 
     private static Candidate CandidateWith(int remaining)
@@ -689,9 +733,11 @@ public sealed class JobExplorationServiceTests
             this.Clock = new FixedClock { UtcNow = Now };
             this.Time = new FakeTimeProvider();
             this.Delay = new FakeRetryDelay(this.Candidates, this.Time);
+            this.Jobs = new FakeJobs(this.jobs);
+            this.References = new FakeReferences();
             this.Service = new JobExplorationService(
                 this.Candidates,
-                new FakeJobs(this.jobs),
+                this.Jobs,
                 this.Store,
                 this.Store,
                 this.Clock,
@@ -838,6 +884,16 @@ public sealed class JobExplorationServiceTests
             this.jobs = jobs;
         }
 
+        public List<EligibleJob> Eligible { get; } = [];
+
+        public int EligibleQueries { get; private set; }
+
+        public Candidate? LastCandidate { get; private set; }
+
+        public DateTimeOffset? LastNow { get; private set; }
+
+        public int? LastTake { get; private set; }
+
         public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.jobs.GetValueOrDefault(jobId));
@@ -850,7 +906,7 @@ public sealed class JobExplorationServiceTests
 
         public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException();
+            return Task.FromResult(this.jobs.GetValueOrDefault(id)?.Job);
         }
 
         public Task AddAsync(Job job, CancellationToken cancellationToken = default)
@@ -878,12 +934,127 @@ public sealed class JobExplorationServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<List<EligibleJob>> ListEligibleForCandidateAsync(
+            Candidate candidate,
+            DateTimeOffset now,
+            int take,
+            CancellationToken cancellationToken = default)
+        {
+            this.EligibleQueries++;
+            this.LastCandidate = candidate;
+            this.LastNow = now;
+            this.LastTake = take;
+            return Task.FromResult(this.Eligible.Take(take).ToList());
+        }
+
         public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
         public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class FakeReferences : ICompanyRepository, IReferenceDataRepository
+    {
+        public List<Company> Companies { get; } = [];
+
+        public List<Location> Locations { get; } = [];
+
+        public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(this.Companies.Find(company => company.Id == id));
+        }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(this.Locations.Find(location => location.Id == id));
+        }
+
+        public Task<Company?> GetByRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> TaxIdExistsAsync(string taxId, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddAsync(Company company, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Location>> ListLocationsAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Skill?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<int> CountByStatusAtAsync(CompanyStatus status, DateTimeOffset at, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Company>> ListPendingAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Skill>> ListSkillsAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> SkillNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> BenefitNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddSkillAsync(Skill skill, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

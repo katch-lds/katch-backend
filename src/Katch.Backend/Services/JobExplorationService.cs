@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using System.Globalization;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
@@ -27,6 +28,8 @@ public sealed class JobExplorationService : IJobExplorationService
     /// </summary>
     internal static readonly TimeSpan ConflictRetryLimit = TimeSpan.FromSeconds(5);
 
+    private static readonly StringComparer Alphabetical = StringComparer.Create(CultureInfo.GetCultureInfo("pt-PT"), ignoreCase: true);
+
     private readonly ICandidateRepository candidates;
     private readonly IJobRepository jobs;
     private readonly IMatchRepository matches;
@@ -35,7 +38,9 @@ public sealed class JobExplorationService : IJobExplorationService
     private readonly TimeProvider timeProvider;
     private readonly IConflictRetryDelay retryDelay;
     private readonly ICompanyRepository companies;
-    private readonly IFileUrlBuilder fileUrlBuilder;
+    private readonly IReferenceDataRepository referenceData;
+    private readonly IFileUrlBuilder fileUrls;
+    private readonly IDistanceCalculator distances;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JobExplorationService"/> class.
@@ -47,8 +52,10 @@ public sealed class JobExplorationService : IJobExplorationService
     /// <param name="clock">Relógio do servidor, a única fonte do instante das operações.</param>
     /// <param name="timeProvider">Fonte do tempo decorrido, que limita a repetição por conflito de concorrência.</param>
     /// <param name="retryDelay">Espera entre as repetições por conflito de concorrência.</param>
-    /// <param name="companies">Repositório das Empresas, para a página de apresentação.</param>
-    /// <param name="fileUrlBuilder">Conversão dos caminhos do logótipo e da galeria nos URL da API.</param>
+    /// <param name="companies">Repositório das Empresas, para a designação e o logótipo do cartão.</param>
+    /// <param name="referenceData">Listas pré-definidas, para a localidade do cartão.</param>
+    /// <param name="fileUrls">Construtor dos URLs do logótipo e das fotografias.</param>
+    /// <param name="distances">Cálculo da distância do detalhe da vaga (no cartão vem da consulta).</param>
     public JobExplorationService(
         ICandidateRepository candidates,
         IJobRepository jobs,
@@ -58,7 +65,9 @@ public sealed class JobExplorationService : IJobExplorationService
         TimeProvider timeProvider,
         IConflictRetryDelay retryDelay,
         ICompanyRepository companies,
-        IFileUrlBuilder fileUrlBuilder)
+        IReferenceDataRepository referenceData,
+        IFileUrlBuilder fileUrls,
+        IDistanceCalculator distances)
     {
         this.candidates = candidates;
         this.jobs = jobs;
@@ -68,7 +77,60 @@ public sealed class JobExplorationService : IJobExplorationService
         this.timeProvider = timeProvider;
         this.retryDelay = retryDelay;
         this.companies = companies;
-        this.fileUrlBuilder = fileUrlBuilder;
+        this.referenceData = referenceData;
+        this.fileUrls = fileUrls;
+        this.distances = distances;
+    }
+
+    /// <inheritdoc/>
+    public async Task<JobCardDto?> GetNextCardAsync(Guid candidateId, CancellationToken cancellationToken = default)
+    {
+        Candidate candidate = await this.GetCandidateAsync(candidateId, cancellationToken);
+
+        // Os filtros do RF014 e a distância são aplicados na consulta; só se pede uma vaga, porque os cartões são
+        // apresentados um de cada vez (RF013).
+        List<EligibleJob> next = await this.jobs.ListEligibleForCandidateAsync(candidate, this.clock.UtcNow, 1, cancellationToken);
+        if (next.Count == 0)
+        {
+            return null;
+        }
+
+        (Job job, int distanceKm) = next[0];
+        Company company = await this.companies.GetByIdAsync(job.CompanyId, cancellationToken)
+            ?? throw new InvalidOperationException("A Empresa da vaga não existe.");
+        Location location = await this.GetLocationAsync(job.LocationId, cancellationToken);
+
+        return this.ToCard(job, company, location, distanceKm);
+    }
+
+    /// <inheritdoc/>
+    public async Task<JobDetailDto> GetDetailAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default)
+    {
+        // A mesma parte de estado do RF014 que a resposta à vaga verifica (vaga publicada, não eliminada e não expirada, de
+        // Empresa aprovada); a distância, o salário e as preferências não restringem o detalhe.
+        Job? job = await this.jobs.GetByIdAsync(jobId, cancellationToken);
+        if (job is null || !job.IsVisibleToCandidates(this.clock.UtcNow))
+        {
+            throw new ElementNotFoundException();
+        }
+
+        Company company = await this.companies.GetByIdAsync(job.CompanyId, cancellationToken)
+            ?? throw new InvalidOperationException("A Empresa da vaga não existe.");
+        if (company.Status != CompanyStatus.Approved)
+        {
+            throw new ElementNotFoundException();
+        }
+
+        Candidate candidate = await this.GetCandidateAsync(candidateId, cancellationToken);
+        Location home = await this.GetLocationAsync(candidate.LocationId, cancellationToken);
+        Location location = await this.GetLocationAsync(job.LocationId, cancellationToken);
+
+        return new JobDetailDto(
+            this.ToCard(job, company, location, this.distances.DistanceKm(home, location)),
+            job.Description,
+            job.Skills.Select(skill => skill.Name).Order(Alphabetical).ToList(),
+            job.Benefits.Select(benefit => benefit.Name).Order(Alphabetical).ToList(),
+            company.Id);
     }
 
     /// <inheritdoc/>
@@ -182,6 +244,29 @@ public sealed class JobExplorationService : IJobExplorationService
         {
             throw new JobAnswerRejectedException(JobAnswerRejection.Unavailable);
         }
+    }
+
+    private JobCardDto ToCard(Job job, Company company, Location location, int distanceKm)
+    {
+        return new JobCardDto(
+            job.Id,
+            job.Title,
+            company.CompanyName,
+            this.fileUrls.ToUrl(company.LogoPath),
+            job.MinSalary,
+            job.MaxSalary,
+            ReferenceListService.DisplayName(location),
+            distanceKm,
+            job.ContractType,
+            job.WorkMode,
+            job.IsUrgent,
+            this.fileUrls.ToUrls(job.PhotoPaths));
+    }
+
+    private async Task<Location> GetLocationAsync(Guid locationId, CancellationToken cancellationToken)
+    {
+        return await this.referenceData.GetLocationAsync(locationId, cancellationToken)
+            ?? throw new InvalidOperationException("A localidade não existe na lista pré-definida.");
     }
 
     private async Task<Candidate> GetCandidateAsync(Guid candidateId, CancellationToken cancellationToken)
