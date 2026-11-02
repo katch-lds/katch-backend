@@ -481,6 +481,11 @@ public sealed class CompanyServiceTests
             return Task.CompletedTask;
         }
 
+        public Task<int> CountByStatusAtAsync(CompanyStatus status, DateTimeOffset at, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -536,7 +541,7 @@ public sealed class CompanyServiceTests
             return Task.FromResult(id == this.locationId);
         }
 
-        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        public Task<List<Benefit>> ListBenefitsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -547,6 +552,31 @@ public sealed class CompanyServiceTests
         }
 
         public Task<Benefit?> GetBenefitAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> SkillNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> BenefitNameExistsAsync(string name, Guid? exceptId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddSkillAsync(Skill skill, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task AddBenefitAsync(Benefit benefit, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
