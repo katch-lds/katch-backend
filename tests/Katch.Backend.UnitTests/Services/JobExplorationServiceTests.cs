@@ -745,6 +745,16 @@ public sealed class JobExplorationServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeStore : IMatchRepository, IUnitOfWork
@@ -804,6 +814,11 @@ public sealed class JobExplorationServiceTests
         }
 
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
