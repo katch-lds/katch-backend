@@ -738,6 +738,11 @@ public sealed class JobServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class UnusedFileStorage : IFileStorage

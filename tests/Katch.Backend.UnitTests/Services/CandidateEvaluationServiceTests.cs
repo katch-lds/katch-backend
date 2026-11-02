@@ -829,6 +829,11 @@ public sealed class CandidateEvaluationServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<List<EligibleJob>> ListEligibleForCandidateAsync(Candidate candidate, DateTimeOffset now, int take, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

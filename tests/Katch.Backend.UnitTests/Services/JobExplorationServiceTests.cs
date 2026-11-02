@@ -1051,21 +1051,6 @@ public sealed class JobExplorationServiceTests
             this.jobs[job.Id] = new JobWithCompanyStatus(job, CompanyStatus.Approved);
             return job;
         }
-
-        public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public Task<int> CountByStatusAtAsync(CompanyStatus status, DateTimeOffset at, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
     }
 
     private sealed class FakeJobs : IJobRepository
@@ -1141,6 +1126,11 @@ public sealed class JobExplorationServiceTests
         }
 
         public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
