@@ -339,5 +339,10 @@ public sealed class IndicatorServiceTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 }
