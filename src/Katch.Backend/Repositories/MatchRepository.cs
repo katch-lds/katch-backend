@@ -38,6 +38,26 @@ public sealed class MatchRepository : IMatchRepository
     }
 
     /// <inheritdoc/>
+    public Task<int> CountInterestsAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.CountAsync(
+            match => match.Status != MatchStatus.DeclinedByCandidate
+                && match.CandidateActionAt >= periodStart
+                && match.CandidateActionAt < periodEnd,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<int> CountMatchesAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        return this.context.Matches.CountAsync(
+            match => match.Status == MatchStatus.Matched
+                && match.RecruiterActionAt >= periodStart
+                && match.RecruiterActionAt < periodEnd,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<Match?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return this.context.Matches.FirstOrDefaultAsync(match => match.Id == id, cancellationToken);

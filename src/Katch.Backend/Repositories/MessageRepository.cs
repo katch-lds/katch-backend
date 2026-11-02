@@ -55,4 +55,17 @@ public sealed class MessageRepository : IMessageRepository
             .Where(message => message.MatchId == matchId && message.SenderId != readerId && message.ReadAt == null)
             .ExecuteUpdateAsync(setters => setters.SetProperty(message => message.ReadAt, now), cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public Task<int> CountConversationsStartedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        // Uma conversa começa no período se tem mensagens no período e nenhuma antes dele.
+        return this.context.Messages
+            .Where(message => message.SentAt >= periodStart && message.SentAt < periodEnd)
+            .Select(message => message.MatchId)
+            .Distinct()
+            .CountAsync(
+                matchId => !this.context.Messages.Any(earlier => earlier.MatchId == matchId && earlier.SentAt < periodStart),
+                cancellationToken);
+    }
 }
