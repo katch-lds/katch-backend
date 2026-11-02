@@ -3,7 +3,9 @@
 using Katch.Backend.Domain;
 using Katch.Backend.Repositories.Configuration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Katch.Backend.Repositories;
 
@@ -132,5 +134,34 @@ public sealed class KatchDbContext : DbContext
         modelBuilder.ApplyConfiguration(new MatchConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new MessageConfiguration(usesPostgres));
         modelBuilder.ApplyConfiguration(new OperationLogConfiguration(usesPostgres));
+
+        if (!usesPostgres)
+        {
+            StoreInstantsAsUtcTicks(modelBuilder);
+        }
+    }
+
+    /// <summary>
+    /// No SQLite dos testes de integração, guarda as datas e horas como ticks UTC. O SQLite guarda o
+    /// <see cref="DateTimeOffset"/> como texto e o EF Core não traduz comparações sobre ele, que os indicadores do
+    /// período (RF096) usam em várias tabelas. Como ticks UTC, a ordem é a do instante, sem perder precisão. No
+    /// PostgreSQL as colunas são <c>timestamptz</c>, sem conversão.
+    /// </summary>
+    private static void StoreInstantsAsUtcTicks(ModelBuilder modelBuilder)
+    {
+        var utcTicks = new ValueConverter<DateTimeOffset, long>(
+            instant => instant.UtcTicks,
+            ticks => new DateTimeOffset(ticks, TimeSpan.Zero));
+
+        IEnumerable<IMutableProperty> instants = modelBuilder.Model.GetEntityTypes()
+            .SelectMany(entityType => entityType.GetProperties())
+            .Where(property => Nullable.GetUnderlyingType(property.ClrType) == typeof(DateTimeOffset)
+                || property.ClrType == typeof(DateTimeOffset));
+
+        // As propriedades com conversão própria (Candidate.NextSwipeAvailableAt) ficam como estão.
+        foreach (IMutableProperty property in instants.Where(property => property.GetValueConverter() is null))
+        {
+            property.SetValueConverter(utcTicks);
+        }
     }
 }

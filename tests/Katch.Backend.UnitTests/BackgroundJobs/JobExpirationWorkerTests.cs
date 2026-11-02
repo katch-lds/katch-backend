@@ -3,6 +3,7 @@
 using Katch.Backend.BackgroundJobs;
 using Katch.Backend.Dtos;
 using Katch.Backend.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -311,6 +312,11 @@ public sealed class JobExpirationWorkerTests
         }
 
         public Task DeleteAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<string> AddPhotoAsync(Guid recruiterId, Guid jobId, IFormFile? file, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

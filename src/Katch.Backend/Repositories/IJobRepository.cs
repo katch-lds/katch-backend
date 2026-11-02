@@ -19,6 +19,25 @@ public interface IJobRepository
     public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Conta as vagas publicadas pela primeira vez no período, pela data da primeira publicação, que não muda numa nova
+    /// publicação (RF096; modelo de dados v02, DM-10). As vagas eliminadas também contam, porque foram publicadas.
+    /// </summary>
+    /// <param name="periodStart">Início do período, inclusive.</param>
+    /// <param name="periodEnd">Fim do período, exclusivo.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O número de vagas.</returns>
+    public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém uma vaga com as competências pretendidas, só para leitura, para confirmar a Empresa da vaga e identificar
+    /// as competências do Candidato coincidentes (RF059, RF062). As vagas eliminadas não são devolvidas.
+    /// </summary>
+    /// <param name="jobId">Identificador da vaga.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>A vaga, ou <see langword="null"/> se não existir ou estiver eliminada.</returns>
+    public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Obtém uma vaga com as competências e os benefícios, acompanhada pelo contexto, para a alterar. As vagas eliminadas
     /// não são devolvidas (DM-09).
     /// </summary>
@@ -63,6 +82,21 @@ public interface IJobRepository
     /// <param name="cancellationToken">Cancelamento da execução.</param>
     /// <returns>As vagas a encerrar.</returns>
     public Task<List<Job>> ListExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Acrescenta o caminho de uma fotografia ao fim de <c>photo_paths</c> da vaga, numa única instrução atómica na base
+    /// de dados que também verifica o limite (RF052; P13). Ao contrário de ler a vaga e gravá-la, não perde escritas de
+    /// pedidos simultâneos e nunca ultrapassa o limite. Não altera a entidade acompanhada pelo contexto.
+    /// </summary>
+    /// <param name="jobId">Identificador da vaga (não eliminada).</param>
+    /// <param name="path">Caminho relativo do ficheiro guardado.</param>
+    /// <param name="maxPhotos">Número máximo de fotografias da vaga.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>
+    /// <see langword="true"/> se o caminho foi acrescentado; <see langword="false"/> se a vaga já tinha o máximo de
+    /// fotografias ou entretanto foi eliminada.
+    /// </returns>
+    public Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Lista as vagas no estado publicada de todas as Empresas, com o número de interesses (todos os estados da decisão),

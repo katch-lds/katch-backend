@@ -34,6 +34,25 @@ public sealed class JobRepository : IJobRepository
     }
 
     /// <inheritdoc/>
+    public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        // Sem o filtro global das vagas eliminadas (DM-09): a primeira publicação aconteceu no período.
+        return this.context.Jobs
+            .IgnoreQueryFilters()
+            .CountAsync(job => job.FirstPublishedAt >= periodStart && job.FirstPublishedAt < periodEnd, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        // O filtro global das vagas exclui as eliminadas (DM-09).
+        return this.context.Jobs
+            .AsNoTracking()
+            .Include(job => job.Skills)
+            .FirstOrDefaultAsync(job => job.Id == jobId, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return this.context.Jobs
@@ -84,6 +103,25 @@ public sealed class JobRepository : IJobRepository
         return this.context.Jobs
             .Where(job => job.Status == JobStatus.Published && job.ExpiresAt != null && job.ExpiresAt <= now)
             .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> TryAddPhotoAsync(Guid jobId, string path, int maxPhotos, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        // Uma só instrução: o limite é verificado e o caminho acrescentado sob o bloqueio da linha, por isso pedidos
+        // simultâneos não perdem escritas. No SQLite dos testes (sem varchar[]), photo_paths é um texto JSON e as
+        // colunas mantêm os nomes das propriedades.
+        int rows = this.context.Database.IsNpgsql()
+            ? await this.context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE job SET photo_paths = array_append(photo_paths, {path}) WHERE id = {jobId} AND deleted_at IS NULL AND cardinality(photo_paths) < {maxPhotos}",
+                cancellationToken)
+            : await this.context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE job SET PhotoPaths = json_insert(PhotoPaths, '$[#]', {path}) WHERE Id = {jobId} AND DeletedAt IS NULL AND json_array_length(PhotoPaths) < {maxPhotos}",
+                cancellationToken);
+
+        return rows == 1;
     }
 
     /// <inheritdoc/>
