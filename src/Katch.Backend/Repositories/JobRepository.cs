@@ -40,6 +40,25 @@ public sealed class JobRepository : IJobRepository
     }
 
     /// <inheritdoc/>
+    public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        // Sem o filtro global das vagas eliminadas (DM-09): a primeira publicação aconteceu no período.
+        return this.context.Jobs
+            .IgnoreQueryFilters()
+            .CountAsync(job => job.FirstPublishedAt >= periodStart && job.FirstPublishedAt < periodEnd, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        // O filtro global das vagas exclui as eliminadas (DM-09).
+        return this.context.Jobs
+            .AsNoTracking()
+            .Include(job => job.Skills)
+            .FirstOrDefaultAsync(job => job.Id == jobId, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return this.context.Jobs
@@ -99,6 +118,18 @@ public sealed class JobRepository : IJobRepository
                 cancellationToken);
 
         return rows == 1;
+    }
+
+    /// <inheritdoc/>
+    public Task<List<JobWithCount>> ListPublishedWithInterestCountAsync(CancellationToken cancellationToken = default)
+    {
+        // Um interesse é qualquer resposta do Candidato que não seja a recusa da vaga (RF098).
+        return this.context.Jobs.AsNoTracking()
+            .Where(job => job.Status == JobStatus.Published)
+            .Select(job => new JobWithCount(
+                job,
+                this.context.Matches.Count(match => match.JobId == job.Id && match.Status != MatchStatus.DeclinedByCandidate)))
+            .ToListAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
