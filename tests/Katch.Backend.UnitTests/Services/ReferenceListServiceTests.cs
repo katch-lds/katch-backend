@@ -64,5 +64,10 @@ public sealed class ReferenceListServiceTests
         {
             return Task.FromResult(this.locations.Any(location => location.Id == id));
         }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

@@ -26,4 +26,14 @@ public interface IMatchRepository
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Tarefa que termina quando a resposta foi acrescentada.</returns>
     public Task AddAsync(Match match, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Indica se o Candidato tem um interesse registado numa vaga da Empresa do Recrutador, isto é, uma resposta que não
+    /// seja a recusa da vaga pelo Candidato (RF061). A ligação do Recrutador à Empresa e às vagas é feita na consulta.
+    /// </summary>
+    /// <param name="candidateId">Identificador do Candidato.</param>
+    /// <param name="recruiterId">Identificador do Recrutador.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><see langword="true"/> se existir esse interesse.</returns>
+    public Task<bool> HasInterestFromCandidateInCompanyAsync(Guid candidateId, Guid recruiterId, CancellationToken cancellationToken = default);
 }

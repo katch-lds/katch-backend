@@ -1,6 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Infrastructure;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 
 namespace Katch.Backend.Services;
@@ -33,12 +34,19 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IOperationLogger, OperationLogger>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IReferenceListService, ReferenceListService>();
+        services.AddScoped<ICandidateProfileService, CandidateProfileService>();
         services.AddScoped<ICompanyService, CompanyService>();
         services.AddScoped<ICompanyAdminService, CompanyAdminService>();
         services.AddScoped<IQuotaService, QuotaService>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IConflictRetryDelay, RandomConflictRetryDelay>();
         services.AddScoped<IJobExplorationService, JobExplorationService>();
+
+        services.AddOptions<FileStorageOptions>().BindConfiguration(FileStorageOptions.SectionName);
+        services.AddSingleton<IFileStorage, LocalFileStorage>();
+        services.AddSingleton<IFileValidator, FileValidator>();
+        services.AddSingleton<IFileUrlBuilder, FileUrlBuilder>();
+        services.AddScoped<IFileAccessService, FileAccessService>();
         return services;
     }
 }

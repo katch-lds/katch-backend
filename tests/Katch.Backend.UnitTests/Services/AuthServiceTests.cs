@@ -456,6 +456,16 @@ public sealed class AuthServiceTests
         {
             return Task.FromResult(new List<Candidate>());
         }
+
+        public Task<Candidate?> GetWithProfileAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Candidate?> GetByProfilePhotoPathAsync(string path, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class FakeReferenceData : IReferenceDataRepository
@@ -475,6 +485,11 @@ public sealed class AuthServiceTests
         public Task<bool> LocationExistsAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(id == this.locationId);
+        }
+
+        public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 
