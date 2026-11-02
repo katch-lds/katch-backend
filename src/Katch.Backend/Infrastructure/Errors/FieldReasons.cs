@@ -81,6 +81,8 @@ public static class FieldReasons
     /// Motivo da recusa do registo da Empresa fora dos 10 a 500 caracteres, sem os espaços nas extremidades (P12).
     /// </summary>
     public const string RejectionReasonLength = "O motivo tem de ter entre 10 e 500 caracteres.";
+
+    /// <summary>
     /// Distância máxima fora de 1 a 500 ou não inteira (P06).
     /// </summary>
     public const string MaxDistance = "A distância máxima tem de ser um número inteiro entre 1 e 500.";
