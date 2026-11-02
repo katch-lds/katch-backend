@@ -19,6 +19,16 @@ public interface IJobRepository
     public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Conta as vagas publicadas pela primeira vez no período, pela data da primeira publicação, que não muda numa nova
+    /// publicação (RF096; modelo de dados v02, DM-10). As vagas eliminadas também contam, porque foram publicadas.
+    /// </summary>
+    /// <param name="periodStart">Início do período, inclusive.</param>
+    /// <param name="periodEnd">Fim do período, exclusivo.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O número de vagas.</returns>
+    public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Obtém uma vaga com as competências pretendidas, só para leitura, para confirmar a Empresa da vaga e identificar
     /// as competências do Candidato coincidentes (RF059, RF062). As vagas eliminadas não são devolvidas.
     /// </summary>

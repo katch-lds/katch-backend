@@ -43,6 +43,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IConflictRetryDelay, RandomConflictRetryDelay>();
         services.AddScoped<IJobExplorationService, JobExplorationService>();
+        services.AddScoped<IIndicatorService, IndicatorService>();
         services.AddScoped<IMatchService, MatchService>();
         services.AddScoped<IConversationService, ConversationService>();
         services.AddScoped<IJobService, JobService>();

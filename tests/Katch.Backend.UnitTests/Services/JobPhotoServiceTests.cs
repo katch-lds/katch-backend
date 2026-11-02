@@ -576,6 +576,16 @@ public sealed class JobPhotoServiceTests : IDisposable
             throw new NotSupportedException();
         }
 
+        public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<int> CountByStatusAtAsync(CompanyStatus status, DateTimeOffset at, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

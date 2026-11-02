@@ -34,6 +34,15 @@ public sealed class JobRepository : IJobRepository
     }
 
     /// <inheritdoc/>
+    public Task<int> CountFirstPublishedAsync(DateTimeOffset periodStart, DateTimeOffset periodEnd, CancellationToken cancellationToken = default)
+    {
+        // Sem o filtro global das vagas eliminadas (DM-09): a primeira publicação aconteceu no período.
+        return this.context.Jobs
+            .IgnoreQueryFilters()
+            .CountAsync(job => job.FirstPublishedAt >= periodStart && job.FirstPublishedAt < periodEnd, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<Job?> GetWithSkillsAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
         // O filtro global das vagas exclui as eliminadas (DM-09).
