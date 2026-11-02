@@ -6,9 +6,9 @@ namespace Katch.Backend.Services;
 
 /// <summary>
 /// Avaliação dos Candidatos interessados nas vagas da Empresa do Recrutador (modelo de classes do backend v02, secção
-/// 5.1; UC11). Tem a lista de candidatos em espera, a abertura do perfil completo e a obtenção do curriculum vitae; a
-/// aceitação e a recusa (UC12) são acrescentadas pela Issue que as implementa. Em todas as operações, a vaga do
-/// interesse tem de pertencer à Empresa do Recrutador.
+/// 5.1; UC11 e UC12). Tem a lista de candidatos em espera, a abertura do perfil completo, a obtenção do curriculum vitae
+/// e a decisão do Recrutador (aceitar ou recusar). Em todas as operações, a vaga do interesse tem de pertencer à Empresa
+/// do Recrutador.
 /// </summary>
 public interface ICandidateEvaluationService
 {
@@ -54,4 +54,37 @@ public interface ICandidateEvaluationService
     /// <exception cref="ElementForbiddenException">Se a vaga do interesse for de outra Empresa (ERR-08).</exception>
     /// <exception cref="OperationConflictException">Se o interesse já não estiver em espera (ERR-35).</exception>
     public Task<FileContent> GetCvAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Aceita o Candidato (RF063, RF065, RF066, RF068, RF117; T5): confirma o match com o Recrutador e a data da
+    /// decisão e abre a conversa, numa única transação. Exige a abertura do perfil registada para a vaga.
+    /// </summary>
+    /// <param name="recruiterId">Identificador do Recrutador da credencial de sessão.</param>
+    /// <param name="matchId">Identificador do interesse.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>O match confirmado, com o contacto do Candidato.</returns>
+    /// <exception cref="ElementNotFoundException">Se o interesse não existir ou for a recusa da vaga pelo Candidato (ERR-20).</exception>
+    /// <exception cref="ElementForbiddenException">Se a vaga do interesse for de outra Empresa (ERR-08).</exception>
+    /// <exception cref="OperationConflictException">
+    /// Se o interesse já não estiver em espera, incluindo a perda na concorrência com outro pedido de decisão (ERR-35), ou
+    /// se o perfil ainda não tiver sido aberto (ERR-34). Em qualquer erro, nada é alterado.
+    /// </exception>
+    public Task<MatchDto> AcceptAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Recusa o Candidato (RF064, RF065, RF117; T6): o interesse passa a recusado pelo Recrutador, com o autor e a data da
+    /// decisão, e o Candidato deixa de ser apresentado para essa vaga. Não há conversa nem contacto. Exige a abertura do
+    /// perfil registada para a vaga.
+    /// </summary>
+    /// <param name="recruiterId">Identificador do Recrutador da credencial de sessão.</param>
+    /// <param name="matchId">Identificador do interesse.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Tarefa que termina quando a decisão foi gravada.</returns>
+    /// <exception cref="ElementNotFoundException">Se o interesse não existir ou for a recusa da vaga pelo Candidato (ERR-20).</exception>
+    /// <exception cref="ElementForbiddenException">Se a vaga do interesse for de outra Empresa (ERR-08).</exception>
+    /// <exception cref="OperationConflictException">
+    /// Se o interesse já não estiver em espera, incluindo a perda na concorrência com outro pedido de decisão (ERR-35), ou
+    /// se o perfil ainda não tiver sido aberto (ERR-34). Em qualquer erro, nada é alterado.
+    /// </exception>
+    public Task RejectAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken = default);
 }
