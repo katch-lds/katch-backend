@@ -90,6 +90,23 @@ public sealed class JobExplorationController : ControllerBase
         return this.Ok(quota);
     }
 
+    /// <summary>
+    /// Consulta a página de apresentação da Empresa, a partir do detalhe da vaga (6.3.3; RF017): designação, descrição,
+    /// sítio na Internet, logótipo e galeria, sem os contactos (RF025).
+    /// </summary>
+    /// <param name="companyId">Identificador da Empresa.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns><c>200</c> com a página, ou <c>404</c> (ERR-20) se a Empresa não existir ou não estiver aprovada.</returns>
+    [HttpGet("companies/{companyId:guid}")]
+    [ProducesResponseType<CompanyPageDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CompanyPageDto>> GetCompanyPage(Guid companyId, CancellationToken cancellationToken)
+    {
+        return await this.jobExploration.GetCompanyPageAsync(companyId, cancellationToken);
+    }
+
     private Guid GetCandidateId()
     {
         return Guid.TryParse(this.User.FindFirst("sub")?.Value, out Guid candidateId)

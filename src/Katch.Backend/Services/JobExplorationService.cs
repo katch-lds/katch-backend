@@ -4,6 +4,7 @@ using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 
 namespace Katch.Backend.Services;
@@ -33,6 +34,8 @@ public sealed class JobExplorationService : IJobExplorationService
     private readonly IClock clock;
     private readonly TimeProvider timeProvider;
     private readonly IConflictRetryDelay retryDelay;
+    private readonly ICompanyRepository companies;
+    private readonly IFileUrlBuilder fileUrlBuilder;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JobExplorationService"/> class.
@@ -44,6 +47,8 @@ public sealed class JobExplorationService : IJobExplorationService
     /// <param name="clock">Relógio do servidor, a única fonte do instante das operações.</param>
     /// <param name="timeProvider">Fonte do tempo decorrido, que limita a repetição por conflito de concorrência.</param>
     /// <param name="retryDelay">Espera entre as repetições por conflito de concorrência.</param>
+    /// <param name="companies">Repositório das Empresas, para a página de apresentação.</param>
+    /// <param name="fileUrlBuilder">Conversão dos caminhos do logótipo e da galeria nos URL da API.</param>
     public JobExplorationService(
         ICandidateRepository candidates,
         IJobRepository jobs,
@@ -51,7 +56,9 @@ public sealed class JobExplorationService : IJobExplorationService
         IUnitOfWork unitOfWork,
         IClock clock,
         TimeProvider timeProvider,
-        IConflictRetryDelay retryDelay)
+        IConflictRetryDelay retryDelay,
+        ICompanyRepository companies,
+        IFileUrlBuilder fileUrlBuilder)
     {
         this.candidates = candidates;
         this.jobs = jobs;
@@ -60,6 +67,8 @@ public sealed class JobExplorationService : IJobExplorationService
         this.clock = clock;
         this.timeProvider = timeProvider;
         this.retryDelay = retryDelay;
+        this.companies = companies;
+        this.fileUrlBuilder = fileUrlBuilder;
     }
 
     /// <inheritdoc/>
@@ -82,6 +91,19 @@ public sealed class JobExplorationService : IJobExplorationService
     public Task<QuotaDto> GetQuotaAsync(Guid candidateId, CancellationToken cancellationToken = default)
     {
         return this.RetryOnConflictAsync(() => this.TryGetQuotaAsync(candidateId, cancellationToken), cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<CompanyPageDto> GetCompanyPageAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        // Uma Empresa pendente, recusada ou suspensa não é visível ao Candidato: a mesma resposta que a inexistente.
+        Company? company = await this.companies.GetByIdAsync(companyId, cancellationToken);
+        if (company is null || !company.IsApproved())
+        {
+            throw new ElementNotFoundException();
+        }
+
+        return CompanyPageMapper.ToPage(company, this.fileUrlBuilder);
     }
 
     private static QuotaDto ToQuota(Candidate candidate)
