@@ -5,7 +5,7 @@
 # 2. Substitui a palavra-passe inicial do administrador pela de SONAR_ADMIN_PASSWORD.
 # 3. Cria o Quality Gate «Katch QG-05» (código total, só com as condições do grupo) e define-o como predefinido.
 # 4. Define o Quality Profile «Sonar way» como predefinido de C#, se existir, e confirma-o.
-# 5. Gera um token de análise e escreve-o em SONAR_TOKEN (GITHUB_ENV na pipeline, ou no ficheiro indicado).
+# 5. Gera um token e escreve-o em SONAR_TOKEN (GITHUB_ENV na pipeline, ou no ficheiro indicado).
 #
 # Variáveis:
 #   SONAR_HOST_URL        endereço da instância (por omissão http://localhost:9000)
@@ -116,19 +116,20 @@ if [[ "${profile}" != Sonar\ way* ]]; then
   exit 1
 fi
 
-# Token de análise, renovado em cada execução.
+# Token renovado em cada execução. É um token de utilizador do administrador da instância temporária, e não só de
+# análise, porque o export-report.sh também lê o Quality Gate, as medidas e os problemas (permissão de consulta).
 token_name="katch-backend-$(date +%s)"
 token="$(api POST /api/user_tokens/generate \
   --data-urlencode "name=${token_name}" \
-  --data-urlencode "type=GLOBAL_ANALYSIS_TOKEN" | jq -r '.token')"
+  --data-urlencode "type=USER_TOKEN" | jq -r '.token')"
 
 if [[ -n "${GITHUB_ENV:-}" ]]; then
   echo "::add-mask::${token}"
   echo "SONAR_TOKEN=${token}" >> "${GITHUB_ENV}"
-  echo "Token de análise gerado e guardado em SONAR_TOKEN (mascarado)."
+  echo "Token gerado e guardado em SONAR_TOKEN (mascarado)."
 else
   file="${SONAR_TOKEN_FILE:-.sonar-token}"
   umask 077
   printf '%s' "${token}" > "${file}"
-  echo "Token de análise gerado e guardado em ${file} (fora do controlo de versões)."
+  echo "Token gerado e guardado em ${file} (fora do controlo de versões)."
 fi
