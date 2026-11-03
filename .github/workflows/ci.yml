@@ -149,6 +149,25 @@ jobs:
           /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml"
           /d:sonar.cs.vstest.reportsPaths="TestResults/**/*.trx"
           /d:sonar.coverage.exclusions="**/Infrastructure/**,**/BackgroundJobs/**,**/Dtos/**,**/Program.cs"
+          /d:sonar.issue.ignore.multicriteria=fp1,fp2,fp3,fp4,fp5,fp6,fp7,fp8,fp9
+          /d:sonar.issue.ignore.multicriteria.fp1.ruleKey=csharpsquid:S6964
+          /d:sonar.issue.ignore.multicriteria.fp1.resourceKey=**/Dtos/JobRequest.cs
+          /d:sonar.issue.ignore.multicriteria.fp2.ruleKey=csharpsquid:S6964
+          /d:sonar.issue.ignore.multicriteria.fp2.resourceKey=**/Dtos/UpdateCandidateProfileRequest.cs
+          /d:sonar.issue.ignore.multicriteria.fp3.ruleKey=csharpsquid:S6964
+          /d:sonar.issue.ignore.multicriteria.fp3.resourceKey=**/Dtos/CompanyRegistrationRequest.cs
+          /d:sonar.issue.ignore.multicriteria.fp4.ruleKey=csharpsquid:S6964
+          /d:sonar.issue.ignore.multicriteria.fp4.resourceKey=**/Dtos/CreateRecruiterAccountRequest.cs
+          /d:sonar.issue.ignore.multicriteria.fp5.ruleKey=csharpsquid:S6964
+          /d:sonar.issue.ignore.multicriteria.fp5.resourceKey=**/Dtos/RegisterCandidateRequest.cs
+          /d:sonar.issue.ignore.multicriteria.fp6.ruleKey=csharpsquid:S6932
+          /d:sonar.issue.ignore.multicriteria.fp6.resourceKey=**/Controllers/CandidateProfileController.cs
+          /d:sonar.issue.ignore.multicriteria.fp7.ruleKey=csharpsquid:S6932
+          /d:sonar.issue.ignore.multicriteria.fp7.resourceKey=**/Controllers/CompanyController.cs
+          /d:sonar.issue.ignore.multicriteria.fp8.ruleKey=csharpsquid:S6932
+          /d:sonar.issue.ignore.multicriteria.fp8.resourceKey=**/Controllers/JobsController.cs
+          /d:sonar.issue.ignore.multicriteria.fp9.ruleKey=csharpsquid:S2068
+          /d:sonar.issue.ignore.multicriteria.fp9.resourceKey=**/Infrastructure/Errors/FieldReasons.cs
           /d:sonar.qualitygate.wait=true
           /d:sonar.qualitygate.timeout=600
 

@@ -30,8 +30,13 @@ public sealed class LocationTests
     [Fact]
     public void CoordinateLimitsAreAccepted()
     {
-        _ = new Location("Polo Norte", "Ártico", 90m, 180m);
-        _ = new Location("Polo Sul", "Antártida", -90m, -180m);
+        var north = new Location("Polo Norte", "Ártico", 90m, 180m);
+        var south = new Location("Polo Sul", "Antártida", -90m, -180m);
+
+        Assert.Equal(90m, north.Latitude);
+        Assert.Equal(180m, north.Longitude);
+        Assert.Equal(-90m, south.Latitude);
+        Assert.Equal(-180m, south.Longitude);
     }
 
     /// <summary>

@@ -426,7 +426,7 @@ public sealed class CandidateQuotaTests
     {
         var rejection = new QuotaExhaustedException(LastInterest + Block, TimeSpan.FromHours(1));
 
-        Assert.IsAssignableFrom<InvalidOperationException>(rejection);
+        Assert.IsType<InvalidOperationException>(rejection, exactMatch: false);
         Assert.Equal("A quota de interesses está esgotada até ao fim do período de bloqueio.", rejection.Message);
     }
 
