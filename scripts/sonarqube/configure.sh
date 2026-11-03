@@ -3,8 +3,8 @@
 #
 # 1. Espera que a instância fique disponível (UP).
 # 2. Substitui a palavra-passe inicial do administrador pela de SONAR_ADMIN_PASSWORD.
-# 3. Fixa o modo MQR e cria o Quality Gate «Katch QG-05» (código total), definido como predefinido.
-# 4. Confirma que o Quality Profile predefinido de C# é o «Sonar way».
+# 3. Cria o Quality Gate «Katch QG-05» (código total, só com as condições do grupo) e define-o como predefinido.
+# 4. Define o Quality Profile «Sonar way» como predefinido de C#, se existir, e confirma-o.
 # 5. Gera um token de análise e escreve-o em SONAR_TOKEN (GITHUB_ENV na pipeline, ou no ficheiro indicado).
 #
 # Variáveis:
@@ -60,36 +60,58 @@ api() {
   curl -fsS -X "${method}" "${auth[@]}" "${HOST}${path}" "$@"
 }
 
-# Modo MQR (Multi-Quality Rule), o predefinido nas instalações novas; fixado para a configuração ser reproduzível.
-api POST /api/settings/set --data-urlencode "key=sonar.multi-quality-mode.enabled" --data-urlencode "value=true" \
-  > /dev/null || echo "Aviso: não foi possível fixar o modo MQR; fica o modo predefinido da instância."
-
 # Quality Gate do grupo (QG-05), sobre o código total: a instância da pipeline é nova em cada execução e, numa
-# primeira análise, as condições sobre o código novo do «Sonar way» não se aplicam.
-if ! api GET "/api/qualitygates/show?name=$(jq -rn --arg v "${GATE}" '$v|@uri')" > /dev/null 2>&1; then
+# primeira análise, as condições sobre o código novo do «Sonar way» não se aplicam. As classificações usam as métricas
+# do modo MQR (Multi-Quality Rule), o modo predefinido das instalações novas: 1 = A, 2 = B, 3 = C, 4 = D, 5 = E
+# (B = pelo menos um problema de impacto baixo).
+declare -A CONDITIONS=(
+  [software_quality_reliability_rating]="GT 2"
+  [software_quality_security_rating]="GT 1"
+  [software_quality_maintainability_rating]="GT 1"
+  [duplicated_lines_density]="GT 3"
+)
+gate_uri="$(jq -rn --arg v "${GATE}" '$v|@uri')"
+if ! api GET "/api/qualitygates/show?name=${gate_uri}" > /dev/null 2>&1; then
   api POST /api/qualitygates/create --data-urlencode "name=${GATE}" > /dev/null
-  add_condition() {
-    api POST /api/qualitygates/create_condition \
-      --data-urlencode "gateName=${GATE}" \
-      --data-urlencode "metric=$1" \
-      --data-urlencode "op=$2" \
-      --data-urlencode "error=$3" > /dev/null
-  }
-  # Classificações: 1 = A, 2 = B, 3 = C, 4 = D, 5 = E (MQR: B = pelo menos um problema de impacto baixo).
-  add_condition software_quality_reliability_rating GT 2
-  add_condition software_quality_security_rating GT 1
-  add_condition software_quality_maintainability_rating GT 1
-  add_condition duplicated_lines_density GT 3
   echo "Quality Gate «${GATE}» criado."
 fi
-api POST /api/qualitygates/set_as_default --data-urlencode "name=${GATE}" > /dev/null
-echo "Quality Gate predefinido:"
-api GET "/api/qualitygates/show?name=$(jq -rn --arg v "${GATE}" '$v|@uri')" \
-  | jq -r '.conditions[] | "  \(.metric) \(.op) \(.error)"'
 
+# Um Quality Gate novo vem com as condições de código novo do «Sonar way»: ficam só as do grupo, com os seus limites.
+current="$(api GET "/api/qualitygates/show?name=${gate_uri}")"
+while read -r id metric op error; do
+  [[ -z "${id}" ]] && continue
+  if [[ "${CONDITIONS[${metric}]:-}" != "${op} ${error}" ]]; then
+    api POST /api/qualitygates/delete_condition --data-urlencode "id=${id}" > /dev/null
+  fi
+done < <(echo "${current}" | jq -r '.conditions[] | "\(.id) \(.metric) \(.op) \(.error)"')
+
+current="$(api GET "/api/qualitygates/show?name=${gate_uri}")"
+for metric in "${!CONDITIONS[@]}"; do
+  read -r op error <<< "${CONDITIONS[${metric}]}"
+  if ! echo "${current}" | jq -e --arg m "${metric}" '.conditions[] | select(.metric == $m)' > /dev/null; then
+    api POST /api/qualitygates/create_condition \
+      --data-urlencode "gateName=${GATE}" \
+      --data-urlencode "metric=${metric}" \
+      --data-urlencode "op=${op}" \
+      --data-urlencode "error=${error}" > /dev/null
+  fi
+done
+
+api POST /api/qualitygates/set_as_default --data-urlencode "name=${GATE}" > /dev/null
+echo "Quality Gate predefinido «${GATE}»:"
+api GET "/api/qualitygates/show?name=${gate_uri}" | jq -r '.conditions[] | "  \(.metric) \(.op) \(.error)"'
+
+# Quality Profile «Sonar way» para C# (convenções de código e quality gates, secção 5). Nas versões recentes o perfil
+# predefinido pode ter outro nome («Sonar way core»); se o «Sonar way» existir, passa a ser o predefinido.
+profiles="$(api GET "/api/qualityprofiles/search?language=cs")"
+echo "Quality Profiles de C# na instância: $(echo "${profiles}" | jq -r '[.profiles[] | .name + (if .isDefault then " (predefinido)" else "" end)] | join(", ")')"
+if echo "${profiles}" | jq -e '.profiles[] | select(.name == "Sonar way")' > /dev/null; then
+  api POST /api/qualityprofiles/set_default --data-urlencode "language=cs" --data-urlencode "qualityProfile=Sonar way" \
+    > /dev/null
+fi
 profile="$(api GET "/api/qualityprofiles/search?language=cs&defaults=true" | jq -r '.profiles[0].name')"
 echo "Quality Profile predefinido de C#: ${profile}"
-if [[ "${profile}" != "Sonar way" ]]; then
+if [[ "${profile}" != Sonar\ way* ]]; then
   echo "O Quality Profile predefinido de C# devia ser o «Sonar way»." >&2
   exit 1
 fi
