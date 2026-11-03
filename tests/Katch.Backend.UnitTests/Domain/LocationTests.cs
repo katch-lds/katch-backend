@@ -65,4 +65,15 @@ public sealed class LocationTests
         Assert.ThrowsAny<ArgumentException>(() => new Location(new string('a', 101), "Leiria", 0m, 0m));
         Assert.ThrowsAny<ArgumentException>(() => new Location("Leiria", new string('a', 51), 0m, 0m));
     }
+
+    /// <summary>
+    /// I066, prova de bloqueio QG-02: teste que falha de propósito (não integrar).
+    /// </summary>
+    [Fact]
+    public void ProvaDeBloqueioDaPipelineFalhaDePropósito()
+    {
+        var location = new Location("Leiria", "Leiria", 39.743620m, -8.807050m);
+
+        Assert.Equal("Porto", location.Name);
+    }
 }
