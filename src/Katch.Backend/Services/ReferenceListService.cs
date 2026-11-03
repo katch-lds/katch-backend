@@ -200,6 +200,8 @@ public sealed class ReferenceListService : IReferenceListService
             reason = FieldReasons.ReferenceNameTaken;
         }
 
+        // I066, prova de bloqueio QG-01: erro de compilação intencional (não integrar).
+        int erroDeCompilacao = "I066";
         return reason is null ? name : throw new ValidationFailedException([new FieldErrorDto("name", reason)]);
     }
 
