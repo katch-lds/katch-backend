@@ -1,14 +1,35 @@
 name: CI
 
+# Pipeline CI do backend (I097, completada na I066): quality gates QG-01 a QG-05 do grupo (convenções de código e
+# quality gates, secção 7). Corre em cada Merge Request para a main e em cada push na main; a regra de proteção da
+# main exige os três jobs com sucesso antes do merge.
 on:
   pull_request:
     branches: [main]
   push:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  # QG-04: cobertura mínima de linhas do backend (convenções de código e quality gates, secção 6).
+  COVERAGE_THRESHOLD: "70"
+  # Âmbito do QG-04: Controllers, Services, Repositories e Domain; sem Migrations, Program.cs nem DTOs.
+  COVERAGE_FILE_FILTERS: "+**/src/Katch.Backend/Controllers/**;+**/src/Katch.Backend/Services/**;+**/src/Katch.Backend/Repositories/**;+**/src/Katch.Backend/Domain/**"
 
 jobs:
   build-and-test:
+    name: build-and-test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -17,27 +38,147 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore
+        run: |
+          dotnet restore
+          dotnet tool restore
 
-      - name: Build (analisadores como erro)
+      - name: QG-01 Build (analisadores como erro)
         run: dotnet build --no-restore --configuration Release -warnaserror
 
-      - name: Verificar formatação
+      - name: QG-01 Verificar formatação
         run: dotnet format --verify-no-changes --no-restore
 
-      - name: Testes unitários e de integração
+      - name: QG-02 Testes unitários
         run: >
-          dotnet test --no-build --configuration Release
-          --logger trx
-          --collect:"XPlat Code Coverage"
-          --results-directory TestResults
+          dotnet test tests/Katch.Backend.UnitTests --no-build --configuration Release
+          --logger "trx;LogFileName=unitarios.trx"
+          --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+          --results-directory TestResults/unitarios
 
-      - name: Publicar resultados
+      - name: QG-03 Testes de integração
+        run: >
+          dotnet test tests/Katch.Backend.IntegrationTests --no-build --configuration Release
+          --logger "trx;LogFileName=integracao.trx"
+          --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+          --results-directory TestResults/integracao
+
+      - name: QG-04 Relatório de cobertura
+        run: >
+          dotnet tool run reportgenerator
+          -reports:"TestResults/**/coverage.cobertura.xml"
+          -targetdir:CoverageReport
+          -reporttypes:"Html;JsonSummary;Cobertura;MarkdownSummaryGithub"
+          -filefilters:"$COVERAGE_FILE_FILTERS"
+
+      - name: QG-04 Cobertura de linhas ≥ 70%
+        run: |
+          cat CoverageReport/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+          coverage="$(jq -r '.summary.linecoverage' CoverageReport/Summary.json)"
+          echo "Cobertura de linhas no âmbito do QG-04: ${coverage}% (mínimo: ${COVERAGE_THRESHOLD}%)"
+          if ! awk -v c="$coverage" -v t="$COVERAGE_THRESHOLD" 'BEGIN { exit !(c >= t) }'; then
+            echo "::error title=QG-04 cobertura insuficiente::Cobertura de linhas de ${coverage}%, abaixo do mínimo de ${COVERAGE_THRESHOLD}%."
+            exit 1
+          fi
+
+      - name: Publicar resultados dos testes
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: TestResults
+          if-no-files-found: ignore
+
+      - name: Publicar relatório de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: CoverageReport
+          if-no-files-found: ignore
+
+  static-analysis:
+    name: static-analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      # Instância SonarQube Community Build self-hosted, criada para cada execução e configurada por
+      # scripts/sonarqube/configure.sh (Quality Profile «Sonar way» e Quality Gate «Katch QG-05»).
+      sonarqube:
+        image: sonarqube:26.10.0.133078-community
+        env:
+          SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+        ports:
+          - 9000:9000
+    env:
+      SONAR_HOST_URL: http://localhost:9000
+      # As ferramentas .NET visam versões anteriores do runtime; o runner só tem o .NET 10.
+      DOTNET_ROLL_FORWARD: Major
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Restore
+        run: |
+          dotnet restore
+          dotnet tool restore
+
+      - name: Configurar a instância SonarQube
+        env:
+          SONAR_ADMIN_PASSWORD: ${{ secrets.SONAR_ADMIN_PASSWORD }}
+        run: bash scripts/sonarqube/configure.sh
+
+      - name: QG-05 Iniciar a análise
+        run: >
+          dotnet tool run dotnet-sonarscanner begin
+          /k:"katch-backend"
+          /n:"Katch Backend"
+          /v:"${GITHUB_SHA::7}"
+          /d:sonar.host.url="$SONAR_HOST_URL"
+          /d:sonar.token="$SONAR_TOKEN"
+          /d:sonar.scm.provider=git
+          /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml"
+          /d:sonar.cs.vstest.reportsPaths="TestResults/**/*.trx"
+          /d:sonar.coverage.exclusions="**/Infrastructure/**,**/BackgroundJobs/**,**/Dtos/**,**/Program.cs"
+          /d:sonar.qualitygate.wait=true
+          /d:sonar.qualitygate.timeout=600
+
+      - name: QG-05 Build analisado
+        run: dotnet build --no-restore --configuration Release
+
+      - name: QG-05 Testes para a cobertura importada
+        run: >
+          dotnet test --no-build --configuration Release
+          --logger trx
+          --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+          --results-directory TestResults
+
+      - name: QG-05 Concluir a análise e verificar o Quality Gate
+        run: dotnet tool run dotnet-sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
+      - name: Exportar o relatório SonarQube
+        if: always()
+        run: |
+          if [[ -n "${SONAR_TOKEN:-}" ]]; then
+            bash scripts/sonarqube/export-report.sh && cat sonarqube-report/resumo.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Publicar o relatório SonarQube
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonarqube-report
+          path: sonarqube-report
+          if-no-files-found: ignore
 
   database-scripts:
     runs-on: ubuntu-latest

@@ -1,0 +1,20 @@
+# Instância SonarQube Community Build local (I066), igual à da pipeline, para analisar o backend no computador do
+# grupo e consultar o painel. Arranque: docker compose -f scripts/sonarqube/docker-compose.yml up -d
+# Painel: http://localhost:9000 (o utilizador admin fica com a palavra-passe definida em configure.sh).
+services:
+  sonarqube:
+    image: sonarqube:26.10.0.133078-community
+    container_name: katch-sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:

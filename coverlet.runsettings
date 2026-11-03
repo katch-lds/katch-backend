@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cobertura de testes do backend (I066; QG-04). O coverlet produz o relatório Cobertura, usado pelo reportgenerator
+  para o limiar de 70% de linhas, e o relatório OpenCover, importado pelo SonarQube (QG-05).
+  O âmbito do limiar (Controllers, Services, Repositories e Domain, sem Migrations, Program.cs e DTOs) é aplicado no
+  reportgenerator e nas exclusões de cobertura do SonarQube (convenções de código e quality gates, secção 6).
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura,opencover</Format>
+          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
