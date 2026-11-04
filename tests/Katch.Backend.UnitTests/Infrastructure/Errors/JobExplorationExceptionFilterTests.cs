@@ -84,7 +84,7 @@ public sealed class JobExplorationExceptionFilterTests
     private static ApiErrorDto AssertResult(ExceptionContext context, int status, string code)
     {
         Assert.True(context.ExceptionHandled);
-        var result = Assert.IsAssignableFrom<ObjectResult>(context.Result);
+        var result = Assert.IsType<ObjectResult>(context.Result, exactMatch: false);
         Assert.Equal(status, result.StatusCode);
         ApiErrorDto error = Assert.IsType<ApiErrorDto>(result.Value);
         Assert.Equal(code, error.Code);

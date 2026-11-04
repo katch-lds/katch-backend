@@ -42,7 +42,7 @@ public sealed class ExceptionFiltersTests
         new ServiceExceptionFilter().OnException(context);
 
         Assert.True(context.ExceptionHandled);
-        ObjectResult result = Assert.IsAssignableFrom<ObjectResult>(context.Result);
+        ObjectResult result = Assert.IsType<ObjectResult>(context.Result, exactMatch: false);
         Assert.Equal(status, result.StatusCode);
         Assert.Equal(code, Assert.IsType<ApiErrorDto>(result.Value).Code);
     }
