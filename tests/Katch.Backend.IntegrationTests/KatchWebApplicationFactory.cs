@@ -20,6 +20,11 @@ namespace Katch.Backend.IntegrationTests;
 /// </summary>
 public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
 {
+    /// <summary>
+    /// Origem autorizada pelo CORS nos testes, a do frontend web servido com <c>vite preview</c>.
+    /// </summary>
+    public const string AllowedOrigin = "http://localhost:4173";
+
     private readonly SqliteConnection connection = new("DataSource=:memory:");
 
     private readonly string fileStorageRoot = Path.Combine(Path.GetTempPath(), "katch-tests-" + Guid.NewGuid().ToString("N"));
@@ -53,6 +58,7 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
         // O segredo JWT é gerado em cada execução; nunca existe um valor fixo no código.
         builder.UseSetting("Jwt:Secret", Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)));
         builder.UseSetting("FileStorage:RootPath", this.fileStorageRoot);
+        builder.UseSetting("Cors:AllowedOrigins", AllowedOrigin + ", http://localhost:5173/");
         builder.UseSetting(
             "BackgroundJobs:IntervalSeconds",
             this.BackgroundJobsIntervalSeconds.ToString(CultureInfo.InvariantCulture));

@@ -21,6 +21,7 @@ PowerShell (menu Iniciar, "Windows PowerShell") ou escreva `powershell` no termi
 11. [Scripts da base de dados](#11-scripts-da-base-de-dados)
 12. [Quota de interesses e tarefa periódica](#12-quota-de-interesses-e-tarefa-periódica)
 13. [Recusa, interesse e quota do Candidato](#13-recusa-interesse-e-quota-do-candidato)
+14. [CORS do frontend web](#14-cors-do-frontend-web)
 
 ## 1. Estrutura do repositório
 
@@ -161,6 +162,7 @@ cd "<caminho para a pasta do repositório>"
 $env:ConnectionStrings__Katch = "Host=localhost;Port=<porto>;Database=katch;Username=postgres;Password=<palavra-passe>"
 $env:Katch__AdminPassword = "<palavra-passe do Administrador>"   # só para aplicar migrations
 $env:Jwt__Secret = "<segredo com pelo menos 32 bytes>"             # obrigatório para a API arrancar (secção 9)
+$env:Cors__AllowedOrigins = "http://localhost:5173,http://localhost:4173"   # origens do frontend web (secção 14)
 git pull
 dotnet ef database update --project src/Katch.Backend    # só é necessário se o git pull trouxe migrations novas
 dotnet run --project src/Katch.Backend --launch-profile http
@@ -230,6 +232,8 @@ Executar na raiz do repositório.
 | `dotnet --version` falha, ou `No .NET SDKs were found` | Só o runtime está instalado, ou o terminal é anterior à instalação | Instalar o SDK (ver secção 2) e abrir um terminal novo |
 | `Falta a cadeia de ligação ao PostgreSQL` ao arrancar | `ConnectionStrings__Katch` não definida nesta janela | Definir a variável (secção 3.3) na mesma janela e voltar a correr |
 | `Falta o segredo JWT ou tem menos de 32 bytes` ao arrancar | `Jwt__Secret` não definida nesta janela, ou curta demais | Definir a variável (secção 9) e voltar a correr |
+| `A origem n.º N de Cors__AllowedOrigins ... não é válida` ao arrancar | Uma das origens tem caminho, `*` ou outro esquema que não `http`/`https` | Corrigir a variável (secção 14) e voltar a correr |
+| Browser: `blocked by CORS policy` ao chamar a API a partir do frontend web | A origem do frontend não está em `Cors__AllowedOrigins`, ou a variável não está definida nesta janela | Acrescentar a origem exata (esquema, anfitrião e porto) à variável (secção 14) e reiniciar a API |
 | `Falta a palavra-passe da conta de Administrador` no `dotnet ef database update` | `Katch__AdminPassword` não definida nesta janela | Definir a variável (secção 3.3) e repetir |
 | `A palavra-passe do Administrador deve ter pelo menos 8 caracteres` | A variável não cumpre o P05 | Usar pelo menos 8 caracteres, com uma letra e um algarismo |
 | `Failed to connect to 127.0.0.1:6000` no `dotnet ef` | Variável não definida; o `dotnet ef` usa um porto por omissão | Definir a variável e repetir |
@@ -488,3 +492,56 @@ HTTP/1.1 204 No Content
 
 Os testes estão em `JobExplorationServiceTests` (unitários, o cartão) e em `JobCardTests` (integração, sobre SQLite, com
 o exemplo do critério de aceitação do RF014 e a distância comparada com o cálculo a partir das coordenadas).
+
+## 14. CORS do frontend web
+
+O frontend web (`katch-frontend-web`) chama a API diretamente a partir do browser, noutro endereço (outro porto já conta
+como outra origem). A API só autoriza esses pedidos às origens indicadas na variável de ambiente
+**`Cors__AllowedOrigins`** (dois sublinhados; corresponde à configuração `Cors:AllowedOrigins`), separadas por
+vírgulas. Não há origens no código nem no `appsettings.json`.
+
+| Ambiente | Valor de `Cors__AllowedOrigins` | Frontend web |
+| --- | --- | --- |
+| Local | `http://localhost:5173,http://localhost:4173` | `npm run dev` (porto 5173) e `vite preview` (porto 4173) contra `http://localhost:5180` |
+| Railway (I119) | `http://localhost:4173` | Frontend construído com `VITE_API_BASE_URL` igual ao URL público da API e servido com `vite preview` |
+| Pipeline do frontend web (QG-06, I079) | `http://localhost:4173` | `vite preview` na própria pipeline |
+
+```powershell
+$env:Cors__AllowedOrigins = "http://localhost:5173,http://localhost:4173"
+dotnet run --project src/Katch.Backend --launch-profile http
+```
+
+No Railway, a variável define-se no serviço da API (*Variables*); depois de a alterar, o Railway volta a publicar o
+serviço. Para acrescentar uma origem (por exemplo, se o frontend web passar a ser publicado), junta-se ao valor com uma
+vírgula; a origem tem de ser exatamente a que o browser mostra na barra de endereço, sem caminho.
+
+**O que a política permite** (`KatchCorsServiceCollectionExtensions`, I130):
+
+- origens: só as configuradas, comparadas de forma exata (esquema, anfitrião e porto). Sem a variável, **nenhuma**
+  origem é autorizada: a API funciona na mesma para a app mobile, o Swagger e o proxy do Vite, que não usam CORS;
+- métodos: `GET`, `POST`, `PUT` e `DELETE` (os da API v02, secção 2.5);
+- cabeçalhos do pedido: `Authorization`, `Content-Type` e `X-Client-App`;
+- cabeçalhos da resposta legíveis pelo frontend: `Location` (URL do ficheiro carregado, API v02, secção 2.6);
+- **sem** credenciais por cookie (`Access-Control-Allow-Credentials` nunca é enviado): a sessão usa o token no cabeçalho
+  `Authorization`.
+
+O preflight (`OPTIONS`) responde `204` antes da autenticação, por isso não precisa de token, e as respostas de erro
+(`400`, `401`, `403` no formato ApiError) também trazem os cabeçalhos CORS, para o frontend conseguir ler a mensagem.
+
+**Validação no arranque.** Cada origem tem de começar por `http://` ou `https://`, seguida do anfitrião e, se preciso,
+do porto. `*`, padrões como `https://*.exemplo.pt`, caminhos (`/api`), consultas e outros esquemas fazem a API **não
+arrancar**, com uma mensagem que indica a posição da origem errada (sem repetir o valor). A barra final é aceite e
+retirada.
+
+**Como experimentar** (com a API a correr em `http://localhost:5180`):
+
+```powershell
+# Origem autorizada: 204 com Access-Control-Allow-Origin: http://localhost:4173
+curl.exe -i -X OPTIONS http://localhost:5180/api/auth/login -H "Origin: http://localhost:4173" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type,x-client-app"
+
+# Origem não autorizada: resposta sem Access-Control-Allow-Origin
+curl.exe -i -X OPTIONS http://localhost:5180/api/auth/login -H "Origin: https://exemplo.pt" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type,x-client-app"
+```
+
+Os testes estão em `KatchCorsOptionsTests` (unitários, validação das origens e política registada) e em `CorsTests`
+(integração: preflight, pedido de origem autorizada e não autorizada e erros 400, 401 e 403).
