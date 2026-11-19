@@ -7,6 +7,7 @@ using System.Text.Json;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Infrastructure;
+using Katch.Backend.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Katch.Backend.IntegrationTests;
@@ -184,6 +185,13 @@ public sealed class CorsTests : IClassFixture<KatchWebApplicationFactory>
 
     private async Task<HttpResponseMessage> GetLocationsAsync(string origin)
     {
+        // O xunit v3 corre os testes da classe por ordem aleatória: o esquema tem de existir antes do pedido, mesmo que
+        // nenhum outro teste desta classe o tenha criado (sem isto, a consulta das localidades responde 500).
+        using (IServiceScope scope = this.factory.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<KatchDbContext>().Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+        }
+
         using HttpClient client = this.factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(LocationsRoute, UriKind.Relative));
         request.Headers.Add("Origin", origin);
