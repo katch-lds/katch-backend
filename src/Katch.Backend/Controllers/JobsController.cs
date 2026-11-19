@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Api;
 using Katch.Backend.Infrastructure.Authentication;
@@ -48,7 +49,9 @@ public sealed class JobsController : ControllerBase
     [ProducesResponseType<List<JobDto>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<List<JobDto>>> List(CancellationToken cancellationToken)
     {
-        return await this.jobService.ListOwnAsync(this.RecruiterId(), cancellationToken);
+        return (await this.jobService.ListOwnAsync(this.RecruiterId(), cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList();
     }
 
     /// <summary>
@@ -68,7 +71,10 @@ public sealed class JobsController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] JobRequest? request,
         CancellationToken cancellationToken)
     {
-        JobDto job = await this.jobService.CreateAsync(this.RecruiterId(), request ?? JobRequest.Empty, cancellationToken);
+        JobDto job = (await this.jobService.CreateAsync(
+            this.RecruiterId(),
+            (request ?? JobRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
         return this.StatusCode(StatusCodes.Status201Created, job);
     }
 
@@ -93,7 +99,11 @@ public sealed class JobsController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] JobRequest? request,
         CancellationToken cancellationToken)
     {
-        return await this.jobService.UpdateAsync(this.RecruiterId(), jobId, request ?? JobRequest.Empty, cancellationToken);
+        return (await this.jobService.UpdateAsync(
+            this.RecruiterId(),
+            jobId,
+            (request ?? JobRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -111,7 +121,7 @@ public sealed class JobsController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<JobDto>> Publish(Guid jobId, CancellationToken cancellationToken)
     {
-        return await this.jobService.PublishAsync(this.RecruiterId(), jobId, cancellationToken);
+        return (await this.jobService.PublishAsync(this.RecruiterId(), jobId, cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -126,7 +136,7 @@ public sealed class JobsController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<JobDto>> Suspend(Guid jobId, CancellationToken cancellationToken)
     {
-        return await this.jobService.SuspendAsync(this.RecruiterId(), jobId, cancellationToken);
+        return (await this.jobService.SuspendAsync(this.RecruiterId(), jobId, cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -141,7 +151,7 @@ public sealed class JobsController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<JobDto>> Republish(Guid jobId, CancellationToken cancellationToken)
     {
-        return await this.jobService.RepublishAsync(this.RecruiterId(), jobId, cancellationToken);
+        return (await this.jobService.RepublishAsync(this.RecruiterId(), jobId, cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -156,7 +166,7 @@ public sealed class JobsController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<JobDto>> Close(Guid jobId, CancellationToken cancellationToken)
     {
-        return await this.jobService.CloseAsync(this.RecruiterId(), jobId, cancellationToken);
+        return (await this.jobService.CloseAsync(this.RecruiterId(), jobId, cancellationToken)).ToDto();
     }
 
     /// <summary>

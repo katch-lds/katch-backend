@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Services;
@@ -43,7 +44,9 @@ public sealed class AdminCompaniesController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<List<PendingCompanyDto>>> ListPending(CancellationToken cancellationToken)
     {
-        return this.Ok(await this.companyAdminService.ListPendingAsync(cancellationToken));
+        return this.Ok((await this.companyAdminService.ListPendingAsync(cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList());
     }
 
     /// <summary>
@@ -59,7 +62,7 @@ public sealed class AdminCompaniesController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CompanyRegistrationDto>> GetSubmittedData(Guid companyId, CancellationToken cancellationToken)
     {
-        return this.Ok(await this.companyAdminService.GetSubmittedDataAsync(companyId, cancellationToken));
+        return this.Ok((await this.companyAdminService.GetSubmittedDataAsync(companyId, cancellationToken)).ToDto());
     }
 
     /// <summary>
@@ -106,7 +109,7 @@ public sealed class AdminCompaniesController : ControllerBase
         await this.companyAdminService.RejectAsync(
             this.GetAdminId(),
             companyId,
-            request ?? RejectCompanyRequest.Empty,
+            (request ?? RejectCompanyRequest.Empty).ToInput(),
             cancellationToken);
         return this.NoContent();
     }
@@ -160,7 +163,9 @@ public sealed class AdminCompaniesController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<List<CompanyAdminDto>>> ListCompanies(CancellationToken cancellationToken)
     {
-        return this.Ok(await this.companyAdminService.ListCompaniesAsync(cancellationToken));
+        return this.Ok((await this.companyAdminService.ListCompaniesAsync(cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList());
     }
 
     /// <summary>
@@ -174,7 +179,9 @@ public sealed class AdminCompaniesController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<List<PublishedJobAdminDto>>> ListPublishedJobs(CancellationToken cancellationToken)
     {
-        return this.Ok(await this.companyAdminService.ListPublishedJobsAsync(cancellationToken));
+        return this.Ok((await this.companyAdminService.ListPublishedJobsAsync(cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList());
     }
 
     private Guid GetAdminId()

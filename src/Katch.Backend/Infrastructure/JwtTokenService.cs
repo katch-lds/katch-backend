@@ -2,8 +2,8 @@
 
 using System.Text;
 using Katch.Backend.Domain;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
+using Katch.Backend.Services.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -31,7 +31,7 @@ public sealed class JwtTokenService : ITokenService
     }
 
     /// <inheritdoc/>
-    public LoginResponse CreateToken(AppUser user)
+    public LoginResult CreateToken(AppUser user)
     {
         ArgumentNullException.ThrowIfNull(user);
 
@@ -58,6 +58,6 @@ public sealed class JwtTokenService : ITokenService
         };
 
         string token = this.handler.CreateToken(descriptor);
-        return new LoginResponse(token, expiresAt, user.UserType, user.Id);
+        return new LoginResult(token, expiresAt, user.UserType, user.Id);
     }
 }

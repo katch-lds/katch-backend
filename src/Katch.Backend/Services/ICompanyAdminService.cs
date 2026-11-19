@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -16,7 +16,7 @@ public interface ICompanyAdminService
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As Empresas pendentes.</returns>
-    public Task<List<PendingCompanyDto>> ListPendingAsync(CancellationToken cancellationToken = default);
+    public Task<List<PendingCompanyModel>> ListPendingAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Consulta os dados de registo submetidos por uma Empresa, em qualquer estado (RF092).
@@ -25,7 +25,7 @@ public interface ICompanyAdminService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Os dados de registo, com a designação da localidade.</returns>
     /// <exception cref="ElementNotFoundException">A Empresa não existe.</exception>
-    public Task<CompanyRegistrationDto> GetSubmittedDataAsync(Guid companyId, CancellationToken cancellationToken = default);
+    public Task<CompanyRegistrationModel> GetSubmittedDataAsync(Guid companyId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Aprova o registo de uma Empresa pendente, com o registo <c>COMPANY_APPROVED</c>, numa única gravação (RF093,
@@ -51,7 +51,7 @@ public interface ICompanyAdminService
     /// <exception cref="ValidationFailedException">O motivo está em falta ou fora dos 10 a 500 caracteres (ERR-10).</exception>
     /// <exception cref="ElementNotFoundException">A Empresa não existe.</exception>
     /// <exception cref="OperationConflictException">A Empresa não está pendente (ERR-30) ou foi alterada por outro pedido (ERR-41).</exception>
-    public Task RejectAsync(Guid adminId, Guid companyId, RejectCompanyRequest request, CancellationToken cancellationToken = default);
+    public Task RejectAsync(Guid adminId, Guid companyId, RejectCompanyInput request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Suspende uma Empresa aprovada e passa as conversas abertas das suas vagas a consulta, com o registo
@@ -84,7 +84,7 @@ public interface ICompanyAdminService
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As Empresas.</returns>
-    public Task<List<CompanyAdminDto>> ListCompaniesAsync(CancellationToken cancellationToken = default);
+    public Task<List<CompanyAdminModel>> ListCompaniesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Lista as vagas publicadas de todas as Empresas, da publicação mais recente para a mais antiga, com o número de
@@ -92,5 +92,5 @@ public interface ICompanyAdminService
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As vagas publicadas.</returns>
-    public Task<List<PublishedJobAdminDto>> ListPublishedJobsAsync(CancellationToken cancellationToken = default);
+    public Task<List<PublishedJobAdminModel>> ListPublishedJobsAsync(CancellationToken cancellationToken = default);
 }

@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -19,5 +19,5 @@ public interface IIndicatorService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Os indicadores do período.</returns>
     /// <exception cref="ValidationFailedException">Se a data inicial for posterior à final ou a final posterior à data atual.</exception>
-    public Task<IndicatorsDto> GetAsync(DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default);
+    public Task<IndicatorsModel> GetAsync(DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default);
 }

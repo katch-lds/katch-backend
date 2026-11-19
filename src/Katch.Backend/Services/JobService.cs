@@ -3,11 +3,11 @@
 using System.Globalization;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -89,7 +89,7 @@ public sealed class JobService : IJobService
     }
 
     /// <inheritdoc/>
-    public async Task<List<JobDto>> ListOwnAsync(Guid recruiterId, CancellationToken cancellationToken = default)
+    public async Task<List<JobModel>> ListOwnAsync(Guid recruiterId, CancellationToken cancellationToken = default)
     {
         Guid companyId = await this.OwnCompanyIdAsync(recruiterId, cancellationToken);
         List<Job> companyJobs = await this.jobs.ListByCompanyAsync(companyId, cancellationToken);
@@ -100,12 +100,12 @@ public sealed class JobService : IJobService
             .ToDictionary(location => location.Id, ReferenceListService.DisplayName);
 
         return companyJobs
-            .Select(job => ToDto(job, locationNames.GetValueOrDefault(job.LocationId, string.Empty), waiting.GetValueOrDefault(job.Id)))
+            .Select(job => ToModel(job, locationNames.GetValueOrDefault(job.LocationId, string.Empty), waiting.GetValueOrDefault(job.Id)))
             .ToList();
     }
 
     /// <inheritdoc/>
-    public async Task<JobDto> CreateAsync(Guid recruiterId, JobRequest request, CancellationToken cancellationToken = default)
+    public async Task<JobModel> CreateAsync(Guid recruiterId, JobInput request, CancellationToken cancellationToken = default)
     {
         Guid companyId = await this.OwnCompanyIdAsync(recruiterId, cancellationToken);
         ValidatedJob validated = await this.ValidateAsync(request, cancellationToken);
@@ -117,14 +117,14 @@ public sealed class JobService : IJobService
         await this.operationLogger.LogAsync(recruiterId, OperationType.JobCreated, job.Id, cancellationToken);
         await this.unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return ToDto(job, ReferenceListService.DisplayName(validated.Location), waitingCandidates: 0);
+        return ToModel(job, ReferenceListService.DisplayName(validated.Location), waitingCandidates: 0);
     }
 
     /// <inheritdoc/>
-    public async Task<JobDto> UpdateAsync(
+    public async Task<JobModel> UpdateAsync(
         Guid recruiterId,
         Guid jobId,
-        JobRequest request,
+        JobInput request,
         CancellationToken cancellationToken = default)
     {
         Job job = await this.OwnJobAsync(recruiterId, jobId, cancellationToken);
@@ -142,11 +142,11 @@ public sealed class JobService : IJobService
         await this.operationLogger.LogAsync(recruiterId, OperationType.JobUpdated, job.Id, cancellationToken);
         await this.unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return await this.ToDtoAsync(job, cancellationToken);
+        return await this.ToModelAsync(job, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task<JobDto> PublishAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
+    public Task<JobModel> PublishAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
     {
         return this.ChangeStatusAsync(
             recruiterId,
@@ -157,7 +157,7 @@ public sealed class JobService : IJobService
     }
 
     /// <inheritdoc/>
-    public Task<JobDto> SuspendAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
+    public Task<JobModel> SuspendAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
     {
         return this.ChangeStatusAsync(
             recruiterId,
@@ -168,7 +168,7 @@ public sealed class JobService : IJobService
     }
 
     /// <inheritdoc/>
-    public Task<JobDto> RepublishAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
+    public Task<JobModel> RepublishAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
     {
         return this.ChangeStatusAsync(
             recruiterId,
@@ -179,7 +179,7 @@ public sealed class JobService : IJobService
     }
 
     /// <inheritdoc/>
-    public Task<JobDto> CloseAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
+    public Task<JobModel> CloseAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
     {
         return this.ChangeStatusAsync(
             recruiterId,
@@ -197,7 +197,7 @@ public sealed class JobService : IJobService
         // Só as recusas do Candidato não impedem a eliminação; qualquer interesse obriga a encerrar (RF058).
         if (await this.jobs.HasInterestsAsync(job.Id, cancellationToken))
         {
-            throw new OperationConflictException(ApiErrorResponse.JobHasInterests());
+            throw new OperationConflictException(ServiceErrors.JobHasInterests());
         }
 
         job.MarkDeleted(this.clock.UtcNow);
@@ -278,9 +278,9 @@ public sealed class JobService : IJobService
         return expired.Count;
     }
 
-    private static JobDto ToDto(Job job, string locationName, int waitingCandidates)
+    private static JobModel ToModel(Job job, string locationName, int waitingCandidates)
     {
-        return new JobDto(
+        return new JobModel(
             job.Id,
             job.Title,
             job.Description,
@@ -290,8 +290,8 @@ public sealed class JobService : IJobService
             locationName,
             job.ContractType,
             job.WorkMode,
-            job.Skills.Select(skill => new ReferenceItemDto(skill.Id, skill.Name)).OrderBy(item => item.Name, Alphabetical).ToList(),
-            job.Benefits.Select(benefit => new ReferenceItemDto(benefit.Id, benefit.Name)).OrderBy(item => item.Name, Alphabetical).ToList(),
+            job.Skills.Select(skill => new ReferenceItemModel(skill.Id, skill.Name)).OrderBy(item => item.Name, Alphabetical).ToList(),
+            job.Benefits.Select(benefit => new ReferenceItemModel(benefit.Id, benefit.Name)).OrderBy(item => item.Name, Alphabetical).ToList(),
             job.IsUrgent,
             job.ExpiresAt,
             job.Status,
@@ -311,27 +311,27 @@ public sealed class JobService : IJobService
 
     private static OperationConflictException PhotoLimitReached()
     {
-        return new OperationConflictException(ApiErrorResponse.PhotoLimitReached(Job.MaxPhotos));
+        return new OperationConflictException(ServiceErrors.PhotoLimitReached(Job.MaxPhotos));
     }
 
     private static OperationConflictException InvalidState(Job job)
     {
-        return new OperationConflictException(ApiErrorResponse.InvalidState(ApiErrorResponse.JobStatusLabel(job.Status)));
+        return new OperationConflictException(ServiceErrors.InvalidState(ApiErrorResponse.JobStatusLabel(job.Status)));
     }
 
-    private static void ValidateText(string field, string value, int maxLength, List<FieldErrorDto> errors)
+    private static void ValidateText(string field, string value, int maxLength, List<FieldError> errors)
     {
         if (value.Length == 0)
         {
-            errors.Add(new FieldErrorDto(field, FieldReasons.Required));
+            errors.Add(new FieldError(field, FieldReasons.Required));
         }
         else if (value.Length > maxLength)
         {
-            errors.Add(new FieldErrorDto(field, FieldReasons.TextTooLong(maxLength)));
+            errors.Add(new FieldError(field, FieldReasons.TextTooLong(maxLength)));
         }
     }
 
-    private static bool ValidateSalary(string field, decimal? value, List<FieldErrorDto> errors)
+    private static bool ValidateSalary(string field, decimal? value, List<FieldError> errors)
     {
         string? reason = value switch
         {
@@ -344,22 +344,22 @@ public sealed class JobService : IJobService
 
         if (reason is not null)
         {
-            errors.Add(new FieldErrorDto(field, reason));
+            errors.Add(new FieldError(field, reason));
         }
 
         return reason is null;
     }
 
-    private static void ValidateEnum<TEnum>(string field, TEnum? value, List<FieldErrorDto> errors)
+    private static void ValidateEnum<TEnum>(string field, TEnum? value, List<FieldError> errors)
         where TEnum : struct, Enum
     {
         if (value is null)
         {
-            errors.Add(new FieldErrorDto(field, FieldReasons.Required));
+            errors.Add(new FieldError(field, FieldReasons.Required));
         }
         else if (!Enum.IsDefined(value.Value))
         {
-            errors.Add(new FieldErrorDto(field, FieldReasons.NotInList));
+            errors.Add(new FieldError(field, FieldReasons.NotInList));
         }
     }
 
@@ -370,7 +370,7 @@ public sealed class JobService : IJobService
         string field,
         List<Guid> ids,
         Func<Guid, Task<TItem?>> find,
-        List<FieldErrorDto> errors)
+        List<FieldError> errors)
         where TItem : class
     {
         var items = new List<TItem>();
@@ -382,11 +382,11 @@ public sealed class JobService : IJobService
 
             if (!seen.Add(id))
             {
-                errors.Add(new FieldErrorDto($"{field}[{index}]", FieldReasons.RepeatedInList));
+                errors.Add(new FieldError($"{field}[{index}]", FieldReasons.RepeatedInList));
             }
             else if (id == Guid.Empty || await find(id) is not TItem item)
             {
-                errors.Add(new FieldErrorDto($"{field}[{index}]", FieldReasons.NotInList));
+                errors.Add(new FieldError($"{field}[{index}]", FieldReasons.NotInList));
             }
             else
             {
@@ -397,7 +397,7 @@ public sealed class JobService : IJobService
         return items;
     }
 
-    private async Task<JobDto> ChangeStatusAsync(
+    private async Task<JobModel> ChangeStatusAsync(
         Guid recruiterId,
         Guid jobId,
         Action<Job> transition,
@@ -419,7 +419,7 @@ public sealed class JobService : IJobService
         await this.operationLogger.LogAsync(recruiterId, operation, job.Id, cancellationToken);
         await this.unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return await this.ToDtoAsync(job, cancellationToken);
+        return await this.ToModelAsync(job, cancellationToken);
     }
 
     private async Task TryDeleteFileAsync(string path)
@@ -456,12 +456,12 @@ public sealed class JobService : IJobService
         return job;
     }
 
-    private async Task<JobDto> ToDtoAsync(Job job, CancellationToken cancellationToken)
+    private async Task<JobModel> ToModelAsync(Job job, CancellationToken cancellationToken)
     {
         Location? location = await this.referenceData.GetLocationAsync(job.LocationId, cancellationToken);
         Dictionary<Guid, int> waiting = await this.matches.CountWaitingByJobAsync([job.Id], cancellationToken);
 
-        return ToDto(
+        return ToModel(
             job,
             location is null ? string.Empty : ReferenceListService.DisplayName(location),
             waiting.GetValueOrDefault(job.Id));
@@ -470,13 +470,13 @@ public sealed class JobService : IJobService
     /// <summary>
     /// Valida o pedido pelas regras de 6.5.2 e 8.3 e indica todos os campos em erro na mesma resposta (RF050, RF051).
     /// </summary>
-    private async Task<ValidatedJob> ValidateAsync(JobRequest request, CancellationToken cancellationToken)
+    private async Task<ValidatedJob> ValidateAsync(JobInput request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         string title = request.Title?.Trim() ?? string.Empty;
         string description = request.Description?.Trim() ?? string.Empty;
-        var errors = new List<FieldErrorDto>();
+        var errors = new List<FieldError>();
 
         ValidateText("title", title, Job.MaxTitleLength, errors);
         ValidateText("description", description, MaxDescriptionLength, errors);
@@ -485,17 +485,17 @@ public sealed class JobService : IJobService
 
         if (minValid && maxValid && request.MinSalary > request.MaxSalary)
         {
-            errors.Add(new FieldErrorDto("minSalary", FieldReasons.SalaryRange));
+            errors.Add(new FieldError("minSalary", FieldReasons.SalaryRange));
         }
 
         Location? location = null;
         if (request.LocationId == Guid.Empty)
         {
-            errors.Add(new FieldErrorDto("locationId", FieldReasons.Required));
+            errors.Add(new FieldError("locationId", FieldReasons.Required));
         }
         else if ((location = await this.referenceData.GetLocationAsync(request.LocationId, cancellationToken)) is null)
         {
-            errors.Add(new FieldErrorDto("locationId", FieldReasons.NotInList));
+            errors.Add(new FieldError("locationId", FieldReasons.NotInList));
         }
 
         ValidateEnum("contractType", request.ContractType, errors);
@@ -504,7 +504,7 @@ public sealed class JobService : IJobService
         List<Skill> skills = [];
         if (request.SkillIds is null || request.SkillIds.Count == 0)
         {
-            errors.Add(new FieldErrorDto("skillIds", FieldReasons.Required));
+            errors.Add(new FieldError("skillIds", FieldReasons.Required));
         }
         else
         {
@@ -523,7 +523,7 @@ public sealed class JobService : IJobService
 
         if (request.ExpiresAt is { } expiresAt && expiresAt <= this.clock.UtcNow)
         {
-            errors.Add(new FieldErrorDto("expiresAt", FieldReasons.ExpiresAtNotFuture));
+            errors.Add(new FieldError("expiresAt", FieldReasons.ExpiresAtNotFuture));
         }
 
         if (errors.Count > 0)

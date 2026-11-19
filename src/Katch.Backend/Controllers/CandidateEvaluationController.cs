@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Services;
@@ -47,7 +48,9 @@ public sealed class CandidateEvaluationController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<List<WaitingCandidateDto>>> ListWaiting(Guid jobId, CancellationToken cancellationToken)
     {
-        return await this.evaluationService.ListWaitingAsync(this.GetRecruiterId(), jobId, cancellationToken);
+        return (await this.evaluationService.ListWaitingAsync(this.GetRecruiterId(), jobId, cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList();
     }
 
     /// <summary>
@@ -65,7 +68,8 @@ public sealed class CandidateEvaluationController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<CandidateFullProfileDto>> OpenProfile(Guid matchId, CancellationToken cancellationToken)
     {
-        return await this.evaluationService.OpenProfileAsync(this.GetRecruiterId(), matchId, cancellationToken);
+        return (await this.evaluationService.OpenProfileAsync(this.GetRecruiterId(), matchId, cancellationToken))
+            .ToDto();
     }
 
     /// <summary>
@@ -104,7 +108,7 @@ public sealed class CandidateEvaluationController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<MatchDto>> Accept(Guid matchId, CancellationToken cancellationToken)
     {
-        return await this.evaluationService.AcceptAsync(this.GetRecruiterId(), matchId, cancellationToken);
+        return (await this.evaluationService.AcceptAsync(this.GetRecruiterId(), matchId, cancellationToken)).ToDto();
     }
 
     /// <summary>

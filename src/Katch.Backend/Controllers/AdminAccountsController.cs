@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Services;
@@ -40,7 +41,9 @@ public sealed class AdminAccountsController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<List<AccountDto>>> ListAccounts(CancellationToken cancellationToken)
     {
-        return this.Ok(await this.accountAdminService.ListAccountsAsync(cancellationToken));
+        return this.Ok((await this.accountAdminService.ListAccountsAsync(cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList());
     }
 
     /// <summary>
@@ -54,7 +57,9 @@ public sealed class AdminAccountsController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<List<CandidateAdminDto>>> ListCandidates(CancellationToken cancellationToken)
     {
-        return this.Ok(await this.accountAdminService.ListCandidatesAsync(cancellationToken));
+        return this.Ok((await this.accountAdminService.ListCandidatesAsync(cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList());
     }
 
     /// <summary>

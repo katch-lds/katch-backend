@@ -1,9 +1,9 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -30,15 +30,15 @@ public sealed class MatchService : IMatchService
     }
 
     /// <inheritdoc/>
-    public async Task<List<MatchDto>> ListForCandidateAsync(Guid candidateId, CancellationToken cancellationToken = default)
+    public async Task<List<MatchModel>> ListForCandidateAsync(Guid candidateId, CancellationToken cancellationToken = default)
     {
         List<MatchView> views = await this.matches.ListMatchViewsByCandidateAsync(candidateId, cancellationToken);
 
-        return this.ToDtos(views, view => (view.ResponsibleName, view.CompanyContactEmail, view.CompanyContactPhone));
+        return this.ToModels(views, view => (view.ResponsibleName, view.CompanyContactEmail, view.CompanyContactPhone));
     }
 
     /// <inheritdoc/>
-    public async Task<List<MatchDto>> ListForRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default)
+    public async Task<List<MatchModel>> ListForRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default)
     {
         Company? company = await this.companies.GetByRecruiterAsync(recruiterId, cancellationToken);
         if (company is null)
@@ -48,10 +48,10 @@ public sealed class MatchService : IMatchService
 
         List<MatchView> views = await this.matches.ListMatchViewsByCompanyAsync(company.Id, cancellationToken);
 
-        return this.ToDtos(views, view => (view.CandidateName, view.CandidateEmail, view.CandidatePhone));
+        return this.ToModels(views, view => (view.CandidateName, view.CandidateEmail, view.CandidatePhone));
     }
 
-    private List<MatchDto> ToDtos(List<MatchView> views, Func<MatchView, (string Name, string Email, string Phone)> counterpart)
+    private List<MatchModel> ToModels(List<MatchView> views, Func<MatchView, (string Name, string Email, string Phone)> counterpart)
     {
         return views
             .Select(view => (View: view, MatchedAt: view.Match.RecruiterActionAt ?? view.Match.CandidateActionAt))
@@ -59,7 +59,7 @@ public sealed class MatchService : IMatchService
             .Select(item =>
             {
                 (string name, string email, string phone) = counterpart(item.View);
-                return new MatchDto(
+                return new MatchModel(
                     item.View.Match.Id,
                     item.View.JobTitle,
                     item.View.JobStatus,

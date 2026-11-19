@@ -2,11 +2,11 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -85,9 +85,9 @@ public sealed class CompanyService : ICompanyService
     }
 
     /// <inheritdoc/>
-    public async Task<CompanyStatusDto> RegisterAsync(
+    public async Task<CompanyStatusModel> RegisterAsync(
         Guid recruiterId,
-        CompanyRegistrationRequest request,
+        CompanyRegistrationInput request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -95,7 +95,7 @@ public sealed class CompanyService : ICompanyService
         // Um Recrutador representa uma única Empresa (especificação de requisitos v02, secção 2.2).
         if (await this.companies.GetByRecruiterAsync(recruiterId, cancellationToken) is not null)
         {
-            throw new OperationConflictException(ApiErrorResponse.CompanyAlreadyRegistered());
+            throw new OperationConflictException(ServiceErrors.CompanyAlreadyRegistered());
         }
 
         CompanyRegistration data = await this.ValidateAsync(request, exceptCompanyId: null, registeredTaxId: null, cancellationToken);
@@ -109,9 +109,9 @@ public sealed class CompanyService : ICompanyService
     }
 
     /// <inheritdoc/>
-    public async Task<CompanyStatusDto> ResubmitAsync(
+    public async Task<CompanyStatusModel> ResubmitAsync(
         Guid recruiterId,
-        CompanyRegistrationRequest request,
+        CompanyRegistrationInput request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -123,7 +123,7 @@ public sealed class CompanyService : ICompanyService
         if (company.Status != CompanyStatus.Rejected)
         {
             throw new OperationConflictException(
-                ApiErrorResponse.InvalidState(ApiErrorResponse.CompanyStatusLabel(company.Status)));
+                ServiceErrors.InvalidState(ApiErrorResponse.CompanyStatusLabel(company.Status)));
         }
 
         // O NIF pode ser corrigido, porque a Empresa nunca foi aprovada; só não pode ser o de outra Empresa.
@@ -137,7 +137,7 @@ public sealed class CompanyService : ICompanyService
     }
 
     /// <inheritdoc/>
-    public async Task<CompanyStatusDto> GetStatusAsync(Guid recruiterId, CancellationToken cancellationToken = default)
+    public async Task<CompanyStatusModel> GetStatusAsync(Guid recruiterId, CancellationToken cancellationToken = default)
     {
         Company company = await this.LoadAsync(recruiterId, cancellationToken);
 
@@ -145,12 +145,12 @@ public sealed class CompanyService : ICompanyService
     }
 
     /// <inheritdoc/>
-    public async Task<CompanyRegistrationDto> GetRegistrationAsync(Guid recruiterId, CancellationToken cancellationToken = default)
+    public async Task<CompanyRegistrationModel> GetRegistrationAsync(Guid recruiterId, CancellationToken cancellationToken = default)
     {
         Company company = await this.LoadAsync(recruiterId, cancellationToken);
         Location? location = await this.referenceData.GetLocationAsync(company.LocationId, cancellationToken);
 
-        return new CompanyRegistrationDto(
+        return new CompanyRegistrationModel(
             company.Id,
             company.CompanyName,
             company.TaxId,
@@ -165,9 +165,9 @@ public sealed class CompanyService : ICompanyService
     }
 
     /// <inheritdoc/>
-    public async Task<CompanyStatusDto> UpdateRegistrationAsync(
+    public async Task<CompanyStatusModel> UpdateRegistrationAsync(
         Guid recruiterId,
-        CompanyRegistrationRequest request,
+        CompanyRegistrationInput request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -186,17 +186,15 @@ public sealed class CompanyService : ICompanyService
     }
 
     /// <inheritdoc/>
-    public async Task<CompanyPageDto> GetPageAsync(Guid recruiterId, CancellationToken cancellationToken = default)
+    public async Task<Company> GetPageAsync(Guid recruiterId, CancellationToken cancellationToken = default)
     {
-        Company company = await this.LoadAsync(recruiterId, cancellationToken);
-
-        return CompanyPageMapper.ToPage(company, this.fileUrlBuilder);
+        return await this.LoadAsync(recruiterId, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<CompanyPageDto> UpdatePageAsync(
+    public async Task<Company> UpdatePageAsync(
         Guid recruiterId,
-        CompanyPageRequest request,
+        CompanyPageInput request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -204,15 +202,15 @@ public sealed class CompanyService : ICompanyService
         string? description = TrimToNull(request.Description);
         string? website = TrimToNull(request.Website);
 
-        var errors = new List<FieldErrorDto>();
+        var errors = new List<FieldError>();
         if (description is not null && description.Length > Company.MaxDescriptionLength)
         {
-            errors.Add(new FieldErrorDto("description", FieldReasons.TextTooLong(Company.MaxDescriptionLength)));
+            errors.Add(new FieldError("description", FieldReasons.TextTooLong(Company.MaxDescriptionLength)));
         }
 
         if (website is not null && WebsiteReason(website) is string reason)
         {
-            errors.Add(new FieldErrorDto("website", reason));
+            errors.Add(new FieldError("website", reason));
         }
 
         if (errors.Count > 0)
@@ -224,7 +222,7 @@ public sealed class CompanyService : ICompanyService
         company.UpdatePage(description, website);
         await this.unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return CompanyPageMapper.ToPage(company, this.fileUrlBuilder);
+        return company;
     }
 
     /// <inheritdoc/>
@@ -254,18 +252,18 @@ public sealed class CompanyService : ICompanyService
         // Verificado antes de guardar o ficheiro, para que a sétima fotografia não chegue ao armazenamento (P13).
         if (company.PhotoPaths.Count >= Company.MaxGalleryPhotos)
         {
-            throw new OperationConflictException(ApiErrorResponse.PhotoLimitReached(Company.MaxGalleryPhotos));
+            throw new OperationConflictException(ServiceErrors.PhotoLimitReached(Company.MaxGalleryPhotos));
         }
 
         string newPath = await this.StoreAsync(file!, FileKind.CompanyPhoto, company.AddGalleryPhoto, cancellationToken);
         return this.fileUrlBuilder.ToUrl(newPath)!;
     }
 
-    private static CompanyStatusDto ToStatus(Company company)
+    private static CompanyStatusModel ToStatus(Company company)
     {
         // O motivo só existe no estado recusado (ck_company_reason); nos restantes vai sempre null.
         string? reason = company.Status == CompanyStatus.Rejected ? company.StatusReason : null;
-        return new CompanyStatusDto(company.Id, company.Status, reason, company.SubmittedAt);
+        return new CompanyStatusModel(company.Id, company.Status, reason, company.SubmittedAt);
     }
 
     private static string? TrimToNull(string? value)
@@ -288,65 +286,65 @@ public sealed class CompanyService : ICompanyService
             : FieldReasons.LinkScheme;
     }
 
-    private static void ValidateText(string field, string value, int maxLength, List<FieldErrorDto> errors)
+    private static void ValidateText(string field, string value, int maxLength, List<FieldError> errors)
     {
         if (value.Length == 0)
         {
-            errors.Add(new FieldErrorDto(field, FieldReasons.Required));
+            errors.Add(new FieldError(field, FieldReasons.Required));
         }
         else if (value.Length > maxLength)
         {
-            errors.Add(new FieldErrorDto(field, FieldReasons.TextTooLong(maxLength)));
+            errors.Add(new FieldError(field, FieldReasons.TextTooLong(maxLength)));
         }
     }
 
-    private static void ValidateIndustry(Industry? industry, List<FieldErrorDto> errors)
+    private static void ValidateIndustry(Industry? industry, List<FieldError> errors)
     {
         if (industry is null)
         {
-            errors.Add(new FieldErrorDto("industry", FieldReasons.Required));
+            errors.Add(new FieldError("industry", FieldReasons.Required));
         }
         else if (!Enum.IsDefined(industry.Value))
         {
-            errors.Add(new FieldErrorDto("industry", FieldReasons.NotInList));
+            errors.Add(new FieldError("industry", FieldReasons.NotInList));
         }
     }
 
-    private static void ValidateContactEmail(string contactEmail, List<FieldErrorDto> errors)
+    private static void ValidateContactEmail(string contactEmail, List<FieldError> errors)
     {
         if (contactEmail.Length == 0)
         {
-            errors.Add(new FieldErrorDto("contactEmail", FieldReasons.Required));
+            errors.Add(new FieldError("contactEmail", FieldReasons.Required));
         }
         else if (contactEmail.Length > MaxContactEmailLength)
         {
-            errors.Add(new FieldErrorDto("contactEmail", FieldReasons.EmailTooLong));
+            errors.Add(new FieldError("contactEmail", FieldReasons.EmailTooLong));
         }
         else if (!FieldFormats.IsEmail(contactEmail))
         {
-            errors.Add(new FieldErrorDto("contactEmail", FieldReasons.EmailFormat));
+            errors.Add(new FieldError("contactEmail", FieldReasons.EmailFormat));
         }
     }
 
-    private static void ValidateContactPhone(string contactPhone, List<FieldErrorDto> errors)
+    private static void ValidateContactPhone(string contactPhone, List<FieldError> errors)
     {
         if (contactPhone.Length == 0)
         {
-            errors.Add(new FieldErrorDto("contactPhone", FieldReasons.Required));
+            errors.Add(new FieldError("contactPhone", FieldReasons.Required));
         }
         else if (!FieldFormats.IsNineDigits(contactPhone))
         {
-            errors.Add(new FieldErrorDto("contactPhone", FieldReasons.PhoneNumberFormat));
+            errors.Add(new FieldError("contactPhone", FieldReasons.PhoneNumberFormat));
         }
     }
 
     /// <summary>
-    /// Valida todos os campos no mesmo pedido (RF042), pela ordem do <see cref="CompanyRegistrationRequest"/>, e devolve
+    /// Valida todos os campos no mesmo pedido (RF042), pela ordem do <see cref="CompanyRegistrationInput"/>, e devolve
     /// os dados de registo sem os espaços nas extremidades (documentação da API v02, secção 2.3). Com
     /// <paramref name="registeredTaxId"/>, o NIF tem de ser igual ao registado (alteração da Empresa aprovada, RF049).
     /// </summary>
     private async Task<CompanyRegistration> ValidateAsync(
-        CompanyRegistrationRequest request,
+        CompanyRegistrationInput request,
         Guid? exceptCompanyId,
         string? registeredTaxId,
         CancellationToken cancellationToken)
@@ -358,7 +356,7 @@ public sealed class CompanyService : ICompanyService
         string contactPhone = request.ContactPhone?.Trim() ?? string.Empty;
         string responsibleName = request.ResponsibleName?.Trim() ?? string.Empty;
 
-        var errors = new List<FieldErrorDto>();
+        var errors = new List<FieldError>();
         ValidateText("companyName", companyName, MaxCompanyNameLength, errors);
         await this.ValidateTaxIdAsync(taxId, exceptCompanyId, registeredTaxId, errors, cancellationToken);
         ValidateIndustry(request.Industry, errors);
@@ -390,40 +388,40 @@ public sealed class CompanyService : ICompanyService
         string taxId,
         Guid? exceptCompanyId,
         string? registeredTaxId,
-        List<FieldErrorDto> errors,
+        List<FieldError> errors,
         CancellationToken cancellationToken)
     {
         if (taxId.Length == 0)
         {
-            errors.Add(new FieldErrorDto("taxId", FieldReasons.Required));
+            errors.Add(new FieldError("taxId", FieldReasons.Required));
         }
         else if (!FieldFormats.IsNineDigits(taxId))
         {
-            errors.Add(new FieldErrorDto("taxId", FieldReasons.TaxIdFormat));
+            errors.Add(new FieldError("taxId", FieldReasons.TaxIdFormat));
         }
         else if (registeredTaxId is not null)
         {
             // Igual ao registado, o NIF é o da própria Empresa: não há unicidade a verificar.
             if (!string.Equals(taxId, registeredTaxId, StringComparison.Ordinal))
             {
-                errors.Add(new FieldErrorDto("taxId", FieldReasons.TaxIdImmutable));
+                errors.Add(new FieldError("taxId", FieldReasons.TaxIdImmutable));
             }
         }
         else if (await this.companies.TaxIdExistsAsync(taxId, exceptCompanyId, cancellationToken))
         {
-            errors.Add(new FieldErrorDto("taxId", FieldReasons.TaxIdTaken));
+            errors.Add(new FieldError("taxId", FieldReasons.TaxIdTaken));
         }
     }
 
-    private async Task ValidateLocationAsync(Guid locationId, List<FieldErrorDto> errors, CancellationToken cancellationToken)
+    private async Task ValidateLocationAsync(Guid locationId, List<FieldError> errors, CancellationToken cancellationToken)
     {
         if (locationId == Guid.Empty)
         {
-            errors.Add(new FieldErrorDto("locationId", FieldReasons.Required));
+            errors.Add(new FieldError("locationId", FieldReasons.Required));
         }
         else if (!await this.referenceData.LocationExistsAsync(locationId, cancellationToken))
         {
-            errors.Add(new FieldErrorDto("locationId", FieldReasons.NotInList));
+            errors.Add(new FieldError("locationId", FieldReasons.NotInList));
         }
     }
 
@@ -477,7 +475,7 @@ public sealed class CompanyService : ICompanyService
         {
             // Dois pedidos simultâneos com 5 fotografias passaram a verificação do limite; a restrição rejeita o segundo.
             await this.fileStorage.DeleteAsync(newPath, CancellationToken.None);
-            throw new OperationConflictException(ApiErrorResponse.PhotoLimitReached(Company.MaxGalleryPhotos));
+            throw new OperationConflictException(ServiceErrors.PhotoLimitReached(Company.MaxGalleryPhotos));
         }
         catch
         {
@@ -513,11 +511,11 @@ public sealed class CompanyService : ICompanyService
         }
         catch (UniqueConstraintViolationException exception) when (exception.ConstraintName == TaxIdUniqueIndex)
         {
-            throw new ValidationFailedException([new FieldErrorDto("taxId", FieldReasons.TaxIdTaken)]);
+            throw new ValidationFailedException([new FieldError("taxId", FieldReasons.TaxIdTaken)]);
         }
         catch (UniqueConstraintViolationException exception) when (exception.ConstraintName == RecruiterUniqueIndex)
         {
-            throw new OperationConflictException(ApiErrorResponse.CompanyAlreadyRegistered());
+            throw new OperationConflictException(ServiceErrors.CompanyAlreadyRegistered());
         }
     }
 }

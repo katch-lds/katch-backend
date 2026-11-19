@@ -1,7 +1,9 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,14 +22,17 @@ namespace Katch.Backend.Controllers;
 public sealed class JobExplorationController : ControllerBase
 {
     private readonly IJobExplorationService jobExploration;
+    private readonly IFileUrlBuilder fileUrlBuilder;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JobExplorationController"/> class.
     /// </summary>
     /// <param name="jobExploration">Serviço de exploração de vagas.</param>
-    public JobExplorationController(IJobExplorationService jobExploration)
+    /// <param name="fileUrlBuilder">Conversor dos caminhos guardados nos URL da API, para a página da Empresa.</param>
+    public JobExplorationController(IJobExplorationService jobExploration, IFileUrlBuilder fileUrlBuilder)
     {
         this.jobExploration = jobExploration;
+        this.fileUrlBuilder = fileUrlBuilder;
     }
 
     /// <summary>
@@ -44,7 +49,8 @@ public sealed class JobExplorationController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<JobCardDto>> GetNextCard(CancellationToken cancellationToken)
     {
-        JobCardDto? card = await this.jobExploration.GetNextCardAsync(this.GetCandidateId(), cancellationToken);
+        JobCardDto? card = (await this.jobExploration.GetNextCardAsync(this.GetCandidateId(), cancellationToken))
+            ?.ToDto();
         if (card is null)
         {
             return this.NoContent();
@@ -71,7 +77,8 @@ public sealed class JobExplorationController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<JobDetailDto>> GetDetail(Guid jobId, CancellationToken cancellationToken)
     {
-        JobDetailDto detail = await this.jobExploration.GetDetailAsync(this.GetCandidateId(), jobId, cancellationToken);
+        JobDetailDto detail = (await this.jobExploration.GetDetailAsync(this.GetCandidateId(), jobId, cancellationToken))
+            .ToDto();
         return this.Ok(detail);
     }
 
@@ -116,7 +123,8 @@ public sealed class JobExplorationController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<QuotaDto>> ExpressInterest(Guid jobId, CancellationToken cancellationToken)
     {
-        QuotaDto quota = await this.jobExploration.ExpressInterestAsync(this.GetCandidateId(), jobId, cancellationToken);
+        QuotaDto quota = (await this.jobExploration.ExpressInterestAsync(this.GetCandidateId(), jobId, cancellationToken))
+            .ToDto();
         return this.Ok(quota);
     }
 
@@ -131,7 +139,7 @@ public sealed class JobExplorationController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<QuotaDto>> GetQuota(CancellationToken cancellationToken)
     {
-        QuotaDto quota = await this.jobExploration.GetQuotaAsync(this.GetCandidateId(), cancellationToken);
+        QuotaDto quota = (await this.jobExploration.GetQuotaAsync(this.GetCandidateId(), cancellationToken)).ToDto();
         return this.Ok(quota);
     }
 
@@ -149,7 +157,8 @@ public sealed class JobExplorationController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CompanyPageDto>> GetCompanyPage(Guid companyId, CancellationToken cancellationToken)
     {
-        return await this.jobExploration.GetCompanyPageAsync(companyId, cancellationToken);
+        return (await this.jobExploration.GetCompanyPageAsync(companyId, cancellationToken))
+            .ToPageDto(this.fileUrlBuilder);
     }
 
     private Guid GetCandidateId()

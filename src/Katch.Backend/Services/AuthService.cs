@@ -2,10 +2,10 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -67,8 +67,8 @@ public sealed class AuthService : IAuthService
     }
 
     /// <inheritdoc/>
-    public async Task<LoginResponse> RegisterCandidateAsync(
-        RegisterCandidateRequest request,
+    public async Task<LoginResult> RegisterCandidateAsync(
+        RegisterCandidateInput request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -79,7 +79,7 @@ public sealed class AuthService : IAuthService
         string phoneNumber = request.PhoneNumber?.Trim() ?? string.Empty;
         string password = request.Password ?? string.Empty;
 
-        var errors = new List<FieldErrorDto>();
+        var errors = new List<FieldError>();
         ValidateFullName(fullName, errors);
         await this.ValidateEmailAsync(email, errors, cancellationToken);
         ValidatePhoneNumber(phoneNumber, errors);
@@ -88,7 +88,7 @@ public sealed class AuthService : IAuthService
 
         if (!request.AcceptTerms)
         {
-            errors.Add(new FieldErrorDto("acceptTerms", FieldReasons.AcceptTerms));
+            errors.Add(new FieldError("acceptTerms", FieldReasons.AcceptTerms));
         }
 
         if (errors.Count > 0)
@@ -108,8 +108,8 @@ public sealed class AuthService : IAuthService
     }
 
     /// <inheritdoc/>
-    public async Task<LoginResponse> CreateRecruiterAccountAsync(
-        CreateRecruiterAccountRequest request,
+    public async Task<LoginResult> CreateRecruiterAccountAsync(
+        CreateRecruiterAccountInput request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -118,13 +118,13 @@ public sealed class AuthService : IAuthService
         string email = request.Email?.Trim() ?? string.Empty;
         string password = request.Password ?? string.Empty;
 
-        var errors = new List<FieldErrorDto>();
+        var errors = new List<FieldError>();
         await this.ValidateEmailAsync(email, errors, cancellationToken);
         ValidatePassword(password, errors, "password");
 
         if (!request.AcceptTerms)
         {
-            errors.Add(new FieldErrorDto("acceptTerms", FieldReasons.AcceptTerms));
+            errors.Add(new FieldError("acceptTerms", FieldReasons.AcceptTerms));
         }
 
         if (errors.Count > 0)
@@ -145,8 +145,8 @@ public sealed class AuthService : IAuthService
     }
 
     /// <inheritdoc/>
-    public async Task<LoginResponse> LoginAsync(
-        LoginRequest request,
+    public async Task<LoginResult> LoginAsync(
+        LoginInput request,
         ClientApp app,
         CancellationToken cancellationToken = default)
     {
@@ -158,15 +158,15 @@ public sealed class AuthService : IAuthService
 
         // Só se verifica que os campos não estão vazios: o formato do correio e a política da palavra-passe não são
         // revelados (RNF009).
-        var errors = new List<FieldErrorDto>();
+        var errors = new List<FieldError>();
         if (email.Length == 0)
         {
-            errors.Add(new FieldErrorDto("email", FieldReasons.Required));
+            errors.Add(new FieldError("email", FieldReasons.Required));
         }
 
         if (string.IsNullOrWhiteSpace(password))
         {
-            errors.Add(new FieldErrorDto("password", FieldReasons.Required));
+            errors.Add(new FieldError("password", FieldReasons.Required));
         }
 
         if (errors.Count > 0)
@@ -201,7 +201,7 @@ public sealed class AuthService : IAuthService
     /// <inheritdoc/>
     public async Task ChangePasswordAsync(
         Guid userId,
-        ChangePasswordRequest request,
+        ChangePasswordInput request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -213,14 +213,14 @@ public sealed class AuthService : IAuthService
         AppUser user = await this.users.GetByIdAsync(userId, cancellationToken)
             ?? throw new InvalidOperationException("A conta da credencial de sessão não existe.");
 
-        var errors = new List<FieldErrorDto>();
+        var errors = new List<FieldError>();
         if (string.IsNullOrWhiteSpace(currentPassword))
         {
-            errors.Add(new FieldErrorDto("currentPassword", FieldReasons.Required));
+            errors.Add(new FieldError("currentPassword", FieldReasons.Required));
         }
         else if (!this.passwordHasher.Verify(user.PasswordHash, currentPassword))
         {
-            errors.Add(new FieldErrorDto("currentPassword", FieldReasons.CurrentIncorrect));
+            errors.Add(new FieldError("currentPassword", FieldReasons.CurrentIncorrect));
         }
 
         ValidatePassword(newPassword, errors, "newPassword");
@@ -248,63 +248,63 @@ public sealed class AuthService : IAuthService
         };
     }
 
-    private static void ValidateFullName(string fullName, List<FieldErrorDto> errors)
+    private static void ValidateFullName(string fullName, List<FieldError> errors)
     {
         if (fullName.Length == 0)
         {
-            errors.Add(new FieldErrorDto("fullName", FieldReasons.Required));
+            errors.Add(new FieldError("fullName", FieldReasons.Required));
         }
         else if (fullName.Length > MaxFullNameLength)
         {
-            errors.Add(new FieldErrorDto("fullName", FieldReasons.FullNameTooLong));
+            errors.Add(new FieldError("fullName", FieldReasons.FullNameTooLong));
         }
     }
 
-    private static void ValidatePhoneNumber(string phoneNumber, List<FieldErrorDto> errors)
+    private static void ValidatePhoneNumber(string phoneNumber, List<FieldError> errors)
     {
         if (phoneNumber.Length == 0)
         {
-            errors.Add(new FieldErrorDto("phoneNumber", FieldReasons.Required));
+            errors.Add(new FieldError("phoneNumber", FieldReasons.Required));
         }
         else if (!FieldFormats.IsNineDigits(phoneNumber))
         {
-            errors.Add(new FieldErrorDto("phoneNumber", FieldReasons.PhoneNumberFormat));
+            errors.Add(new FieldError("phoneNumber", FieldReasons.PhoneNumberFormat));
         }
     }
 
-    private static void ValidatePassword(string password, List<FieldErrorDto> errors, string field)
+    private static void ValidatePassword(string password, List<FieldError> errors, string field)
     {
         if (string.IsNullOrWhiteSpace(password))
         {
-            errors.Add(new FieldErrorDto(field, FieldReasons.Required));
+            errors.Add(new FieldError(field, FieldReasons.Required));
         }
         else if (password.Length > MaxPasswordLength)
         {
-            errors.Add(new FieldErrorDto(field, FieldReasons.PasswordTooLong));
+            errors.Add(new FieldError(field, FieldReasons.PasswordTooLong));
         }
         else if (password.Length < MinPasswordLength || !password.Any(char.IsLetter) || !password.Any(char.IsDigit))
         {
-            errors.Add(new FieldErrorDto(field, FieldReasons.PasswordPolicy));
+            errors.Add(new FieldError(field, FieldReasons.PasswordPolicy));
         }
     }
 
-    private async Task ValidateEmailAsync(string email, List<FieldErrorDto> errors, CancellationToken cancellationToken)
+    private async Task ValidateEmailAsync(string email, List<FieldError> errors, CancellationToken cancellationToken)
     {
         if (email.Length == 0)
         {
-            errors.Add(new FieldErrorDto("email", FieldReasons.Required));
+            errors.Add(new FieldError("email", FieldReasons.Required));
         }
         else if (email.Length > AppUser.MaxLength)
         {
-            errors.Add(new FieldErrorDto("email", FieldReasons.EmailTooLong));
+            errors.Add(new FieldError("email", FieldReasons.EmailTooLong));
         }
         else if (!FieldFormats.IsEmail(email))
         {
-            errors.Add(new FieldErrorDto("email", FieldReasons.EmailFormat));
+            errors.Add(new FieldError("email", FieldReasons.EmailFormat));
         }
         else if (await this.users.EmailExistsAsync(email, cancellationToken))
         {
-            errors.Add(new FieldErrorDto("email", FieldReasons.EmailTaken));
+            errors.Add(new FieldError("email", FieldReasons.EmailTaken));
         }
     }
 
@@ -320,19 +320,19 @@ public sealed class AuthService : IAuthService
         }
         catch (UniqueConstraintViolationException exception) when (exception.ConstraintName == EmailUniqueIndex)
         {
-            throw new ValidationFailedException([new FieldErrorDto("email", FieldReasons.EmailTaken)]);
+            throw new ValidationFailedException([new FieldError("email", FieldReasons.EmailTaken)]);
         }
     }
 
-    private async Task ValidateLocationAsync(Guid locationId, List<FieldErrorDto> errors, CancellationToken cancellationToken)
+    private async Task ValidateLocationAsync(Guid locationId, List<FieldError> errors, CancellationToken cancellationToken)
     {
         if (locationId == Guid.Empty)
         {
-            errors.Add(new FieldErrorDto("locationId", FieldReasons.Required));
+            errors.Add(new FieldError("locationId", FieldReasons.Required));
         }
         else if (!await this.referenceData.LocationExistsAsync(locationId, cancellationToken))
         {
-            errors.Add(new FieldErrorDto("locationId", FieldReasons.NotInList));
+            errors.Add(new FieldError("locationId", FieldReasons.NotInList));
         }
     }
 }

@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Services;
@@ -40,7 +41,9 @@ public sealed class ReferenceListsController : ControllerBase
     [ProducesResponseType<List<ReferenceItemDto>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<List<ReferenceItemDto>>> ListLocations(CancellationToken cancellationToken)
     {
-        return this.Ok(await this.referenceListService.ListLocationsAsync(cancellationToken));
+        return this.Ok((await this.referenceListService.ListLocationsAsync(cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList());
     }
 
     /// <summary>
@@ -55,7 +58,9 @@ public sealed class ReferenceListsController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<List<ReferenceItemDto>>> ListSkills(CancellationToken cancellationToken)
     {
-        return this.Ok(await this.referenceListService.ListSkillsAsync(cancellationToken));
+        return this.Ok((await this.referenceListService.ListSkillsAsync(cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList());
     }
 
     /// <summary>
@@ -70,7 +75,9 @@ public sealed class ReferenceListsController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<List<ReferenceItemDto>>> ListBenefits(CancellationToken cancellationToken)
     {
-        return this.Ok(await this.referenceListService.ListBenefitsAsync(cancellationToken));
+        return this.Ok((await this.referenceListService.ListBenefitsAsync(cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList());
     }
 
     /// <summary>
@@ -94,10 +101,10 @@ public sealed class ReferenceListsController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReferenceItemRequest? request,
         CancellationToken cancellationToken)
     {
-        ReferenceItemDto skill = await this.referenceListService.AddSkillAsync(
+        ReferenceItemDto skill = (await this.referenceListService.AddSkillAsync(
             this.AdminId(),
-            request ?? ReferenceItemRequest.Empty,
-            cancellationToken);
+            (request ?? ReferenceItemRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
         return this.StatusCode(StatusCodes.Status201Created, skill);
     }
 
@@ -125,11 +132,11 @@ public sealed class ReferenceListsController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReferenceItemRequest? request,
         CancellationToken cancellationToken)
     {
-        return await this.referenceListService.RenameSkillAsync(
+        return (await this.referenceListService.RenameSkillAsync(
             this.AdminId(),
             skillId,
-            request ?? ReferenceItemRequest.Empty,
-            cancellationToken);
+            (request ?? ReferenceItemRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -152,10 +159,10 @@ public sealed class ReferenceListsController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReferenceItemRequest? request,
         CancellationToken cancellationToken)
     {
-        ReferenceItemDto benefit = await this.referenceListService.AddBenefitAsync(
+        ReferenceItemDto benefit = (await this.referenceListService.AddBenefitAsync(
             this.AdminId(),
-            request ?? ReferenceItemRequest.Empty,
-            cancellationToken);
+            (request ?? ReferenceItemRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
         return this.StatusCode(StatusCodes.Status201Created, benefit);
     }
 
@@ -183,11 +190,11 @@ public sealed class ReferenceListsController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReferenceItemRequest? request,
         CancellationToken cancellationToken)
     {
-        return await this.referenceListService.RenameBenefitAsync(
+        return (await this.referenceListService.RenameBenefitAsync(
             this.AdminId(),
             benefitId,
-            request ?? ReferenceItemRequest.Empty,
-            cancellationToken);
+            (request ?? ReferenceItemRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
     }
 
     /// <summary>

@@ -1,10 +1,10 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -52,14 +52,14 @@ public sealed class IndicatorService : IIndicatorService
     }
 
     /// <inheritdoc/>
-    public async Task<IndicatorsDto> GetAsync(DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default)
+    public async Task<IndicatorsModel> GetAsync(DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default)
     {
         this.ValidatePeriod(firstDay, lastDay);
         DateTimeOffset periodStart = StartOfDay(firstDay);
         DateTimeOffset periodEnd = StartOfDay(lastDay.AddDays(1));
 
         // As consultas partilham o contexto do pedido, por isso correm uma de cada vez.
-        return new IndicatorsDto(
+        return new IndicatorsModel(
             ActiveCandidates: await this.users.CountActiveCandidatesAtAsync(periodEnd, cancellationToken),
             ApprovedCompanies: await this.companies.CountByStatusAtAsync(CompanyStatus.Approved, periodEnd, cancellationToken),
             PendingCompanies: await this.companies.CountByStatusAtAsync(CompanyStatus.Pending, periodEnd, cancellationToken),
@@ -95,16 +95,16 @@ public sealed class IndicatorService : IIndicatorService
     private void ValidatePeriod(DateOnly firstDay, DateOnly lastDay)
     {
         // Os campos têm os nomes dos parâmetros da rota (from, to).
-        var errors = new List<FieldErrorDto>();
+        var errors = new List<FieldError>();
 
         if (firstDay > lastDay)
         {
-            errors.Add(new FieldErrorDto("from", FieldReasons.PeriodStartAfterEnd));
+            errors.Add(new FieldError("from", FieldReasons.PeriodStartAfterEnd));
         }
 
         if (lastDay > Today(this.clock.UtcNow))
         {
-            errors.Add(new FieldErrorDto("to", FieldReasons.PeriodEndInFuture));
+            errors.Add(new FieldError("to", FieldReasons.PeriodEndInFuture));
         }
 
         if (errors.Count > 0)

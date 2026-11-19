@@ -3,11 +3,10 @@
 using System.Globalization;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
-using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -81,7 +80,7 @@ public sealed class CandidateEvaluationService : ICandidateEvaluationService
     }
 
     /// <inheritdoc/>
-    public async Task<List<WaitingCandidateDto>> ListWaitingAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
+    public async Task<List<WaitingCandidateModel>> ListWaitingAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
     {
         Job job = await this.jobs.GetWithSkillsAsync(jobId, cancellationToken)
             ?? throw new ElementNotFoundException();
@@ -89,7 +88,7 @@ public sealed class CandidateEvaluationService : ICandidateEvaluationService
 
         List<WaitingInterest> waiting = await this.matches.ListWaitingByJobAsync(jobId, cancellationToken);
         return waiting
-            .Select(interest => new WaitingCandidateDto(
+            .Select(interest => new WaitingCandidateModel(
                 interest.MatchId,
                 interest.CandidateId,
                 interest.FullName,
@@ -100,7 +99,7 @@ public sealed class CandidateEvaluationService : ICandidateEvaluationService
     }
 
     /// <inheritdoc/>
-    public async Task<CandidateFullProfileDto> OpenProfileAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken = default)
+    public async Task<CandidateFullProfileModel> OpenProfileAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken = default)
     {
         for (int attempt = 1; ; attempt++)
         {
@@ -137,7 +136,7 @@ public sealed class CandidateEvaluationService : ICandidateEvaluationService
     }
 
     /// <inheritdoc/>
-    public async Task<MatchDto> AcceptAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken = default)
+    public async Task<MatchModel> AcceptAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken = default)
     {
         (Match match, Job job, Company company) = await this.GetDecidableInterestAsync(recruiterId, matchId, cancellationToken);
 
@@ -154,7 +153,7 @@ public sealed class CandidateEvaluationService : ICandidateEvaluationService
         match.Accept(recruiterId, this.clock.UtcNow);
         await this.SaveDecisionAsync(cancellationToken);
 
-        return new MatchDto(
+        return new MatchModel(
             match.Id,
             job.Title,
             job.Status,
@@ -176,20 +175,20 @@ public sealed class CandidateEvaluationService : ICandidateEvaluationService
         await this.SaveDecisionAsync(cancellationToken);
     }
 
-    private static List<SkillTagDto> ToSkillTags(Candidate candidate, Job job)
+    private static List<SkillTagModel> ToSkillTags(Candidate candidate, Job job)
     {
         HashSet<Guid> jobSkills = job.Skills.Select(skill => skill.Id).ToHashSet();
 
         // Só as competências da lista podem coincidir com as da vaga; as da opção «Outro» nunca são destacadas (RF062).
-        IEnumerable<SkillTagDto> listed = candidate.Skills
-            .Select(skill => new SkillTagDto(skill.Name, jobSkills.Contains(skill.Id)));
-        IEnumerable<SkillTagDto> custom = candidate.CustomSkills
-            .Select(customSkill => new SkillTagDto(customSkill.Label, false));
+        IEnumerable<SkillTagModel> listed = candidate.Skills
+            .Select(skill => new SkillTagModel(skill.Name, jobSkills.Contains(skill.Id)));
+        IEnumerable<SkillTagModel> custom = candidate.CustomSkills
+            .Select(customSkill => new SkillTagModel(customSkill.Label, false));
 
         return listed.Concat(custom).OrderBy(tag => tag.Name, Alphabetical).ToList();
     }
 
-    private async Task<CandidateFullProfileDto> TryOpenProfileAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken)
+    private async Task<CandidateFullProfileModel> TryOpenProfileAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken)
     {
         (Match match, Job job, _) = await this.GetWaitingInterestAsync(recruiterId, matchId, cancellationToken);
         Candidate candidate = await this.candidates.GetWithProfileAsync(match.CandidateId, cancellationToken)
@@ -203,7 +202,7 @@ public sealed class CandidateEvaluationService : ICandidateEvaluationService
             await this.unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        return new CandidateFullProfileDto(
+        return new CandidateFullProfileModel(
             match.Id,
             candidate.FullName,
             this.fileUrlBuilder.ToUrl(candidate.ProfilePhotoPath),
@@ -238,7 +237,7 @@ public sealed class CandidateEvaluationService : ICandidateEvaluationService
 
         if (match.Status != MatchStatus.Waiting)
         {
-            throw new OperationConflictException(ApiErrorResponse.CandidateAlreadyEvaluated());
+            throw new OperationConflictException(ServiceErrors.CandidateAlreadyEvaluated());
         }
 
         return (match, job, company);
@@ -254,7 +253,7 @@ public sealed class CandidateEvaluationService : ICandidateEvaluationService
 
         if (interest.Match.ProfileOpenedAt is null)
         {
-            throw new OperationConflictException(ApiErrorResponse.ProfileNotOpened());
+            throw new OperationConflictException(ServiceErrors.ProfileNotOpened());
         }
 
         return interest;
@@ -275,7 +274,7 @@ public sealed class CandidateEvaluationService : ICandidateEvaluationService
         catch (ConcurrencyConflictException)
         {
             this.unitOfWork.DiscardChanges();
-            throw new OperationConflictException(ApiErrorResponse.CandidateAlreadyEvaluated());
+            throw new OperationConflictException(ServiceErrors.CandidateAlreadyEvaluated());
         }
     }
 

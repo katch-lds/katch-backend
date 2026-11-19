@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -17,7 +17,7 @@ public interface IConversationService
     /// <param name="userId">Identificador da conta, da credencial de sessão.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Primeiro as conversas sem mensagens, pela data do match; depois as restantes pela última mensagem.</returns>
-    public Task<List<ConversationSummaryDto>> ListAsync(Guid userId, CancellationToken cancellationToken = default);
+    public Task<List<ConversationSummaryModel>> ListAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Abre a conversa (6.8.2): devolve as mensagens e marca como lidas as da outra parte. Funciona também com a conversa
@@ -31,7 +31,7 @@ public interface IConversationService
     /// <exception cref="ElementNotFoundException">Se o match não existir (ERR-20).</exception>
     /// <exception cref="ElementForbiddenException">Se a conta não for uma das partes (ERR-08).</exception>
     /// <exception cref="OperationConflictException">Se o match não estiver confirmado (ERR-37).</exception>
-    public Task<List<MessageDto>> OpenAsync(Guid userId, Guid matchId, DateTimeOffset? after, CancellationToken cancellationToken = default);
+    public Task<List<MessageModel>> OpenAsync(Guid userId, Guid matchId, DateTimeOffset? after, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Envia uma mensagem (6.8.3).
@@ -45,7 +45,7 @@ public interface IConversationService
     /// <exception cref="ElementForbiddenException">Se a conta não for uma das partes (ERR-08).</exception>
     /// <exception cref="OperationConflictException">Se o match não estiver confirmado (ERR-37) ou a conversa estiver em modo apenas de consulta (ERR-36).</exception>
     /// <exception cref="ValidationFailedException">Se o texto for vazio, só de espaços ou tiver mais de 1000 caracteres (ERR-10).</exception>
-    public Task<MessageDto> SendAsync(Guid userId, Guid matchId, SendMessageRequest request, CancellationToken cancellationToken = default);
+    public Task<MessageModel> SendAsync(Guid userId, Guid matchId, SendMessageInput request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Encerra a conversa por iniciativa de uma das partes (6.8.4): passa a modo apenas de consulta para as duas.

@@ -3,10 +3,10 @@
 using System.Globalization;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -58,26 +58,26 @@ public sealed class CompanyAdminService : ICompanyAdminService
     }
 
     /// <inheritdoc/>
-    public async Task<List<PendingCompanyDto>> ListPendingAsync(CancellationToken cancellationToken = default)
+    public async Task<List<PendingCompanyModel>> ListPendingAsync(CancellationToken cancellationToken = default)
     {
         List<Company> pending = await this.companies.ListPendingAsync(cancellationToken);
 
         // A ordenação é feita aqui, como nas restantes listas.
         return pending
-            .Select(company => new PendingCompanyDto(company.Id, company.CompanyName, company.TaxId, company.SubmittedAt))
+            .Select(company => new PendingCompanyModel(company.Id, company.CompanyName, company.TaxId, company.SubmittedAt))
             .OrderBy(item => item.SubmittedAt)
             .ThenBy(item => item.CompanyId)
             .ToList();
     }
 
     /// <inheritdoc/>
-    public async Task<CompanyRegistrationDto> GetSubmittedDataAsync(Guid companyId, CancellationToken cancellationToken = default)
+    public async Task<CompanyRegistrationModel> GetSubmittedDataAsync(Guid companyId, CancellationToken cancellationToken = default)
     {
         CompanyWithLocation found = await this.companies.GetWithLocationAsync(companyId, cancellationToken)
             ?? throw new ElementNotFoundException();
         Company company = found.Company;
 
-        return new CompanyRegistrationDto(
+        return new CompanyRegistrationModel(
             company.Id,
             company.CompanyName,
             company.TaxId,
@@ -107,7 +107,7 @@ public sealed class CompanyAdminService : ICompanyAdminService
     public async Task RejectAsync(
         Guid adminId,
         Guid companyId,
-        RejectCompanyRequest request,
+        RejectCompanyInput request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -157,19 +157,19 @@ public sealed class CompanyAdminService : ICompanyAdminService
     }
 
     /// <inheritdoc/>
-    public async Task<List<CompanyAdminDto>> ListCompaniesAsync(CancellationToken cancellationToken = default)
+    public async Task<List<CompanyAdminModel>> ListCompaniesAsync(CancellationToken cancellationToken = default)
     {
         List<CompanyWithCount> all = await this.companies.ListAllWithPublishedCountAsync(cancellationToken);
 
         return all
-            .Select(item => new CompanyAdminDto(item.Company.Id, item.Company.CompanyName, item.Company.Status, item.PublishedJobs))
+            .Select(item => new CompanyAdminModel(item.Company.Id, item.Company.CompanyName, item.Company.Status, item.PublishedJobs))
             .OrderBy(item => item.CompanyName, Alphabetical)
             .ThenBy(item => item.CompanyId)
             .ToList();
     }
 
     /// <inheritdoc/>
-    public async Task<List<PublishedJobAdminDto>> ListPublishedJobsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<PublishedJobAdminModel>> ListPublishedJobsAsync(CancellationToken cancellationToken = default)
     {
         List<JobWithCount> published = await this.jobs.ListPublishedWithInterestCountAsync(cancellationToken);
 
@@ -180,7 +180,7 @@ public sealed class CompanyAdminService : ICompanyAdminService
         // Publicar e voltar a publicar preenchem published_at (Job.Publish, Job.Republish); a data da primeira publicação,
         // que o ck_job_published garante, só é usada se faltar. A ordenação é feita aqui, como nas restantes listas.
         return published
-            .Select(item => new PublishedJobAdminDto(
+            .Select(item => new PublishedJobAdminModel(
                 item.Job.Id,
                 item.Job.Title,
                 companyNames.GetValueOrDefault(item.Job.CompanyId, string.Empty),
@@ -197,12 +197,12 @@ public sealed class CompanyAdminService : ICompanyAdminService
 
         if (reason.Length == 0)
         {
-            throw new ValidationFailedException([new FieldErrorDto("reason", FieldReasons.Required)]);
+            throw new ValidationFailedException([new FieldError("reason", FieldReasons.Required)]);
         }
 
         if (reason.Length < Company.MinReasonLength || reason.Length > Company.MaxReasonLength)
         {
-            throw new ValidationFailedException([new FieldErrorDto("reason", FieldReasons.RejectionReasonLength)]);
+            throw new ValidationFailedException([new FieldError("reason", FieldReasons.RejectionReasonLength)]);
         }
 
         return reason;
@@ -213,7 +213,7 @@ public sealed class CompanyAdminService : ICompanyAdminService
         if (company.Status != expected)
         {
             throw new OperationConflictException(
-                ApiErrorResponse.InvalidState(ApiErrorResponse.CompanyStatusLabel(company.Status)));
+                ServiceErrors.InvalidState(ApiErrorResponse.CompanyStatusLabel(company.Status)));
         }
     }
 
@@ -233,7 +233,7 @@ public sealed class CompanyAdminService : ICompanyAdminService
         {
             // A Empresa ou uma das conversas foi alterada por outro pedido entre a leitura e a gravação: nada fica
             // gravado e o Administrador repete a operação (modelo de dados, secção 7.3).
-            throw new OperationConflictException(ApiErrorResponse.ConcurrencyConflict());
+            throw new OperationConflictException(ServiceErrors.ConcurrencyConflict());
         }
     }
 }
