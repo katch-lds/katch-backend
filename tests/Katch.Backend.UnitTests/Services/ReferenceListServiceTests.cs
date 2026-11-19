@@ -2,11 +2,11 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -49,14 +49,14 @@ public sealed class ReferenceListServiceTests
         var esposende = new Location("Esposende", "Braga", 41.532m, -8.781m);
         this.referenceData.Locations.AddRange([guimaraes, evora, braga, esposende]);
 
-        List<ReferenceItemDto> items = await this.Service().ListLocationsAsync(TestContext.Current.CancellationToken);
+        List<ReferenceItemModel> items = await this.Service().ListLocationsAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [
-                new ReferenceItemDto(braga.Id, "Braga (Braga)"),
-                new ReferenceItemDto(esposende.Id, "Esposende (Braga)"),
-                new ReferenceItemDto(evora.Id, "Évora (Évora)"),
-                new ReferenceItemDto(guimaraes.Id, "Guimarães (Braga)"),
+                new ReferenceItemModel(braga.Id, "Braga (Braga)"),
+                new ReferenceItemModel(esposende.Id, "Esposende (Braga)"),
+                new ReferenceItemModel(evora.Id, "Évora (Évora)"),
+                new ReferenceItemModel(guimaraes.Id, "Guimarães (Braga)"),
             ],
             items);
     }
@@ -85,15 +85,15 @@ public sealed class ReferenceListServiceTests
         var docker = new Skill("Docker");
         this.referenceData.Skills.AddRange([sql, csharp, ethics, angular, docker]);
 
-        List<ReferenceItemDto> items = await this.Service().ListSkillsAsync(TestContext.Current.CancellationToken);
+        List<ReferenceItemModel> items = await this.Service().ListSkillsAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [
-                new ReferenceItemDto(angular.Id, "angular"),
-                new ReferenceItemDto(csharp.Id, "C#"),
-                new ReferenceItemDto(docker.Id, "Docker"),
-                new ReferenceItemDto(ethics.Id, "Éticas de engenharia"),
-                new ReferenceItemDto(sql.Id, "SQL"),
+                new ReferenceItemModel(angular.Id, "angular"),
+                new ReferenceItemModel(csharp.Id, "C#"),
+                new ReferenceItemModel(docker.Id, "Docker"),
+                new ReferenceItemModel(ethics.Id, "Éticas de engenharia"),
+                new ReferenceItemModel(sql.Id, "SQL"),
             ],
             items);
     }
@@ -112,14 +112,14 @@ public sealed class ReferenceListServiceTests
         var car = new Benefit("Carro de empresa");
         this.referenceData.Benefits.AddRange([health, training, flexible, car]);
 
-        List<ReferenceItemDto> items = await this.Service().ListBenefitsAsync(TestContext.Current.CancellationToken);
+        List<ReferenceItemModel> items = await this.Service().ListBenefitsAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [
-                new ReferenceItemDto(training.Id, "Ações de formação"),
-                new ReferenceItemDto(car.Id, "Carro de empresa"),
-                new ReferenceItemDto(flexible.Id, "horário flexível"),
-                new ReferenceItemDto(health.Id, "Seguro de saúde"),
+                new ReferenceItemModel(training.Id, "Ações de formação"),
+                new ReferenceItemModel(car.Id, "Carro de empresa"),
+                new ReferenceItemModel(flexible.Id, "horário flexível"),
+                new ReferenceItemModel(health.Id, "Seguro de saúde"),
             ],
             items);
     }
@@ -142,13 +142,13 @@ public sealed class ReferenceListServiceTests
     [Fact]
     public async Task AddSkillCreatesTheSkillAndLogsTheOperation()
     {
-        ReferenceItemDto created = await this.Service().AddSkillAsync(
+        ReferenceItemModel created = await this.Service().AddSkillAsync(
             AdminId,
-            new ReferenceItemRequest("  Kubernetes  "),
+            new ReferenceItemInput("  Kubernetes  "),
             TestContext.Current.CancellationToken);
 
         Skill skill = Assert.Single(this.referenceData.Skills);
-        Assert.Equal(new ReferenceItemDto(skill.Id, "Kubernetes"), created);
+        Assert.Equal(new ReferenceItemModel(skill.Id, "Kubernetes"), created);
         Assert.Equal([(AdminId, OperationType.SkillCreated, skill.Id)], this.operationLogger.Entries);
         Assert.Equal(1, this.unitOfWork.Saves);
     }
@@ -160,13 +160,13 @@ public sealed class ReferenceListServiceTests
     [Fact]
     public async Task AddBenefitCreatesTheBenefitAndLogsTheOperation()
     {
-        ReferenceItemDto created = await this.Service().AddBenefitAsync(
+        ReferenceItemModel created = await this.Service().AddBenefitAsync(
             AdminId,
-            new ReferenceItemRequest("Horário flexível"),
+            new ReferenceItemInput("Horário flexível"),
             TestContext.Current.CancellationToken);
 
         Benefit benefit = Assert.Single(this.referenceData.Benefits);
-        Assert.Equal(new ReferenceItemDto(benefit.Id, "Horário flexível"), created);
+        Assert.Equal(new ReferenceItemModel(benefit.Id, "Horário flexível"), created);
         Assert.Equal([(AdminId, OperationType.BenefitCreated, benefit.Id)], this.operationLogger.Entries);
         Assert.Equal(1, this.unitOfWork.Saves);
     }
@@ -180,9 +180,9 @@ public sealed class ReferenceListServiceTests
     {
         string name = new('a', 100);
 
-        ReferenceItemDto created = await this.Service().AddSkillAsync(
+        ReferenceItemModel created = await this.Service().AddSkillAsync(
             AdminId,
-            new ReferenceItemRequest(name),
+            new ReferenceItemInput(name),
             TestContext.Current.CancellationToken);
 
         Assert.Equal(name, created.Name);
@@ -200,9 +200,9 @@ public sealed class ReferenceListServiceTests
     public async Task InvalidSkillNameIsRejected(string? name, string reason)
     {
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => this.Service().AddSkillAsync(AdminId, new ReferenceItemRequest(name), TestContext.Current.CancellationToken));
+            () => this.Service().AddSkillAsync(AdminId, new ReferenceItemInput(name), TestContext.Current.CancellationToken));
 
-        Assert.Equal([new FieldErrorDto("name", reason)], exception.Fields);
+        Assert.Equal([new FieldError("name", reason)], exception.Fields);
         this.AssertNothingChanged();
     }
 
@@ -217,9 +217,9 @@ public sealed class ReferenceListServiceTests
     public async Task InvalidBenefitNameIsRejected(string? name, string reason)
     {
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => this.Service().AddBenefitAsync(AdminId, new ReferenceItemRequest(name), TestContext.Current.CancellationToken));
+            () => this.Service().AddBenefitAsync(AdminId, new ReferenceItemInput(name), TestContext.Current.CancellationToken));
 
-        Assert.Equal([new FieldErrorDto("name", reason)], exception.Fields);
+        Assert.Equal([new FieldError("name", reason)], exception.Fields);
         this.AssertNothingChanged();
     }
 
@@ -233,9 +233,9 @@ public sealed class ReferenceListServiceTests
         this.referenceData.Skills.Add(new Skill("Kubernetes"));
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => this.Service().AddSkillAsync(AdminId, new ReferenceItemRequest(" KUBERNETES "), TestContext.Current.CancellationToken));
+            () => this.Service().AddSkillAsync(AdminId, new ReferenceItemInput(" KUBERNETES "), TestContext.Current.CancellationToken));
 
-        Assert.Equal([new FieldErrorDto("name", FieldReasons.ReferenceNameTaken)], exception.Fields);
+        Assert.Equal([new FieldError("name", FieldReasons.ReferenceNameTaken)], exception.Fields);
         Assert.Single(this.referenceData.Skills);
         this.AssertNothingChanged();
     }
@@ -250,9 +250,9 @@ public sealed class ReferenceListServiceTests
         this.referenceData.Benefits.Add(new Benefit("Seguro de saúde"));
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => this.Service().AddBenefitAsync(AdminId, new ReferenceItemRequest("seguro de SAÚDE"), TestContext.Current.CancellationToken));
+            () => this.Service().AddBenefitAsync(AdminId, new ReferenceItemInput("seguro de SAÚDE"), TestContext.Current.CancellationToken));
 
-        Assert.Equal([new FieldErrorDto("name", FieldReasons.ReferenceNameTaken)], exception.Fields);
+        Assert.Equal([new FieldError("name", FieldReasons.ReferenceNameTaken)], exception.Fields);
         this.AssertNothingChanged();
     }
 
@@ -267,13 +267,13 @@ public sealed class ReferenceListServiceTests
         var skill = new Skill("Docker");
         this.referenceData.Skills.Add(skill);
 
-        ReferenceItemDto renamed = await this.Service().RenameSkillAsync(
+        ReferenceItemModel renamed = await this.Service().RenameSkillAsync(
             AdminId,
             skill.Id,
-            new ReferenceItemRequest(" Docker Compose "),
+            new ReferenceItemInput(" Docker Compose "),
             TestContext.Current.CancellationToken);
 
-        Assert.Equal(new ReferenceItemDto(skill.Id, "Docker Compose"), renamed);
+        Assert.Equal(new ReferenceItemModel(skill.Id, "Docker Compose"), renamed);
         Assert.Equal("Docker Compose", skill.Name);
         Assert.Equal([(AdminId, OperationType.SkillRenamed, skill.Id)], this.operationLogger.Entries);
         Assert.Equal(1, this.unitOfWork.Saves);
@@ -289,10 +289,10 @@ public sealed class ReferenceListServiceTests
         var skill = new Skill("sql");
         this.referenceData.Skills.Add(skill);
 
-        ReferenceItemDto renamed = await this.Service().RenameSkillAsync(
+        ReferenceItemModel renamed = await this.Service().RenameSkillAsync(
             AdminId,
             skill.Id,
-            new ReferenceItemRequest("SQL"),
+            new ReferenceItemInput("SQL"),
             TestContext.Current.CancellationToken);
 
         Assert.Equal("SQL", renamed.Name);
@@ -312,9 +312,9 @@ public sealed class ReferenceListServiceTests
         this.referenceData.Skills.AddRange([csharp, sql]);
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => this.Service().RenameSkillAsync(AdminId, sql.Id, new ReferenceItemRequest("c#"), TestContext.Current.CancellationToken));
+            () => this.Service().RenameSkillAsync(AdminId, sql.Id, new ReferenceItemInput("c#"), TestContext.Current.CancellationToken));
 
-        Assert.Equal([new FieldErrorDto("name", FieldReasons.ReferenceNameTaken)], exception.Fields);
+        Assert.Equal([new FieldError("name", FieldReasons.ReferenceNameTaken)], exception.Fields);
         Assert.Equal("SQL", sql.Name);
         this.AssertNothingChanged();
     }
@@ -330,9 +330,9 @@ public sealed class ReferenceListServiceTests
         this.referenceData.Skills.Add(skill);
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => this.Service().RenameSkillAsync(AdminId, skill.Id, new ReferenceItemRequest(" "), TestContext.Current.CancellationToken));
+            () => this.Service().RenameSkillAsync(AdminId, skill.Id, new ReferenceItemInput(" "), TestContext.Current.CancellationToken));
 
-        Assert.Equal([new FieldErrorDto("name", FieldReasons.ReferenceNameRequired)], exception.Fields);
+        Assert.Equal([new FieldError("name", FieldReasons.ReferenceNameRequired)], exception.Fields);
         Assert.Equal("Docker", skill.Name);
         this.AssertNothingChanged();
     }
@@ -346,7 +346,7 @@ public sealed class ReferenceListServiceTests
     public async Task RenameUnknownSkillIsNotFound()
     {
         await Assert.ThrowsAsync<ElementNotFoundException>(
-            () => this.Service().RenameSkillAsync(AdminId, Guid.NewGuid(), new ReferenceItemRequest(null), TestContext.Current.CancellationToken));
+            () => this.Service().RenameSkillAsync(AdminId, Guid.NewGuid(), new ReferenceItemInput(null), TestContext.Current.CancellationToken));
 
         this.AssertNothingChanged();
     }
@@ -361,13 +361,13 @@ public sealed class ReferenceListServiceTests
         var benefit = new Benefit("Seguro de saúde");
         this.referenceData.Benefits.Add(benefit);
 
-        ReferenceItemDto renamed = await this.Service().RenameBenefitAsync(
+        ReferenceItemModel renamed = await this.Service().RenameBenefitAsync(
             AdminId,
             benefit.Id,
-            new ReferenceItemRequest("Seguro de saúde extensível ao agregado"),
+            new ReferenceItemInput("Seguro de saúde extensível ao agregado"),
             TestContext.Current.CancellationToken);
 
-        Assert.Equal(new ReferenceItemDto(benefit.Id, "Seguro de saúde extensível ao agregado"), renamed);
+        Assert.Equal(new ReferenceItemModel(benefit.Id, "Seguro de saúde extensível ao agregado"), renamed);
         Assert.Equal([(AdminId, OperationType.BenefitRenamed, benefit.Id)], this.operationLogger.Entries);
         Assert.Equal(benefit.Id, this.referenceData.LastExceptId);
         Assert.Equal(1, this.unitOfWork.Saves);
@@ -385,9 +385,9 @@ public sealed class ReferenceListServiceTests
         this.referenceData.Benefits.AddRange([health, car]);
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => this.Service().RenameBenefitAsync(AdminId, car.Id, new ReferenceItemRequest("SEGURO DE SAÚDE"), TestContext.Current.CancellationToken));
+            () => this.Service().RenameBenefitAsync(AdminId, car.Id, new ReferenceItemInput("SEGURO DE SAÚDE"), TestContext.Current.CancellationToken));
 
-        Assert.Equal([new FieldErrorDto("name", FieldReasons.ReferenceNameTaken)], exception.Fields);
+        Assert.Equal([new FieldError("name", FieldReasons.ReferenceNameTaken)], exception.Fields);
         Assert.Equal("Carro de empresa", car.Name);
         this.AssertNothingChanged();
     }
@@ -400,7 +400,7 @@ public sealed class ReferenceListServiceTests
     public async Task RenameUnknownBenefitIsNotFound()
     {
         await Assert.ThrowsAsync<ElementNotFoundException>(
-            () => this.Service().RenameBenefitAsync(AdminId, Guid.NewGuid(), new ReferenceItemRequest("Ginásio"), TestContext.Current.CancellationToken));
+            () => this.Service().RenameBenefitAsync(AdminId, Guid.NewGuid(), new ReferenceItemInput("Ginásio"), TestContext.Current.CancellationToken));
 
         this.AssertNothingChanged();
     }
@@ -418,14 +418,14 @@ public sealed class ReferenceListServiceTests
     {
         string index = isSkill ? ReferenceListService.SkillNameUniqueIndex : ReferenceListService.BenefitNameUniqueIndex;
         this.unitOfWork.FailWith = new UniqueConstraintViolationException(index, new InvalidOperationException());
-        var request = new ReferenceItemRequest("Kotlin");
+        var request = new ReferenceItemInput("Kotlin");
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => isSkill
                 ? this.Service().AddSkillAsync(AdminId, request, TestContext.Current.CancellationToken)
                 : this.Service().AddBenefitAsync(AdminId, request, TestContext.Current.CancellationToken));
 
-        Assert.Equal([new FieldErrorDto("name", FieldReasons.ReferenceNameTaken)], exception.Fields);
+        Assert.Equal([new FieldError("name", FieldReasons.ReferenceNameTaken)], exception.Fields);
     }
 
     /// <summary>
@@ -440,7 +440,7 @@ public sealed class ReferenceListServiceTests
             new InvalidOperationException());
 
         await Assert.ThrowsAsync<UniqueConstraintViolationException>(
-            () => this.Service().AddSkillAsync(AdminId, new ReferenceItemRequest("Kotlin"), TestContext.Current.CancellationToken));
+            () => this.Service().AddSkillAsync(AdminId, new ReferenceItemInput("Kotlin"), TestContext.Current.CancellationToken));
     }
 
     private ReferenceListService Service()

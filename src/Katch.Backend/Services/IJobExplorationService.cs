@@ -1,6 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Domain;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -19,7 +20,7 @@ public interface IJobExplorationService
     /// <param name="candidateId">Identificador do Candidato.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>O cartão, ou <see langword="null"/> se nenhuma vaga cumprir o filtro (UC05, A6).</returns>
-    public Task<JobCardDto?> GetNextCardAsync(Guid candidateId, CancellationToken cancellationToken = default);
+    public Task<JobCardModel?> GetNextCardAsync(Guid candidateId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Obtém o detalhe de uma vaga disponível para os Candidatos: o cartão, com a distância à localidade do Candidato, a
@@ -34,7 +35,7 @@ public interface IJobExplorationService
     /// Se a vaga não existir, estiver eliminada, não estiver publicada ou estiver expirada, ou se a Empresa não estiver
     /// aprovada.
     /// </exception>
-    public Task<JobDetailDto> GetDetailAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default);
+    public Task<JobDetailModel> GetDetailAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Regista a recusa da vaga, sem consumir a quota e sem limite de recusas (RF018, RF112).
@@ -55,7 +56,7 @@ public interface IJobExplorationService
     /// <returns>A quota atualizada.</returns>
     /// <exception cref="JobAnswerRejectedException">Se a vaga não existir, já tiver resposta ou já não estiver disponível.</exception>
     /// <exception cref="Domain.QuotaExhaustedException">Se a quota estiver esgotada e o bloqueio não tiver terminado.</exception>
-    public Task<QuotaDto> ExpressInterestAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default);
+    public Task<QuotaModel> ExpressInterestAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Consulta a quota de interesses, repondo-a antes se o período de bloqueio já terminou (RF020 a RF022).
@@ -63,7 +64,7 @@ public interface IJobExplorationService
     /// <param name="candidateId">Identificador do Candidato.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A quota atual.</returns>
-    public Task<QuotaDto> GetQuotaAsync(Guid candidateId, CancellationToken cancellationToken = default);
+    public Task<QuotaModel> GetQuotaAsync(Guid candidateId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Devolve a página de apresentação de uma Empresa aprovada, sem os contactos, que o Candidato só vê depois do match
@@ -71,9 +72,9 @@ public interface IJobExplorationService
     /// </summary>
     /// <param name="companyId">Identificador da Empresa.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
-    /// <returns>A página de apresentação.</returns>
+    /// <returns>A Empresa aprovada, com os dados da página de apresentação; a camada da API converte-a na página (I138).</returns>
     /// <exception cref="ElementNotFoundException">
     /// ERR-20, se a Empresa não existir ou não estiver aprovada (pendente, recusada ou suspensa).
     /// </exception>
-    public Task<CompanyPageDto> GetCompanyPageAsync(Guid companyId, CancellationToken cancellationToken = default);
+    public Task<Company> GetCompanyPageAsync(Guid companyId, CancellationToken cancellationToken = default);
 }

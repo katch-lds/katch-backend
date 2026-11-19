@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -17,7 +17,7 @@ public interface IMatchService
     /// <param name="candidateId">Identificador do Candidato, da credencial de sessão.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Os matches; lista vazia se não houver nenhum.</returns>
-    public Task<List<MatchDto>> ListForCandidateAsync(Guid candidateId, CancellationToken cancellationToken = default);
+    public Task<List<MatchModel>> ListForCandidateAsync(Guid candidateId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Lista os matches das vagas da Empresa do Recrutador, do mais recente para o mais antigo, com os contactos do
@@ -26,5 +26,5 @@ public interface IMatchService
     /// <param name="recruiterId">Identificador do Recrutador, da credencial de sessão.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Os matches; lista vazia se não houver nenhum ou se o Recrutador não tiver Empresa.</returns>
-    public Task<List<MatchDto>> ListForRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default);
+    public Task<List<MatchModel>> ListForRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default);
 }

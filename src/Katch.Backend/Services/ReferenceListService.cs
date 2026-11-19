@@ -3,10 +3,10 @@
 using System.Globalization;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -61,41 +61,41 @@ public sealed class ReferenceListService : IReferenceListService
     }
 
     /// <inheritdoc/>
-    public async Task<List<ReferenceItemDto>> ListLocationsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<ReferenceItemModel>> ListLocationsAsync(CancellationToken cancellationToken = default)
     {
         List<Location> locations = await this.referenceData.ListLocationsAsync(cancellationToken);
 
         return locations
-            .Select(location => new ReferenceItemDto(location.Id, DisplayName(location)))
+            .Select(location => new ReferenceItemModel(location.Id, DisplayName(location)))
             .OrderBy(item => item.Name, Alphabetical)
             .ToList();
     }
 
     /// <inheritdoc/>
-    public async Task<List<ReferenceItemDto>> ListSkillsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<ReferenceItemModel>> ListSkillsAsync(CancellationToken cancellationToken = default)
     {
         List<Skill> skills = await this.referenceData.ListSkillsAsync(cancellationToken);
         return skills
-            .Select(skill => new ReferenceItemDto(skill.Id, skill.Name))
+            .Select(skill => new ReferenceItemModel(skill.Id, skill.Name))
             .OrderBy(item => item.Name, Alphabetical)
             .ToList();
     }
 
     /// <inheritdoc/>
-    public async Task<List<ReferenceItemDto>> ListBenefitsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<ReferenceItemModel>> ListBenefitsAsync(CancellationToken cancellationToken = default)
     {
         List<Benefit> benefits = await this.referenceData.ListBenefitsAsync(cancellationToken);
 
         return benefits
-            .Select(benefit => new ReferenceItemDto(benefit.Id, benefit.Name))
+            .Select(benefit => new ReferenceItemModel(benefit.Id, benefit.Name))
             .OrderBy(item => item.Name, Alphabetical)
             .ToList();
     }
 
     /// <inheritdoc/>
-    public async Task<ReferenceItemDto> AddSkillAsync(
+    public async Task<ReferenceItemModel> AddSkillAsync(
         Guid adminId,
-        ReferenceItemRequest request,
+        ReferenceItemInput request,
         CancellationToken cancellationToken = default)
     {
         string name = await ValidateNameAsync(
@@ -107,14 +107,14 @@ public sealed class ReferenceListService : IReferenceListService
         await this.operationLogger.LogAsync(adminId, OperationType.SkillCreated, skill.Id, cancellationToken);
         await this.SaveAsync(SkillNameUniqueIndex, cancellationToken);
 
-        return new ReferenceItemDto(skill.Id, skill.Name);
+        return new ReferenceItemModel(skill.Id, skill.Name);
     }
 
     /// <inheritdoc/>
-    public async Task<ReferenceItemDto> RenameSkillAsync(
+    public async Task<ReferenceItemModel> RenameSkillAsync(
         Guid adminId,
         Guid skillId,
-        ReferenceItemRequest request,
+        ReferenceItemInput request,
         CancellationToken cancellationToken = default)
     {
         Skill skill = await this.referenceData.GetSkillAsync(skillId, cancellationToken)
@@ -130,13 +130,13 @@ public sealed class ReferenceListService : IReferenceListService
         await this.operationLogger.LogAsync(adminId, OperationType.SkillRenamed, skill.Id, cancellationToken);
         await this.SaveAsync(SkillNameUniqueIndex, cancellationToken);
 
-        return new ReferenceItemDto(skill.Id, skill.Name);
+        return new ReferenceItemModel(skill.Id, skill.Name);
     }
 
     /// <inheritdoc/>
-    public async Task<ReferenceItemDto> AddBenefitAsync(
+    public async Task<ReferenceItemModel> AddBenefitAsync(
         Guid adminId,
-        ReferenceItemRequest request,
+        ReferenceItemInput request,
         CancellationToken cancellationToken = default)
     {
         string name = await ValidateNameAsync(
@@ -148,14 +148,14 @@ public sealed class ReferenceListService : IReferenceListService
         await this.operationLogger.LogAsync(adminId, OperationType.BenefitCreated, benefit.Id, cancellationToken);
         await this.SaveAsync(BenefitNameUniqueIndex, cancellationToken);
 
-        return new ReferenceItemDto(benefit.Id, benefit.Name);
+        return new ReferenceItemModel(benefit.Id, benefit.Name);
     }
 
     /// <inheritdoc/>
-    public async Task<ReferenceItemDto> RenameBenefitAsync(
+    public async Task<ReferenceItemModel> RenameBenefitAsync(
         Guid adminId,
         Guid benefitId,
-        ReferenceItemRequest request,
+        ReferenceItemInput request,
         CancellationToken cancellationToken = default)
     {
         Benefit benefit = await this.referenceData.GetBenefitAsync(benefitId, cancellationToken)
@@ -170,7 +170,7 @@ public sealed class ReferenceListService : IReferenceListService
         await this.operationLogger.LogAsync(adminId, OperationType.BenefitRenamed, benefit.Id, cancellationToken);
         await this.SaveAsync(BenefitNameUniqueIndex, cancellationToken);
 
-        return new ReferenceItemDto(benefit.Id, benefit.Name);
+        return new ReferenceItemModel(benefit.Id, benefit.Name);
     }
 
     /// <summary>
@@ -180,7 +180,7 @@ public sealed class ReferenceListService : IReferenceListService
     /// <param name="request">Pedido com a designação.</param>
     /// <param name="nameExists">Verifica se a designação já existe noutro elemento da lista.</param>
     /// <returns>A designação sem os espaços nas extremidades.</returns>
-    private static async Task<string> ValidateNameAsync(ReferenceItemRequest request, Func<string, Task<bool>> nameExists)
+    private static async Task<string> ValidateNameAsync(ReferenceItemInput request, Func<string, Task<bool>> nameExists)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -200,7 +200,7 @@ public sealed class ReferenceListService : IReferenceListService
             reason = FieldReasons.ReferenceNameTaken;
         }
 
-        return reason is null ? name : throw new ValidationFailedException([new FieldErrorDto("name", reason)]);
+        return reason is null ? name : throw new ValidationFailedException([new FieldError("name", reason)]);
     }
 
     /// <summary>
@@ -215,7 +215,7 @@ public sealed class ReferenceListService : IReferenceListService
         }
         catch (UniqueConstraintViolationException exception) when (exception.ConstraintName == nameUniqueIndex)
         {
-            throw new ValidationFailedException([new FieldErrorDto("name", FieldReasons.ReferenceNameTaken)]);
+            throw new ValidationFailedException([new FieldError("name", FieldReasons.ReferenceNameTaken)]);
         }
     }
 }

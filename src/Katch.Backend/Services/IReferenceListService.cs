@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -16,7 +16,7 @@ public interface IReferenceListService
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As localidades.</returns>
-    public Task<List<ReferenceItemDto>> ListLocationsAsync(CancellationToken cancellationToken = default);
+    public Task<List<ReferenceItemModel>> ListLocationsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Lista as competências da lista pré-definida por ordem alfabética da designação (documentação da API v02, secção
@@ -24,14 +24,14 @@ public interface IReferenceListService
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As competências.</returns>
-    public Task<List<ReferenceItemDto>> ListSkillsAsync(CancellationToken cancellationToken = default);
+    public Task<List<ReferenceItemModel>> ListSkillsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Lista os benefícios por ordem alfabética da designação (documentação da API v02, secção 6.13.3; RF050).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Os benefícios.</returns>
-    public Task<List<ReferenceItemDto>> ListBenefitsAsync(CancellationToken cancellationToken = default);
+    public Task<List<ReferenceItemModel>> ListBenefitsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Acrescenta uma competência à lista e regista a operação (documentação da API v02, secção 6.13.4; RF099, RF112).
@@ -41,9 +41,9 @@ public interface IReferenceListService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A competência criada.</returns>
     /// <exception cref="ValidationFailedException">Se a designação estiver vazia, for demasiado longa ou já existir.</exception>
-    public Task<ReferenceItemDto> AddSkillAsync(
+    public Task<ReferenceItemModel> AddSkillAsync(
         Guid adminId,
-        ReferenceItemRequest request,
+        ReferenceItemInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -57,10 +57,10 @@ public interface IReferenceListService
     /// <returns>A competência alterada.</returns>
     /// <exception cref="ValidationFailedException">Se a designação estiver vazia, for demasiado longa ou já existir noutra competência.</exception>
     /// <exception cref="ElementNotFoundException">Se a competência não existir.</exception>
-    public Task<ReferenceItemDto> RenameSkillAsync(
+    public Task<ReferenceItemModel> RenameSkillAsync(
         Guid adminId,
         Guid skillId,
-        ReferenceItemRequest request,
+        ReferenceItemInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -71,9 +71,9 @@ public interface IReferenceListService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>O benefício criado.</returns>
     /// <exception cref="ValidationFailedException">Se a designação estiver vazia, for demasiado longa ou já existir.</exception>
-    public Task<ReferenceItemDto> AddBenefitAsync(
+    public Task<ReferenceItemModel> AddBenefitAsync(
         Guid adminId,
-        ReferenceItemRequest request,
+        ReferenceItemInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -87,9 +87,9 @@ public interface IReferenceListService
     /// <returns>O benefício alterado.</returns>
     /// <exception cref="ValidationFailedException">Se a designação estiver vazia, for demasiado longa ou já existir noutro benefício.</exception>
     /// <exception cref="ElementNotFoundException">Se o benefício não existir.</exception>
-    public Task<ReferenceItemDto> RenameBenefitAsync(
+    public Task<ReferenceItemModel> RenameBenefitAsync(
         Guid adminId,
         Guid benefitId,
-        ReferenceItemRequest request,
+        ReferenceItemInput request,
         CancellationToken cancellationToken = default);
 }

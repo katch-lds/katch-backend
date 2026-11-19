@@ -4,9 +4,9 @@ using System.Security.Cryptography;
 using System.Text;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Authentication;
+using Katch.Backend.Services.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -105,7 +105,7 @@ public sealed class JwtTokenServiceTests
     {
         DateTimeOffset now = Issued.AddMilliseconds(789);
 
-        LoginResponse response = this.CreateService(now).CreateToken(NewUser(UserType.Admin));
+        LoginResult response = this.CreateService(now).CreateToken(NewUser(UserType.Admin));
 
         Assert.Equal(Issued.AddHours(8), response.ExpiresAt);
         Assert.Equal(Read(response).ValidTo, response.ExpiresAt.UtcDateTime);
@@ -119,7 +119,7 @@ public sealed class JwtTokenServiceTests
     {
         AppUser user = NewUser(UserType.Recruiter);
 
-        LoginResponse response = this.CreateService(Issued).CreateToken(user);
+        LoginResult response = this.CreateService(Issued).CreateToken(user);
 
         Assert.Equal(user.Id, response.UserId);
         Assert.Equal(UserType.Recruiter, response.UserType);
@@ -174,7 +174,7 @@ public sealed class JwtTokenServiceTests
         };
         using ServiceProvider provider = BuildProvider(new string('x', 32), extra);
 
-        LoginResponse response = provider.GetRequiredService<ITokenService>().CreateToken(NewUser(UserType.Candidate));
+        LoginResult response = provider.GetRequiredService<ITokenService>().CreateToken(NewUser(UserType.Candidate));
         JsonWebToken token = Read(response);
 
         Assert.Equal("katch-backend", JwtOptions.Issuer);
@@ -199,7 +199,7 @@ public sealed class JwtTokenServiceTests
         return new AppUser($"{Guid.NewGuid():N}@katch.pt", "hash", userType, Issued, Issued);
     }
 
-    private static JsonWebToken Read(LoginResponse response)
+    private static JsonWebToken Read(LoginResult response)
     {
         return new JsonWebTokenHandler().ReadJsonWebToken(response.Token);
     }

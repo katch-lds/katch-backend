@@ -1,10 +1,12 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Controllers;
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Katch.Backend.UnitTests.Controllers;
@@ -13,7 +15,7 @@ namespace Katch.Backend.UnitTests.Controllers;
 /// Testes dos controllers do Administrador — <see cref="AdminAccountsController"/>,
 /// <see cref="AdminCompaniesController"/> e <see cref="AdminIndicatorsController"/> (documentação da API v02, secções
 /// 6.10 a 6.12) — com os serviços substituídos por duplos: as operações registam o Administrador da credencial, as
-/// listas devolvem <c>200</c> e as decisões <c>204</c>; o período dos indicadores é validado no controller, com todos os
+/// listas devolvem <c>200</c> com os modelos do serviço no formato da API (I138) e as decisões <c>204</c>; o período dos indicadores é validado no controller, com todos os
 /// campos em erro na mesma resposta.
 /// </summary>
 public sealed class AdminControllersTests
@@ -31,15 +33,15 @@ public sealed class AdminControllersTests
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         var service = new ServiceDouble<IAccountAdminService>();
-        List<AccountDto> accounts = [];
-        List<CandidateAdminDto> candidates = [];
+        List<AccountModel> accounts = [];
+        List<CandidateAdminModel> candidates = [];
         service
             .Returns(nameof(IAccountAdminService.ListAccountsAsync), accounts)
             .Returns(nameof(IAccountAdminService.ListCandidatesAsync), candidates);
         AdminAccountsController controller = new AdminAccountsController(service.Service).WithUser(this.adminId, AccountRoles.Admin);
 
-        Assert.Same(accounts, Assert.IsType<OkObjectResult>((await controller.ListAccounts(token)).Result).Value);
-        Assert.Same(candidates, Assert.IsType<OkObjectResult>((await controller.ListCandidates(token)).Result).Value);
+        Assert.Empty(Assert.IsType<List<AccountDto>>(Assert.IsType<OkObjectResult>((await controller.ListAccounts(token)).Result).Value));
+        Assert.Empty(Assert.IsType<List<CandidateAdminDto>>(Assert.IsType<OkObjectResult>((await controller.ListCandidates(token)).Result).Value));
         Assert.IsType<NoContentResult>(await controller.Block(this.targetId, token));
         Assert.IsType<NoContentResult>(await controller.SuspendCandidate(this.targetId, token));
         Assert.IsType<NoContentResult>(await controller.Reactivate(this.targetId, token));
@@ -63,10 +65,10 @@ public sealed class AdminControllersTests
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         var service = new ServiceDouble<ICompanyAdminService>();
-        List<PendingCompanyDto> pending = [];
-        var registration = ControllerTesting.Sentinel<CompanyRegistrationDto>();
-        List<CompanyAdminDto> companies = [];
-        List<PublishedJobAdminDto> jobs = [];
+        List<PendingCompanyModel> pending = [];
+        CompanyRegistrationModel registration = ServiceModels.CompanyRegistration;
+        List<CompanyAdminModel> companies = [];
+        List<PublishedJobAdminModel> jobs = [];
         service
             .Returns(nameof(ICompanyAdminService.ListPendingAsync), pending)
             .Returns(nameof(ICompanyAdminService.GetSubmittedDataAsync), registration)
@@ -74,10 +76,12 @@ public sealed class AdminControllersTests
             .Returns(nameof(ICompanyAdminService.ListPublishedJobsAsync), jobs);
         AdminCompaniesController controller = new AdminCompaniesController(service.Service).WithUser(this.adminId, AccountRoles.Admin);
 
-        Assert.Same(pending, Assert.IsType<OkObjectResult>((await controller.ListPending(token)).Result).Value);
-        Assert.Same(registration, Assert.IsType<OkObjectResult>((await controller.GetSubmittedData(this.targetId, token)).Result).Value);
-        Assert.Same(companies, Assert.IsType<OkObjectResult>((await controller.ListCompanies(token)).Result).Value);
-        Assert.Same(jobs, Assert.IsType<OkObjectResult>((await controller.ListPublishedJobs(token)).Result).Value);
+        Assert.Empty(Assert.IsType<List<PendingCompanyDto>>(Assert.IsType<OkObjectResult>((await controller.ListPending(token)).Result).Value));
+        Assert.Equal(
+            registration.ToDto(),
+            Assert.IsType<OkObjectResult>((await controller.GetSubmittedData(this.targetId, token)).Result).Value);
+        Assert.Empty(Assert.IsType<List<CompanyAdminDto>>(Assert.IsType<OkObjectResult>((await controller.ListCompanies(token)).Result).Value));
+        Assert.Empty(Assert.IsType<List<PublishedJobAdminDto>>(Assert.IsType<OkObjectResult>((await controller.ListPublishedJobs(token)).Result).Value));
         Assert.IsType<NoContentResult>(await controller.Approve(this.targetId, token));
         Assert.IsType<NoContentResult>(await controller.Reject(this.targetId, null, token));
         Assert.IsType<NoContentResult>(await controller.Suspend(this.targetId, token));
@@ -87,7 +91,7 @@ public sealed class AdminControllersTests
         ServiceCall reject = service.Calls.Single(call => call.Method == nameof(ICompanyAdminService.RejectAsync));
         Assert.Equal(this.adminId, reject.Arguments[0]);
         Assert.Equal(this.targetId, reject.Arguments[1]);
-        Assert.Same(RejectCompanyRequest.Empty, reject.Arguments[2]);
+        Assert.Equal(RejectCompanyInput.Empty, reject.Arguments[2]);
     }
 
     /// <summary>
@@ -99,13 +103,13 @@ public sealed class AdminControllersTests
     public async Task IndicatorsParseThePeriod()
     {
         var service = new ServiceDouble<IIndicatorService>();
-        var indicators = ControllerTesting.Sentinel<IndicatorsDto>();
+        IndicatorsModel indicators = ServiceModels.Indicators;
         service.Returns(nameof(IIndicatorService.GetAsync), indicators);
         AdminIndicatorsController controller = new AdminIndicatorsController(service.Service).WithUser(this.adminId, AccountRoles.Admin);
 
         ActionResult<IndicatorsDto> result = await controller.Get(" 2026-10-01 ", "2026-10-31", TestContext.Current.CancellationToken);
 
-        Assert.Same(indicators, result.Value);
+        Assert.Equal(indicators.ToDto(), result.Value);
         ServiceCall call = service.SingleCall(nameof(IIndicatorService.GetAsync));
         Assert.Equal(new DateOnly(2026, 10, 1), call.Arguments[0]);
         Assert.Equal(new DateOnly(2026, 10, 31), call.Arguments[1]);
@@ -132,7 +136,7 @@ public sealed class AdminControllersTests
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => controller.Get(from, to, TestContext.Current.CancellationToken));
 
-        var expected = new List<FieldErrorDto>();
+        var expected = new List<FieldError>();
         AddExpected(expected, "from", fromReason);
         AddExpected(expected, "to", toReason);
         Assert.Equal(expected, exception.Fields);
@@ -158,15 +162,15 @@ public sealed class AdminControllersTests
         Assert.Empty(companies.Calls);
     }
 
-    private static void AddExpected(List<FieldErrorDto> expected, string field, string reason)
+    private static void AddExpected(List<FieldError> expected, string field, string reason)
     {
         if (reason == "required")
         {
-            expected.Add(new FieldErrorDto(field, FieldReasons.Required));
+            expected.Add(new FieldError(field, FieldReasons.Required));
         }
         else if (reason == "format")
         {
-            expected.Add(new FieldErrorDto(field, FieldReasons.DateFormat));
+            expected.Add(new FieldError(field, FieldReasons.DateFormat));
         }
     }
 }

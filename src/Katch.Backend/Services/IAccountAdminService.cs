@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -15,14 +15,14 @@ public interface IAccountAdminService
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As contas, com o correio, o tipo e o estado.</returns>
-    public Task<List<AccountDto>> ListAccountsAsync(CancellationToken cancellationToken = default);
+    public Task<List<AccountModel>> ListAccountsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Lista todos os Candidatos por ordem alfabética do nome (RF088).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Os Candidatos, com o nome, o correio, a localidade, a data de registo e o estado da conta.</returns>
-    public Task<List<CandidateAdminDto>> ListCandidatesAsync(CancellationToken cancellationToken = default);
+    public Task<List<CandidateAdminModel>> ListCandidatesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Bloqueia uma conta de Candidato ou de Recrutador ativa e passa as conversas abertas da conta a consulta, com o

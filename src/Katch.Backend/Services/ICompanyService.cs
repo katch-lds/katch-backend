@@ -1,6 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Domain;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -21,9 +22,9 @@ public interface ICompanyService
     /// <returns>O estado do pedido, pendente.</returns>
     /// <exception cref="OperationConflictException">ERR-40, se o Recrutador já registou uma Empresa.</exception>
     /// <exception cref="ValidationFailedException">Se um ou mais campos não cumprirem a validação automática.</exception>
-    public Task<CompanyStatusDto> RegisterAsync(
+    public Task<CompanyStatusModel> RegisterAsync(
         Guid recruiterId,
-        CompanyRegistrationRequest request,
+        CompanyRegistrationInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -38,9 +39,9 @@ public interface ICompanyService
     /// <exception cref="ElementNotFoundException">ERR-20, se o Recrutador ainda não registou a Empresa.</exception>
     /// <exception cref="OperationConflictException">ERR-30, se a Empresa não estiver recusada.</exception>
     /// <exception cref="ValidationFailedException">Se um ou mais campos não cumprirem a validação automática.</exception>
-    public Task<CompanyStatusDto> ResubmitAsync(
+    public Task<CompanyStatusModel> ResubmitAsync(
         Guid recruiterId,
-        CompanyRegistrationRequest request,
+        CompanyRegistrationInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -51,7 +52,7 @@ public interface ICompanyService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>O estado do pedido.</returns>
     /// <exception cref="ElementNotFoundException">ERR-20, se o Recrutador ainda não registou a Empresa.</exception>
-    public Task<CompanyStatusDto> GetStatusAsync(Guid recruiterId, CancellationToken cancellationToken = default);
+    public Task<CompanyStatusModel> GetStatusAsync(Guid recruiterId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Devolve os dados de registo da Empresa do Recrutador, em qualquer estado, para pré-preencher os formulários de
@@ -61,7 +62,7 @@ public interface ICompanyService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Os oito dados de registo, com a designação da localidade.</returns>
     /// <exception cref="ElementNotFoundException">ERR-20, se o Recrutador ainda não registou a Empresa.</exception>
-    public Task<CompanyRegistrationDto> GetRegistrationAsync(Guid recruiterId, CancellationToken cancellationToken = default);
+    public Task<CompanyRegistrationModel> GetRegistrationAsync(Guid recruiterId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Altera os dados de registo da Empresa aprovada, que se mantém aprovada, e regista <c>COMPANY_UPDATED</c> no
@@ -75,9 +76,9 @@ public interface ICompanyService
     /// <exception cref="ValidationFailedException">
     /// Se um ou mais campos não cumprirem a validação automática, incluindo o NIF diferente do registado.
     /// </exception>
-    public Task<CompanyStatusDto> UpdateRegistrationAsync(
+    public Task<CompanyStatusModel> UpdateRegistrationAsync(
         Guid recruiterId,
-        CompanyRegistrationRequest request,
+        CompanyRegistrationInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -86,9 +87,9 @@ public interface ICompanyService
     /// </summary>
     /// <param name="recruiterId">Identificador do Recrutador da credencial de sessão, com a Empresa aprovada.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
-    /// <returns>A página de apresentação.</returns>
+    /// <returns>A Empresa, com os dados da página de apresentação; a camada da API converte-a na página (I138).</returns>
     /// <exception cref="ElementNotFoundException">ERR-20, se o Recrutador ainda não registou a Empresa.</exception>
-    public Task<CompanyPageDto> GetPageAsync(Guid recruiterId, CancellationToken cancellationToken = default);
+    public Task<Company> GetPageAsync(Guid recruiterId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Grava a descrição da atividade e o sítio na Internet da página de apresentação (documentação da API v02, secção
@@ -97,12 +98,12 @@ public interface ICompanyService
     /// <param name="recruiterId">Identificador do Recrutador da credencial de sessão, com a Empresa aprovada.</param>
     /// <param name="request">Descrição e sítio na Internet.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
-    /// <returns>A página de apresentação atualizada.</returns>
+    /// <returns>A Empresa, com a página de apresentação atualizada.</returns>
     /// <exception cref="ElementNotFoundException">ERR-20, se o Recrutador ainda não registou a Empresa.</exception>
     /// <exception cref="ValidationFailedException">Se a descrição ou o sítio na Internet não cumprirem a validação.</exception>
-    public Task<CompanyPageDto> UpdatePageAsync(
+    public Task<Company> UpdatePageAsync(
         Guid recruiterId,
-        CompanyPageRequest request,
+        CompanyPageInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>

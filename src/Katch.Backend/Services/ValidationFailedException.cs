@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -15,7 +15,7 @@ public sealed class ValidationFailedException : Exception
     /// </summary>
     /// <param name="fields">Um erro por campo em causa; pelo menos um.</param>
     /// <exception cref="ArgumentException">Se a lista estiver vazia.</exception>
-    public ValidationFailedException(IReadOnlyList<FieldErrorDto> fields)
+    public ValidationFailedException(IReadOnlyList<FieldError> fields)
         : base("Os dados enviados não cumprem a validação automática.")
     {
         ArgumentNullException.ThrowIfNull(fields);
@@ -31,5 +31,5 @@ public sealed class ValidationFailedException : Exception
     /// <summary>
     /// Gets the errors per field.
     /// </summary>
-    public IReadOnlyList<FieldErrorDto> Fields { get; }
+    public IReadOnlyList<FieldError> Fields { get; }
 }

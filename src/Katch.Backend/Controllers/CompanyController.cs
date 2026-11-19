@@ -1,9 +1,11 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using System.Security.Claims;
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Api;
 using Katch.Backend.Infrastructure.Authentication;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,14 +38,17 @@ public sealed class CompanyController : ControllerBase
     private const string UploadFileField = "file";
 
     private readonly ICompanyService companyService;
+    private readonly IFileUrlBuilder fileUrlBuilder;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CompanyController"/> class.
     /// </summary>
     /// <param name="companyService">Serviço do registo da Empresa.</param>
-    public CompanyController(ICompanyService companyService)
+    /// <param name="fileUrlBuilder">Conversor dos caminhos guardados nos URL da API, para a página de apresentação.</param>
+    public CompanyController(ICompanyService companyService, IFileUrlBuilder fileUrlBuilder)
     {
         this.companyService = companyService;
+        this.fileUrlBuilder = fileUrlBuilder;
     }
 
     /// <summary>
@@ -65,10 +70,10 @@ public sealed class CompanyController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CompanyRegistrationRequest? request,
         CancellationToken cancellationToken)
     {
-        CompanyStatusDto status = await this.companyService.RegisterAsync(
+        CompanyStatusDto status = (await this.companyService.RegisterAsync(
             this.RecruiterId(),
-            request ?? CompanyRegistrationRequest.Empty,
-            cancellationToken);
+            (request ?? CompanyRegistrationRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
         return this.Created(StatusRoute, status);
     }
 
@@ -92,10 +97,10 @@ public sealed class CompanyController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CompanyRegistrationRequest? request,
         CancellationToken cancellationToken)
     {
-        return await this.companyService.ResubmitAsync(
+        return (await this.companyService.ResubmitAsync(
             this.RecruiterId(),
-            request ?? CompanyRegistrationRequest.Empty,
-            cancellationToken);
+            (request ?? CompanyRegistrationRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -109,7 +114,7 @@ public sealed class CompanyController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CompanyStatusDto>> GetStatus(CancellationToken cancellationToken)
     {
-        return await this.companyService.GetStatusAsync(this.RecruiterId(), cancellationToken);
+        return (await this.companyService.GetStatusAsync(this.RecruiterId(), cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -123,7 +128,7 @@ public sealed class CompanyController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CompanyRegistrationDto>> GetRegistration(CancellationToken cancellationToken)
     {
-        return await this.companyService.GetRegistrationAsync(this.RecruiterId(), cancellationToken);
+        return (await this.companyService.GetRegistrationAsync(this.RecruiterId(), cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -146,10 +151,10 @@ public sealed class CompanyController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CompanyRegistrationRequest? request,
         CancellationToken cancellationToken)
     {
-        return await this.companyService.UpdateRegistrationAsync(
+        return (await this.companyService.UpdateRegistrationAsync(
             this.RecruiterId(),
-            request ?? CompanyRegistrationRequest.Empty,
-            cancellationToken);
+            (request ?? CompanyRegistrationRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -164,7 +169,8 @@ public sealed class CompanyController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<CompanyPageDto>> GetPage(CancellationToken cancellationToken)
     {
-        return await this.companyService.GetPageAsync(this.RecruiterId(), cancellationToken);
+        return (await this.companyService.GetPageAsync(this.RecruiterId(), cancellationToken))
+            .ToPageDto(this.fileUrlBuilder);
     }
 
     /// <summary>
@@ -187,10 +193,10 @@ public sealed class CompanyController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CompanyPageRequest? request,
         CancellationToken cancellationToken)
     {
-        return await this.companyService.UpdatePageAsync(
+        return (await this.companyService.UpdatePageAsync(
             this.RecruiterId(),
-            request ?? CompanyPageRequest.Empty,
-            cancellationToken);
+            (request ?? CompanyPageRequest.Empty).ToInput(),
+            cancellationToken)).ToPageDto(this.fileUrlBuilder);
     }
 
     /// <summary>

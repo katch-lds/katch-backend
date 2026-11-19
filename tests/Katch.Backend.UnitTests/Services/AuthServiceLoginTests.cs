@@ -2,11 +2,11 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -58,7 +58,7 @@ public sealed class AuthServiceLoginTests
     {
         AppUser user = this.AddUser(userType);
 
-        LoginResponse response = await this.service.LoginAsync(Credentials(), app, TestContext.Current.CancellationToken);
+        LoginResult response = await this.service.LoginAsync(Credentials(), app, TestContext.Current.CancellationToken);
 
         Assert.Same(user, this.tokens.IssuedFor);
         Assert.Equal(user.Id, response.UserId);
@@ -110,7 +110,7 @@ public sealed class AuthServiceLoginTests
         this.AddUser(UserType.Candidate);
 
         await this.AssertRejectedAsync(
-            new LoginRequest("outra.pessoa@exemplo.pt", ValidPassword),
+            new LoginInput("outra.pessoa@exemplo.pt", ValidPassword),
             ClientApp.Mobile,
             LoginRejection.InvalidCredentials);
 
@@ -147,7 +147,7 @@ public sealed class AuthServiceLoginTests
         AppUser user = this.AddUser(UserType.Candidate);
 
         await this.AssertRejectedAsync(
-            new LoginRequest(Email, "errada2026"),
+            new LoginInput(Email, "errada2026"),
             ClientApp.Mobile,
             LoginRejection.InvalidCredentials);
 
@@ -165,7 +165,7 @@ public sealed class AuthServiceLoginTests
         this.AddUser(UserType.Candidate);
 
         await this.AssertRejectedAsync(
-            new LoginRequest(Email, $" {ValidPassword} "),
+            new LoginInput(Email, $" {ValidPassword} "),
             ClientApp.Mobile,
             LoginRejection.InvalidCredentials);
     }
@@ -179,8 +179,8 @@ public sealed class AuthServiceLoginTests
     {
         AppUser user = this.AddUser(UserType.Candidate);
 
-        LoginResponse response = await this.service.LoginAsync(
-            new LoginRequest("  ANA.Ferreira@EXEMPLO.pt ", ValidPassword),
+        LoginResult response = await this.service.LoginAsync(
+            new LoginInput("  ANA.Ferreira@EXEMPLO.pt ", ValidPassword),
             ClientApp.Mobile,
             TestContext.Current.CancellationToken);
 
@@ -215,7 +215,7 @@ public sealed class AuthServiceLoginTests
 
         await this.AssertRejectedAsync(Credentials(), ClientApp.Mobile, expected);
         await this.AssertRejectedAsync(
-            new LoginRequest(Email, "errada2026"),
+            new LoginInput(Email, "errada2026"),
             ClientApp.Mobile,
             LoginRejection.InvalidCredentials);
         Assert.Null(this.tokens.IssuedFor);
@@ -243,7 +243,7 @@ public sealed class AuthServiceLoginTests
         this.AddUser(UserType.Candidate, account => account.Block(Now));
 
         await this.AssertRejectedAsync(
-            new LoginRequest(Email, "errada2026"),
+            new LoginInput(Email, "errada2026"),
             ClientApp.Web,
             LoginRejection.InvalidCredentials);
     }
@@ -266,7 +266,7 @@ public sealed class AuthServiceLoginTests
         this.AddUser(UserType.Candidate);
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => this.service.LoginAsync(new LoginRequest(email, password), ClientApp.Mobile, TestContext.Current.CancellationToken));
+            () => this.service.LoginAsync(new LoginInput(email, password), ClientApp.Mobile, TestContext.Current.CancellationToken));
 
         Assert.Equal(expectedFields.Split(','), exception.Fields.Select(field => field.Field));
         Assert.All(exception.Fields, field => Assert.Equal(FieldReasons.Required, field.Reason));
@@ -283,7 +283,7 @@ public sealed class AuthServiceLoginTests
     public async Task EmailFormatAndPasswordPolicyAreNotRevealed()
     {
         await this.AssertRejectedAsync(
-            new LoginRequest("isto-nao-e-um-correio", "x"),
+            new LoginInput("isto-nao-e-um-correio", "x"),
             ClientApp.Mobile,
             LoginRejection.InvalidCredentials);
     }
@@ -299,7 +299,7 @@ public sealed class AuthServiceLoginTests
 
         LoginRejectedException exception = await Assert.ThrowsAsync<LoginRejectedException>(
             () => this.service.LoginAsync(
-                new LoginRequest(Email, "errada2026"),
+                new LoginInput(Email, "errada2026"),
                 ClientApp.Mobile,
                 TestContext.Current.CancellationToken));
 
@@ -321,7 +321,7 @@ public sealed class AuthServiceLoginTests
 
         await this.service.ChangePasswordAsync(
             user.Id,
-            new ChangePasswordRequest(ValidPassword, NewPassword),
+            new ChangePasswordInput(ValidPassword, NewPassword),
             TestContext.Current.CancellationToken);
 
         Assert.NotEqual(previousHash, user.PasswordHash);
@@ -342,11 +342,11 @@ public sealed class AuthServiceLoginTests
         AppUser user = this.AddUser(UserType.Candidate);
         string previousHash = user.PasswordHash;
 
-        IReadOnlyList<FieldErrorDto> fields = await this.ChangeExpectingErrorsAsync(
+        IReadOnlyList<FieldError> fields = await this.ChangeExpectingErrorsAsync(
             user.Id,
-            new ChangePasswordRequest("errada2026", NewPassword));
+            new ChangePasswordInput("errada2026", NewPassword));
 
-        Assert.Equal(new FieldErrorDto("currentPassword", FieldReasons.CurrentIncorrect), Assert.Single(fields));
+        Assert.Equal(new FieldError("currentPassword", FieldReasons.CurrentIncorrect), Assert.Single(fields));
         Assert.Equal(previousHash, user.PasswordHash);
         Assert.Equal(0, this.unitOfWork.Saves);
     }
@@ -368,11 +368,11 @@ public sealed class AuthServiceLoginTests
     {
         AppUser user = this.AddUser(UserType.Candidate);
 
-        IReadOnlyList<FieldErrorDto> fields = await this.ChangeExpectingErrorsAsync(
+        IReadOnlyList<FieldError> fields = await this.ChangeExpectingErrorsAsync(
             user.Id,
-            new ChangePasswordRequest(ValidPassword, newPassword));
+            new ChangePasswordInput(ValidPassword, newPassword));
 
-        Assert.Equal(new FieldErrorDto("newPassword", reason), Assert.Single(fields));
+        Assert.Equal(new FieldError("newPassword", reason), Assert.Single(fields));
         Assert.Equal(0, this.unitOfWork.Saves);
     }
 
@@ -388,18 +388,18 @@ public sealed class AuthServiceLoginTests
 
         await this.service.ChangePasswordAsync(
             user.Id,
-            new ChangePasswordRequest(ValidPassword, "katch202"),
+            new ChangePasswordInput(ValidPassword, "katch202"),
             TestContext.Current.CancellationToken);
         await this.service.ChangePasswordAsync(
             user.Id,
-            new ChangePasswordRequest("katch202", longest),
+            new ChangePasswordInput("katch202", longest),
             TestContext.Current.CancellationToken);
-        IReadOnlyList<FieldErrorDto> fields = await this.ChangeExpectingErrorsAsync(
+        IReadOnlyList<FieldError> fields = await this.ChangeExpectingErrorsAsync(
             user.Id,
-            new ChangePasswordRequest(longest, longest + "a"));
+            new ChangePasswordInput(longest, longest + "a"));
 
         Assert.Equal(128, longest.Length);
-        Assert.Equal(new FieldErrorDto("newPassword", FieldReasons.PasswordTooLong), Assert.Single(fields));
+        Assert.Equal(new FieldError("newPassword", FieldReasons.PasswordTooLong), Assert.Single(fields));
         Assert.Equal(2, this.unitOfWork.Saves);
     }
 
@@ -412,14 +412,14 @@ public sealed class AuthServiceLoginTests
     {
         AppUser user = this.AddUser(UserType.Candidate);
 
-        IReadOnlyList<FieldErrorDto> fields = await this.ChangeExpectingErrorsAsync(
+        IReadOnlyList<FieldError> fields = await this.ChangeExpectingErrorsAsync(
             user.Id,
-            new ChangePasswordRequest("errada2026", "katch"));
+            new ChangePasswordInput("errada2026", "katch"));
 
         Assert.Equal(
             [
-                new FieldErrorDto("currentPassword", FieldReasons.CurrentIncorrect),
-                new FieldErrorDto("newPassword", FieldReasons.PasswordPolicy),
+                new FieldError("currentPassword", FieldReasons.CurrentIncorrect),
+                new FieldError("newPassword", FieldReasons.PasswordPolicy),
             ],
             fields);
     }
@@ -434,12 +434,12 @@ public sealed class AuthServiceLoginTests
         AppUser user = this.AddUser(UserType.Candidate);
         this.hasher.Verifications.Clear();
 
-        IReadOnlyList<FieldErrorDto> fields = await this.ChangeExpectingErrorsAsync(user.Id, ChangePasswordRequest.Empty);
+        IReadOnlyList<FieldError> fields = await this.ChangeExpectingErrorsAsync(user.Id, ChangePasswordInput.Empty);
 
         Assert.Equal(
             [
-                new FieldErrorDto("currentPassword", FieldReasons.Required),
-                new FieldErrorDto("newPassword", FieldReasons.Required),
+                new FieldError("currentPassword", FieldReasons.Required),
+                new FieldError("newPassword", FieldReasons.Required),
             ],
             fields);
         Assert.Empty(this.hasher.Verifications);
@@ -455,15 +455,15 @@ public sealed class AuthServiceLoginTests
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => this.service.ChangePasswordAsync(
                 Guid.NewGuid(),
-                new ChangePasswordRequest(ValidPassword, NewPassword),
+                new ChangePasswordInput(ValidPassword, NewPassword),
                 TestContext.Current.CancellationToken));
 
         Assert.Equal(0, this.unitOfWork.Saves);
     }
 
-    private static LoginRequest Credentials()
+    private static LoginInput Credentials()
     {
-        return new LoginRequest(Email, ValidPassword);
+        return new LoginInput(Email, ValidPassword);
     }
 
     private AppUser AddUser(UserType userType, Action<AppUser>? configure = null)
@@ -475,7 +475,7 @@ public sealed class AuthServiceLoginTests
         return user;
     }
 
-    private async Task AssertRejectedAsync(LoginRequest request, ClientApp app, LoginRejection expected)
+    private async Task AssertRejectedAsync(LoginInput request, ClientApp app, LoginRejection expected)
     {
         LoginRejectedException exception = await Assert.ThrowsAsync<LoginRejectedException>(
             () => this.service.LoginAsync(request, app, TestContext.Current.CancellationToken));
@@ -483,7 +483,7 @@ public sealed class AuthServiceLoginTests
         Assert.Equal(expected, exception.Reason);
     }
 
-    private async Task<IReadOnlyList<FieldErrorDto>> ChangeExpectingErrorsAsync(Guid userId, ChangePasswordRequest request)
+    private async Task<IReadOnlyList<FieldError>> ChangeExpectingErrorsAsync(Guid userId, ChangePasswordInput request)
     {
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.ChangePasswordAsync(userId, request, TestContext.Current.CancellationToken));
@@ -671,10 +671,10 @@ public sealed class AuthServiceLoginTests
     {
         public AppUser? IssuedFor { get; private set; }
 
-        public LoginResponse CreateToken(AppUser user)
+        public LoginResult CreateToken(AppUser user)
         {
             this.IssuedFor = user;
-            return new LoginResponse("token", Now.AddHours(8), user.UserType, user.Id);
+            return new LoginResult("token", Now.AddHours(8), user.UserType, user.Id);
         }
     }
 

@@ -2,10 +2,10 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -184,13 +184,13 @@ public sealed class CompanyAdminServiceTests
         this.companies.PublishedJobs[lumen.Id] = 4;
         this.companies.PublishedJobs[zeta.Id] = 1;
 
-        List<CompanyAdminDto> list = await this.service.ListCompaniesAsync(TestContext.Current.CancellationToken);
+        List<CompanyAdminModel> list = await this.service.ListCompaniesAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [
-                new CompanyAdminDto(agua.Id, "Águas do Minho, Lda.", CompanyStatus.Pending, 0),
-                new CompanyAdminDto(lumen.Id, "lumen Software, Lda.", CompanyStatus.Approved, 4),
-                new CompanyAdminDto(zeta.Id, "Zeta Logística, S.A.", CompanyStatus.Suspended, 1),
+                new CompanyAdminModel(agua.Id, "Águas do Minho, Lda.", CompanyStatus.Pending, 0),
+                new CompanyAdminModel(lumen.Id, "lumen Software, Lda.", CompanyStatus.Approved, 4),
+                new CompanyAdminModel(zeta.Id, "Zeta Logística, S.A.", CompanyStatus.Suspended, 1),
             ],
             list);
     }
@@ -213,12 +213,12 @@ public sealed class CompanyAdminServiceTests
                 new JobWithCount(newer, 0),
             ]);
 
-        List<PublishedJobAdminDto> list = await this.service.ListPublishedJobsAsync(TestContext.Current.CancellationToken);
+        List<PublishedJobAdminModel> list = await this.service.ListPublishedJobsAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [
-                new PublishedJobAdminDto(newer.Id, "Técnico de Logística", "Zeta Logística, S.A.", Now.AddDays(-2), 0),
-                new PublishedJobAdminDto(older.Id, "Programador Backend .NET", "Lumen Software, Lda.", Now.AddDays(-20), 3),
+                new PublishedJobAdminModel(newer.Id, "Técnico de Logística", "Zeta Logística, S.A.", Now.AddDays(-2), 0),
+                new PublishedJobAdminModel(older.Id, "Programador Backend .NET", "Lumen Software, Lda.", Now.AddDays(-20), 3),
             ],
             list);
     }

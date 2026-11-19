@@ -1,10 +1,13 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Controllers;
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Domain;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Katch.Backend.UnitTests.Controllers;
@@ -20,6 +23,7 @@ public sealed class JobExplorationControllerTests
     private readonly Guid candidateId = Guid.NewGuid();
     private readonly Guid jobId = Guid.NewGuid();
     private readonly ServiceDouble<IJobExplorationService> service = new();
+    private readonly FileUrlBuilder fileUrlBuilder = new();
     private readonly JobExplorationController controller;
 
     /// <summary>
@@ -27,7 +31,7 @@ public sealed class JobExplorationControllerTests
     /// </summary>
     public JobExplorationControllerTests()
     {
-        this.controller = new JobExplorationController(this.service.Service).WithUser(this.candidateId, AccountRoles.Candidate);
+        this.controller = new JobExplorationController(this.service.Service, this.fileUrlBuilder).WithUser(this.candidateId, AccountRoles.Candidate);
     }
 
     /// <summary>
@@ -38,35 +42,42 @@ public sealed class JobExplorationControllerTests
     public async Task NextCardIsNoContentWhenThereAreNoJobs()
     {
         ActionResult<JobCardDto> none = await this.controller.GetNextCard(TestContext.Current.CancellationToken);
-        var card = ControllerTesting.Sentinel<JobCardDto>();
+        JobCardModel card = ServiceModels.JobCard;
         this.service.Returns(nameof(IJobExplorationService.GetNextCardAsync), card);
         ActionResult<JobCardDto> next = await this.controller.GetNextCard(TestContext.Current.CancellationToken);
 
         Assert.IsType<NoContentResult>(none.Result);
-        Assert.Same(card, Assert.IsType<OkObjectResult>(next.Result).Value);
+        Assert.Equivalent(card.ToDto(), Assert.IsType<OkObjectResult>(next.Result).Value, strict: true);
         Assert.All(this.service.Calls, call => Assert.Equal(this.candidateId, call.Arguments[0]));
     }
 
     /// <summary>
-    /// O detalhe, a quota e a página da Empresa devolvem <c>200</c> com o resultado do serviço (6.3.2, 6.3.6, 6.3.3).
+    /// O detalhe, a quota e a página da Empresa devolvem <c>200</c> com o resultado do serviço no formato da API; a página
+    /// é construída a partir da Empresa devolvida pelo serviço (6.3.2, 6.3.6, 6.3.3, I138).
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
     public async Task ReadsReturnTheServiceResult()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
-        var detail = ControllerTesting.Sentinel<JobDetailDto>();
-        var quota = new QuotaDto(7, Candidate.MaxInterests, null);
-        var page = ControllerTesting.Sentinel<CompanyPageDto>();
+        JobDetailModel detail = ServiceModels.JobDetail;
+        var quota = new QuotaModel(7, Candidate.MaxInterests, null);
+        Company page = ServiceModels.Company;
         Guid companyId = Guid.NewGuid();
         this.service
             .Returns(nameof(IJobExplorationService.GetDetailAsync), detail)
             .Returns(nameof(IJobExplorationService.GetQuotaAsync), quota)
             .Returns(nameof(IJobExplorationService.GetCompanyPageAsync), page);
 
-        Assert.Same(detail, Assert.IsType<OkObjectResult>((await this.controller.GetDetail(this.jobId, token)).Result).Value);
-        Assert.Same(quota, Assert.IsType<OkObjectResult>((await this.controller.GetQuota(token)).Result).Value);
-        Assert.Same(page, (await this.controller.GetCompanyPage(companyId, token)).Value);
+        Assert.Equivalent(
+            detail.ToDto(),
+            Assert.IsType<OkObjectResult>((await this.controller.GetDetail(this.jobId, token)).Result).Value,
+            strict: true);
+        Assert.Equal(quota.ToDto(), Assert.IsType<OkObjectResult>((await this.controller.GetQuota(token)).Result).Value);
+        Assert.Equivalent(
+            page.ToPageDto(this.fileUrlBuilder),
+            (await this.controller.GetCompanyPage(companyId, token)).Value,
+            strict: true);
 
         Assert.Equal(this.jobId, this.service.Calls[0].Arguments[1]);
         Assert.Equal(companyId, this.service.Calls[2].Arguments[0]);
@@ -79,14 +90,14 @@ public sealed class JobExplorationControllerTests
     [Fact]
     public async Task DeclineAndInterest()
     {
-        var quota = new QuotaDto(9, Candidate.MaxInterests, null);
+        var quota = new QuotaModel(9, Candidate.MaxInterests, null);
         this.service.Returns(nameof(IJobExplorationService.ExpressInterestAsync), quota);
 
         IActionResult declined = await this.controller.Decline(this.jobId, TestContext.Current.CancellationToken);
         ActionResult<QuotaDto> interest = await this.controller.ExpressInterest(this.jobId, TestContext.Current.CancellationToken);
 
         Assert.IsType<NoContentResult>(declined);
-        Assert.Same(quota, Assert.IsType<OkObjectResult>(interest.Result).Value);
+        Assert.Equal(quota.ToDto(), Assert.IsType<OkObjectResult>(interest.Result).Value);
         Assert.All(this.service.Calls, call => Assert.Equal(this.jobId, call.Arguments[1]));
     }
 

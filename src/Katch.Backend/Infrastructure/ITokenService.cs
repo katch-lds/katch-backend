@@ -1,7 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Domain;
-using Katch.Backend.Dtos;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Infrastructure;
 
@@ -16,5 +16,5 @@ public interface ITokenService
     /// </summary>
     /// <param name="user">Conta a que a credencial se destina.</param>
     /// <returns>A credencial, o instante em que expira e a identificação da conta.</returns>
-    public LoginResponse CreateToken(AppUser user);
+    public LoginResult CreateToken(AppUser user);
 }

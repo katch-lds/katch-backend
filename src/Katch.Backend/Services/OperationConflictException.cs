@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -14,8 +14,8 @@ public sealed class OperationConflictException : Exception
     /// <summary>
     /// Initializes a new instance of the <see cref="OperationConflictException"/> class.
     /// </summary>
-    /// <param name="error">Corpo da resposta, criado por <c>ApiErrorResponse</c>.</param>
-    public OperationConflictException(ApiErrorDto error)
+    /// <param name="error">Código e mensagem do erro do catálogo, criados por <see cref="ServiceErrors"/>.</param>
+    public OperationConflictException(ServiceError error)
         : base(error?.Message)
     {
         ArgumentNullException.ThrowIfNull(error);
@@ -24,7 +24,7 @@ public sealed class OperationConflictException : Exception
     }
 
     /// <summary>
-    /// Gets the body of the <c>409</c> response.
+    /// Gets the catalog error converted into the body of the <c>409</c> response.
     /// </summary>
-    public ApiErrorDto Error { get; }
+    public ServiceError Error { get; }
 }

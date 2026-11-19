@@ -1,9 +1,11 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Controllers;
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
@@ -13,7 +15,8 @@ namespace Katch.Backend.UnitTests.Controllers;
 /// <summary>
 /// Testes do <see cref="CandidateProfileController"/> (documentação da API v02, secções 6.2.1 a 6.2.11) com o serviço
 /// substituído por um duplo: o Candidato é sempre o da credencial, os pedidos sem corpo chegam ao serviço como pedidos
-/// vazios (para que o serviço indique os campos obrigatórios) e cada operação devolve o código de estado documentado.
+/// vazios (para que o serviço indique os campos obrigatórios), os modelos devolvidos pelo serviço são convertidos no
+/// formato da API (I138) e cada operação devolve o código de estado documentado.
 /// As regras do perfil e das competências são verificadas nos testes do <see cref="CandidateProfileService"/>.
 /// </summary>
 public sealed class CandidateProfileControllerTests
@@ -37,12 +40,12 @@ public sealed class CandidateProfileControllerTests
     [Fact]
     public async Task GetReturnsTheProfileOfTheSessionCandidate()
     {
-        var profile = ControllerTesting.Sentinel<CandidateProfileDto>();
+        CandidateProfileModel profile = ServiceModels.CandidateProfile;
         this.service.Returns(nameof(ICandidateProfileService.GetAsync), profile);
 
         ActionResult<CandidateProfileDto> result = await this.controller.Get(TestContext.Current.CancellationToken);
 
-        Assert.Same(profile, result.Value);
+        Assert.Equivalent(profile.ToDto(), result.Value, strict: true);
         Assert.Equal(this.candidateId, this.service.SingleCall(nameof(ICandidateProfileService.GetAsync)).Arguments[0]);
     }
 
@@ -55,6 +58,7 @@ public sealed class CandidateProfileControllerTests
     public async Task MissingBodiesReachTheServiceAsEmptyRequests()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
+        this.ReturnProfiles();
 
         await this.controller.Update(null, token);
         await this.controller.UpdatePreferences(null, token);
@@ -72,24 +76,24 @@ public sealed class CandidateProfileControllerTests
             ],
             this.service.Calls.Select(call => call.Method));
         Assert.All(this.service.Calls, call => Assert.Equal(this.candidateId, call.Arguments[0]));
-        Assert.Same(UpdateCandidateProfileRequest.Empty, this.service.Calls[0].Arguments[1]);
+        Assert.Equal(UpdateCandidateProfileInput.Empty, this.service.Calls[0].Arguments[1]);
         Assert.Equal(UpdatePreferencesRequest.Empty.ToPreferences(), this.service.Calls[1].Arguments[1]);
-        Assert.Same(SetLinksRequest.Empty, this.service.Calls[2].Arguments[1]);
-        Assert.Same(AddSkillRequest.Empty, this.service.Calls[3].Arguments[1]);
-        Assert.Same(AddCustomSkillRequest.Empty, this.service.Calls[4].Arguments[1]);
+        Assert.Equal(SetLinksInput.Empty, this.service.Calls[2].Arguments[1]);
+        Assert.Equal(AddSkillInput.Empty, this.service.Calls[3].Arguments[1]);
+        Assert.Equal(AddCustomSkillInput.Empty, this.service.Calls[4].Arguments[1]);
     }
 
     /// <summary>
-    /// A alteração do perfil, das preferências e das hiperligações passa o pedido ao serviço e devolve <c>200</c> com o
-    /// resultado (6.2.2, 6.2.3, 6.2.6).
+    /// A alteração do perfil, das preferências e das hiperligações passa os dados do pedido ao serviço e devolve
+    /// <c>200</c> com o resultado no formato da API (6.2.2, 6.2.3, 6.2.6).
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
     public async Task WritesPassTheRequestAndReturnTheResult()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
-        var profile = ControllerTesting.Sentinel<CandidateProfileDto>();
-        var preferences = ControllerTesting.Sentinel<SearchPreferencesDto>();
+        CandidateProfileModel profile = ServiceModels.CandidateProfile;
+        SearchPreferencesModel preferences = ServiceModels.Preferences;
         this.service
             .Returns(nameof(ICandidateProfileService.UpdateAsync), profile)
             .Returns(nameof(ICandidateProfileService.UpdatePreferencesAsync), preferences)
@@ -97,12 +101,15 @@ public sealed class CandidateProfileControllerTests
         var update = new UpdateCandidateProfileRequest("Programadora", Guid.NewGuid(), null, null);
         var links = new SetLinksRequest(["https://a.pt"]);
 
-        Assert.Same(profile, (await this.controller.Update(update, token)).Value);
-        Assert.Same(preferences, (await this.controller.UpdatePreferences(UpdatePreferencesRequest.Empty, token)).Value);
-        Assert.Same(profile, (await this.controller.SetLinks(links, token)).Value);
+        Assert.Equivalent(profile.ToDto(), (await this.controller.Update(update, token)).Value, strict: true);
+        Assert.Equivalent(
+            preferences.ToDto(),
+            (await this.controller.UpdatePreferences(UpdatePreferencesRequest.Empty, token)).Value,
+            strict: true);
+        Assert.Equivalent(profile.ToDto(), (await this.controller.SetLinks(links, token)).Value, strict: true);
 
-        Assert.Same(update, this.service.Calls[0].Arguments[1]);
-        Assert.Same(links, this.service.Calls[2].Arguments[1]);
+        Assert.Equal(update.ToInput(), this.service.Calls[0].Arguments[1]);
+        Assert.Equal(links.ToInput(), this.service.Calls[2].Arguments[1]);
     }
 
     /// <summary>
@@ -168,7 +175,7 @@ public sealed class CandidateProfileControllerTests
     public async Task SkillOperationsReturnCreatedOrNoContent()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
-        var profile = ControllerTesting.Sentinel<CandidateProfileDto>();
+        CandidateProfileModel profile = ServiceModels.CandidateProfile;
         this.service
             .Returns(nameof(ICandidateProfileService.AddSkillAsync), profile)
             .Returns(nameof(ICandidateProfileService.AddCustomSkillAsync), profile);
@@ -182,7 +189,7 @@ public sealed class CandidateProfileControllerTests
 
         ObjectResult addedResult = Assert.IsType<ObjectResult>(added.Result);
         Assert.Equal(StatusCodes.Status201Created, addedResult.StatusCode);
-        Assert.Same(profile, addedResult.Value);
+        Assert.Equivalent(profile.ToDto(), addedResult.Value, strict: true);
         Assert.Equal(StatusCodes.Status201Created, Assert.IsType<ObjectResult>(custom.Result).StatusCode);
         Assert.IsType<NoContentResult>(removed);
         Assert.IsType<NoContentResult>(removedCustom);
@@ -202,5 +209,15 @@ public sealed class CandidateProfileControllerTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => this.controller.Get(TestContext.Current.CancellationToken));
 
         Assert.Empty(this.service.Calls);
+    }
+
+    private void ReturnProfiles()
+    {
+        this.service
+            .Returns(nameof(ICandidateProfileService.UpdateAsync), ServiceModels.CandidateProfile)
+            .Returns(nameof(ICandidateProfileService.UpdatePreferencesAsync), ServiceModels.Preferences)
+            .Returns(nameof(ICandidateProfileService.SetLinksAsync), ServiceModels.CandidateProfile)
+            .Returns(nameof(ICandidateProfileService.AddSkillAsync), ServiceModels.CandidateProfile)
+            .Returns(nameof(ICandidateProfileService.AddCustomSkillAsync), ServiceModels.CandidateProfile);
     }
 }

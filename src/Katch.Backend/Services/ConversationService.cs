@@ -2,10 +2,10 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -36,7 +36,7 @@ public sealed class ConversationService : IConversationService
     }
 
     /// <inheritdoc/>
-    public async Task<List<ConversationSummaryDto>> ListAsync(Guid userId, CancellationToken cancellationToken = default)
+    public async Task<List<ConversationSummaryModel>> ListAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         List<ConversationView> views = await this.matches.ListConversationsByUserAsync(userId, cancellationToken);
 
@@ -45,7 +45,7 @@ public sealed class ConversationService : IConversationService
             .Where(view => view.Match.ConversationStatus is not null)
             .OrderBy(view => view.LastMessageAt is null ? 0 : 1)
             .ThenByDescending(view => view.LastMessageAt ?? view.Match.RecruiterActionAt ?? view.Match.CandidateActionAt)
-            .Select(view => new ConversationSummaryDto(
+            .Select(view => new ConversationSummaryModel(
                 view.Match.Id,
                 view.CounterpartName,
                 view.JobTitle,
@@ -59,7 +59,7 @@ public sealed class ConversationService : IConversationService
     }
 
     /// <inheritdoc/>
-    public async Task<List<MessageDto>> OpenAsync(Guid userId, Guid matchId, DateTimeOffset? after, CancellationToken cancellationToken = default)
+    public async Task<List<MessageModel>> OpenAsync(Guid userId, Guid matchId, DateTimeOffset? after, CancellationToken cancellationToken = default)
     {
         await this.GetConversationAsync(userId, matchId, cancellationToken);
 
@@ -67,11 +67,11 @@ public sealed class ConversationService : IConversationService
         await this.messages.MarkReadAsync(matchId, userId, this.clock.UtcNow, cancellationToken);
         List<Message> list = await this.messages.ListByMatchAsync(matchId, after, cancellationToken);
 
-        return list.Select(ToDto).ToList();
+        return list.Select(ToModel).ToList();
     }
 
     /// <inheritdoc/>
-    public async Task<MessageDto> SendAsync(Guid userId, Guid matchId, SendMessageRequest request, CancellationToken cancellationToken = default)
+    public async Task<MessageModel> SendAsync(Guid userId, Guid matchId, SendMessageInput request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -79,7 +79,7 @@ public sealed class ConversationService : IConversationService
 
         if (!match.CanSendMessages())
         {
-            throw new OperationConflictException(ApiErrorResponse.ConversationReadOnly());
+            throw new OperationConflictException(ServiceErrors.ConversationReadOnly());
         }
 
         string content = ValidateContent(request.Content);
@@ -88,7 +88,7 @@ public sealed class ConversationService : IConversationService
         await this.messages.AddAsync(message, cancellationToken);
         await this.unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return ToDto(message);
+        return ToModel(message);
     }
 
     /// <inheritdoc/>
@@ -98,7 +98,7 @@ public sealed class ConversationService : IConversationService
 
         if (!match.CanSendMessages())
         {
-            throw new OperationConflictException(ApiErrorResponse.ConversationReadOnly());
+            throw new OperationConflictException(ServiceErrors.ConversationReadOnly());
         }
 
         match.CloseConversation(userId, ConversationCloseReason.ClosedByParty, this.clock.UtcNow);
@@ -110,7 +110,7 @@ public sealed class ConversationService : IConversationService
         catch (ConcurrencyConflictException)
         {
             // Outro pedido (um bloqueio ou uma suspensão) encerrou a conversa entretanto: o resultado é o mesmo.
-            throw new OperationConflictException(ApiErrorResponse.ConversationReadOnly());
+            throw new OperationConflictException(ServiceErrors.ConversationReadOnly());
         }
     }
 
@@ -118,20 +118,20 @@ public sealed class ConversationService : IConversationService
     {
         if (string.IsNullOrWhiteSpace(content))
         {
-            throw new ValidationFailedException([new FieldErrorDto("content", FieldReasons.Required)]);
+            throw new ValidationFailedException([new FieldError("content", FieldReasons.Required)]);
         }
 
         if (content.Length > Message.MaxContentLength)
         {
-            throw new ValidationFailedException([new FieldErrorDto("content", FieldReasons.TextTooLong(Message.MaxContentLength))]);
+            throw new ValidationFailedException([new FieldError("content", FieldReasons.TextTooLong(Message.MaxContentLength))]);
         }
 
         return content;
     }
 
-    private static MessageDto ToDto(Message message)
+    private static MessageModel ToModel(Message message)
     {
-        return new MessageDto(message.Id, message.SenderId, message.Content, message.SentAt, message.ReadAt);
+        return new MessageModel(message.Id, message.SenderId, message.Content, message.SentAt, message.ReadAt);
     }
 
     /// <summary>
@@ -150,7 +150,7 @@ public sealed class ConversationService : IConversationService
 
         if (match.Status != MatchStatus.Matched)
         {
-            throw new OperationConflictException(ApiErrorResponse.ConversationWithoutMatch());
+            throw new OperationConflictException(ServiceErrors.ConversationWithoutMatch());
         }
 
         return match;
