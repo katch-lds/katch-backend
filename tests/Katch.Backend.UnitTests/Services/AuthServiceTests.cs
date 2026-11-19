@@ -2,11 +2,11 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -50,7 +50,7 @@ public sealed class AuthServiceTests
     [Fact]
     public async Task ValidRequestCreatesActiveCandidateWithFullQuotaAndReturnsToken()
     {
-        LoginResponse response = await this.service.RegisterCandidateAsync(Valid(), TestContext.Current.CancellationToken);
+        LoginResult response = await this.service.RegisterCandidateAsync(Valid(), TestContext.Current.CancellationToken);
 
         AppUser user = Assert.Single(this.users.Added);
         Candidate candidate = Assert.Single(this.candidates.Added);
@@ -93,7 +93,7 @@ public sealed class AuthServiceTests
     [Fact]
     public async Task TextsAreTrimmedBeforeValidationAndStorage()
     {
-        RegisterCandidateRequest request = Valid() with
+        RegisterCandidateInput request = Valid() with
         {
             FullName = "  Ana Ferreira ",
             Email = " ana.ferreira@exemplo.pt ",
@@ -136,7 +136,7 @@ public sealed class AuthServiceTests
     [InlineData("password", "2026202620", FieldReasons.PasswordPolicy)]
     public async Task InvalidFieldIsRejectedWithItsReason(string field, string value, string reason)
     {
-        RegisterCandidateRequest request = field switch
+        RegisterCandidateInput request = field switch
         {
             "fullName" => Valid() with { FullName = value },
             "email" => Valid() with { Email = value },
@@ -144,9 +144,9 @@ public sealed class AuthServiceTests
             _ => Valid() with { Password = value },
         };
 
-        IReadOnlyList<FieldErrorDto> fields = await this.RegisterExpectingErrorsAsync(request);
+        IReadOnlyList<FieldError> fields = await this.RegisterExpectingErrorsAsync(request);
 
-        Assert.Equal(new FieldErrorDto(field, reason), Assert.Single(fields));
+        Assert.Equal(new FieldError(field, reason), Assert.Single(fields));
         Assert.Empty(this.users.Added);
         Assert.Equal(0, this.unitOfWork.Saves);
     }
@@ -158,20 +158,20 @@ public sealed class AuthServiceTests
     [Fact]
     public async Task TooLongValuesAreRejected()
     {
-        RegisterCandidateRequest request = Valid() with
+        RegisterCandidateInput request = Valid() with
         {
             FullName = new string('a', 151),
             Email = new string('a', 245) + "@exemplo.pt",
             Password = new string('a', 128) + "1",
         };
 
-        IReadOnlyList<FieldErrorDto> fields = await this.RegisterExpectingErrorsAsync(request);
+        IReadOnlyList<FieldError> fields = await this.RegisterExpectingErrorsAsync(request);
 
         Assert.Equal(
             [
-                new FieldErrorDto("fullName", FieldReasons.FullNameTooLong),
-                new FieldErrorDto("email", FieldReasons.EmailTooLong),
-                new FieldErrorDto("password", FieldReasons.PasswordTooLong),
+                new FieldError("fullName", FieldReasons.FullNameTooLong),
+                new FieldError("email", FieldReasons.EmailTooLong),
+                new FieldError("password", FieldReasons.PasswordTooLong),
             ],
             fields);
     }
@@ -186,7 +186,7 @@ public sealed class AuthServiceTests
     [InlineData("k2345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678")]
     public async Task BoundaryValuesAreAccepted(string password)
     {
-        RegisterCandidateRequest request = Valid() with { FullName = new string('a', 150), Password = password };
+        RegisterCandidateInput request = Valid() with { FullName = new string('a', 150), Password = password };
 
         await this.service.RegisterCandidateAsync(request, TestContext.Current.CancellationToken);
 
@@ -202,10 +202,10 @@ public sealed class AuthServiceTests
     {
         this.users.Existing.Add("ana.ferreira@exemplo.pt");
 
-        IReadOnlyList<FieldErrorDto> fields = await this.RegisterExpectingErrorsAsync(
+        IReadOnlyList<FieldError> fields = await this.RegisterExpectingErrorsAsync(
             Valid() with { Email = "Ana.Ferreira@EXEMPLO.pt" });
 
-        Assert.Equal(new FieldErrorDto("email", FieldReasons.EmailTaken), Assert.Single(fields));
+        Assert.Equal(new FieldError("email", FieldReasons.EmailTaken), Assert.Single(fields));
     }
 
     /// <summary>
@@ -215,11 +215,11 @@ public sealed class AuthServiceTests
     [Fact]
     public async Task LocationMissingOrOutsideTheListIsRejected()
     {
-        IReadOnlyList<FieldErrorDto> missing = await this.RegisterExpectingErrorsAsync(Valid() with { LocationId = Guid.Empty });
-        IReadOnlyList<FieldErrorDto> unknown = await this.RegisterExpectingErrorsAsync(Valid() with { LocationId = Guid.NewGuid() });
+        IReadOnlyList<FieldError> missing = await this.RegisterExpectingErrorsAsync(Valid() with { LocationId = Guid.Empty });
+        IReadOnlyList<FieldError> unknown = await this.RegisterExpectingErrorsAsync(Valid() with { LocationId = Guid.NewGuid() });
 
-        Assert.Equal(new FieldErrorDto("locationId", FieldReasons.Required), Assert.Single(missing));
-        Assert.Equal(new FieldErrorDto("locationId", FieldReasons.NotInList), Assert.Single(unknown));
+        Assert.Equal(new FieldError("locationId", FieldReasons.Required), Assert.Single(missing));
+        Assert.Equal(new FieldError("locationId", FieldReasons.NotInList), Assert.Single(unknown));
     }
 
     /// <summary>
@@ -229,9 +229,9 @@ public sealed class AuthServiceTests
     [Fact]
     public async Task TermsNotAcceptedAreRejected()
     {
-        IReadOnlyList<FieldErrorDto> fields = await this.RegisterExpectingErrorsAsync(Valid() with { AcceptTerms = false });
+        IReadOnlyList<FieldError> fields = await this.RegisterExpectingErrorsAsync(Valid() with { AcceptTerms = false });
 
-        Assert.Equal(new FieldErrorDto("acceptTerms", FieldReasons.AcceptTerms), Assert.Single(fields));
+        Assert.Equal(new FieldError("acceptTerms", FieldReasons.AcceptTerms), Assert.Single(fields));
     }
 
     /// <summary>
@@ -241,16 +241,16 @@ public sealed class AuthServiceTests
     [Fact]
     public async Task AllInvalidFieldsAreReportedTogether()
     {
-        IReadOnlyList<FieldErrorDto> fields = await this.RegisterExpectingErrorsAsync(RegisterCandidateRequest.Empty);
+        IReadOnlyList<FieldError> fields = await this.RegisterExpectingErrorsAsync(RegisterCandidateInput.Empty);
 
         Assert.Equal(
             [
-                new FieldErrorDto("fullName", FieldReasons.Required),
-                new FieldErrorDto("email", FieldReasons.Required),
-                new FieldErrorDto("phoneNumber", FieldReasons.Required),
-                new FieldErrorDto("locationId", FieldReasons.Required),
-                new FieldErrorDto("password", FieldReasons.Required),
-                new FieldErrorDto("acceptTerms", FieldReasons.AcceptTerms),
+                new FieldError("fullName", FieldReasons.Required),
+                new FieldError("email", FieldReasons.Required),
+                new FieldError("phoneNumber", FieldReasons.Required),
+                new FieldError("locationId", FieldReasons.Required),
+                new FieldError("password", FieldReasons.Required),
+                new FieldError("acceptTerms", FieldReasons.AcceptTerms),
             ],
             fields);
     }
@@ -265,9 +265,9 @@ public sealed class AuthServiceTests
     {
         this.unitOfWork.FailWith = new UniqueConstraintViolationException(AuthService.EmailUniqueIndex, new InvalidOperationException());
 
-        IReadOnlyList<FieldErrorDto> fields = await this.RegisterExpectingErrorsAsync(Valid());
+        IReadOnlyList<FieldError> fields = await this.RegisterExpectingErrorsAsync(Valid());
 
-        Assert.Equal(new FieldErrorDto("email", FieldReasons.EmailTaken), Assert.Single(fields));
+        Assert.Equal(new FieldError("email", FieldReasons.EmailTaken), Assert.Single(fields));
         Assert.Null(this.tokens.IssuedFor);
     }
 
@@ -279,8 +279,8 @@ public sealed class AuthServiceTests
     [Fact]
     public async Task ValidRecruiterRequestCreatesAnActiveRecruiterAndReturnsToken()
     {
-        LoginResponse response = await this.service.CreateRecruiterAccountAsync(
-            new CreateRecruiterAccountRequest(" Recrutamento@Lumen-Exemplo.pt ", "Lumen2026rh", AcceptTerms: true),
+        LoginResult response = await this.service.CreateRecruiterAccountAsync(
+            new CreateRecruiterAccountInput(" Recrutamento@Lumen-Exemplo.pt ", "Lumen2026rh", AcceptTerms: true),
             TestContext.Current.CancellationToken);
 
         AppUser user = Assert.Single(this.users.Added);
@@ -308,14 +308,14 @@ public sealed class AuthServiceTests
     {
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.CreateRecruiterAccountAsync(
-                new CreateRecruiterAccountRequest("recrutamento", "curta", AcceptTerms: false),
+                new CreateRecruiterAccountInput("recrutamento", "curta", AcceptTerms: false),
                 TestContext.Current.CancellationToken));
 
         Assert.Equal(
             [
-                new FieldErrorDto("email", FieldReasons.EmailFormat),
-                new FieldErrorDto("password", FieldReasons.PasswordPolicy),
-                new FieldErrorDto("acceptTerms", FieldReasons.AcceptTerms),
+                new FieldError("email", FieldReasons.EmailFormat),
+                new FieldError("password", FieldReasons.PasswordPolicy),
+                new FieldError("acceptTerms", FieldReasons.AcceptTerms),
             ],
             exception.Fields);
         Assert.Empty(this.users.Added);
@@ -333,14 +333,14 @@ public sealed class AuthServiceTests
     {
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.CreateRecruiterAccountAsync(
-                CreateRecruiterAccountRequest.Empty,
+                CreateRecruiterAccountInput.Empty,
                 TestContext.Current.CancellationToken));
 
         Assert.Equal(
             [
-                new FieldErrorDto("email", FieldReasons.Required),
-                new FieldErrorDto("password", FieldReasons.Required),
-                new FieldErrorDto("acceptTerms", FieldReasons.AcceptTerms),
+                new FieldError("email", FieldReasons.Required),
+                new FieldError("password", FieldReasons.Required),
+                new FieldError("acceptTerms", FieldReasons.AcceptTerms),
             ],
             exception.Fields);
     }
@@ -357,10 +357,10 @@ public sealed class AuthServiceTests
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.CreateRecruiterAccountAsync(
-                new CreateRecruiterAccountRequest("RECRUTAMENTO@lumen-exemplo.pt", "Lumen2026rh", AcceptTerms: true),
+                new CreateRecruiterAccountInput("RECRUTAMENTO@lumen-exemplo.pt", "Lumen2026rh", AcceptTerms: true),
                 TestContext.Current.CancellationToken));
 
-        Assert.Equal(new FieldErrorDto("email", FieldReasons.EmailTaken), Assert.Single(exception.Fields));
+        Assert.Equal(new FieldError("email", FieldReasons.EmailTaken), Assert.Single(exception.Fields));
     }
 
     /// <summary>
@@ -375,16 +375,16 @@ public sealed class AuthServiceTests
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.CreateRecruiterAccountAsync(
-                new CreateRecruiterAccountRequest("recrutamento@lumen-exemplo.pt", "Lumen2026rh", AcceptTerms: true),
+                new CreateRecruiterAccountInput("recrutamento@lumen-exemplo.pt", "Lumen2026rh", AcceptTerms: true),
                 TestContext.Current.CancellationToken));
 
-        Assert.Equal(new FieldErrorDto("email", FieldReasons.EmailTaken), Assert.Single(exception.Fields));
+        Assert.Equal(new FieldError("email", FieldReasons.EmailTaken), Assert.Single(exception.Fields));
         Assert.Null(this.tokens.IssuedFor);
     }
 
-    private static RegisterCandidateRequest Valid()
+    private static RegisterCandidateInput Valid()
     {
-        return new RegisterCandidateRequest(
+        return new RegisterCandidateInput(
             "Ana Ferreira",
             "ana.ferreira@exemplo.pt",
             "912345678",
@@ -393,7 +393,7 @@ public sealed class AuthServiceTests
             AcceptTerms: true);
     }
 
-    private async Task<IReadOnlyList<FieldErrorDto>> RegisterExpectingErrorsAsync(RegisterCandidateRequest request)
+    private async Task<IReadOnlyList<FieldError>> RegisterExpectingErrorsAsync(RegisterCandidateInput request)
     {
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.RegisterCandidateAsync(request, TestContext.Current.CancellationToken));
@@ -580,10 +580,10 @@ public sealed class AuthServiceTests
     {
         public AppUser? IssuedFor { get; private set; }
 
-        public LoginResponse CreateToken(AppUser user)
+        public LoginResult CreateToken(AppUser user)
         {
             this.IssuedFor = user;
-            return new LoginResponse("token", Now.AddHours(8), user.UserType, user.Id);
+            return new LoginResult("token", Now.AddHours(8), user.UserType, user.Id);
         }
     }
 

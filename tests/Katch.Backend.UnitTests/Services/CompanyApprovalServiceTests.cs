@@ -3,10 +3,10 @@
 using System.Globalization;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -60,12 +60,12 @@ public sealed class CompanyApprovalServiceTests
         this.AddCompany("Empresa Recusada, Lda.", CompanyStatus.Rejected, Created.AddDays(-4));
         this.AddCompany("Empresa Suspensa, Lda.", CompanyStatus.Suspended, Created.AddDays(-3));
 
-        List<PendingCompanyDto> list = await this.service.ListPendingAsync(TestContext.Current.CancellationToken);
+        List<PendingCompanyModel> list = await this.service.ListPendingAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [
-                new PendingCompanyDto(older.Id, "Lumen Software, Lda.", older.TaxId, Created),
-                new PendingCompanyDto(newer.Id, "Zeta Logística, S.A.", newer.TaxId, Created.AddDays(2)),
+                new PendingCompanyModel(older.Id, "Lumen Software, Lda.", older.TaxId, Created),
+                new PendingCompanyModel(newer.Id, "Zeta Logística, S.A.", newer.TaxId, Created.AddDays(2)),
             ],
             list);
     }
@@ -80,7 +80,7 @@ public sealed class CompanyApprovalServiceTests
         Company first = this.AddCompany("Empresa A, Lda.", CompanyStatus.Pending, Created);
         Company second = this.AddCompany("Empresa B, Lda.", CompanyStatus.Pending, Created);
 
-        List<PendingCompanyDto> list = await this.service.ListPendingAsync(TestContext.Current.CancellationToken);
+        List<PendingCompanyModel> list = await this.service.ListPendingAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(new[] { first.Id, second.Id }.Order(), list.Select(item => item.CompanyId));
     }
@@ -112,10 +112,10 @@ public sealed class CompanyApprovalServiceTests
     {
         Company company = this.AddCompany("Lumen Software, Lda.", status, Created);
 
-        CompanyRegistrationDto data = await this.service.GetSubmittedDataAsync(company.Id, TestContext.Current.CancellationToken);
+        CompanyRegistrationModel data = await this.service.GetSubmittedDataAsync(company.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(
-            new CompanyRegistrationDto(
+            new CompanyRegistrationModel(
                 company.Id,
                 "Lumen Software, Lda.",
                 company.TaxId,
@@ -143,7 +143,7 @@ public sealed class CompanyApprovalServiceTests
         await Assert.ThrowsAsync<ElementNotFoundException>(() => this.service.GetSubmittedDataAsync(unknown, cancellationToken));
         await Assert.ThrowsAsync<ElementNotFoundException>(() => this.service.ApproveAsync(AdminId, unknown, cancellationToken));
         await Assert.ThrowsAsync<ElementNotFoundException>(
-            () => this.service.RejectAsync(AdminId, unknown, new RejectCompanyRequest(ValidReason), cancellationToken));
+            () => this.service.RejectAsync(AdminId, unknown, new RejectCompanyInput(ValidReason), cancellationToken));
         this.AssertNothingSaved();
     }
 
@@ -218,7 +218,7 @@ public sealed class CompanyApprovalServiceTests
         await this.service.RejectAsync(
             AdminId,
             company.Id,
-            new RejectCompanyRequest($"  {ValidReason}  "),
+            new RejectCompanyInput($"  {ValidReason}  "),
             TestContext.Current.CancellationToken);
 
         Assert.Equal(CompanyStatus.Rejected, company.Status);
@@ -240,7 +240,7 @@ public sealed class CompanyApprovalServiceTests
         Company company = this.AddCompany("Lumen Software, Lda.", CompanyStatus.Pending, Created);
         string reason = new('x', length);
 
-        await this.service.RejectAsync(AdminId, company.Id, new RejectCompanyRequest($" {reason} "), TestContext.Current.CancellationToken);
+        await this.service.RejectAsync(AdminId, company.Id, new RejectCompanyInput($" {reason} "), TestContext.Current.CancellationToken);
 
         Assert.Equal(reason, company.StatusReason);
         Assert.Equal(1, this.unitOfWork.Saves);
@@ -260,9 +260,9 @@ public sealed class CompanyApprovalServiceTests
         Company company = this.AddCompany("Lumen Software, Lda.", CompanyStatus.Pending, Created);
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => this.service.RejectAsync(AdminId, company.Id, new RejectCompanyRequest(reason), TestContext.Current.CancellationToken));
+            () => this.service.RejectAsync(AdminId, company.Id, new RejectCompanyInput(reason), TestContext.Current.CancellationToken));
 
-        FieldErrorDto field = Assert.Single(exception.Fields);
+        FieldError field = Assert.Single(exception.Fields);
         Assert.Equal("reason", field.Field);
         Assert.Equal("O campo é obrigatório.", field.Reason);
         Assert.Equal(CompanyStatus.Pending, company.Status);
@@ -281,12 +281,12 @@ public sealed class CompanyApprovalServiceTests
     public async Task RejectWithAReasonOutOfRangeIsInvalid(int length)
     {
         Company company = this.AddCompany("Lumen Software, Lda.", CompanyStatus.Pending, Created);
-        var request = new RejectCompanyRequest($"  {new string('x', length)}  ");
+        var request = new RejectCompanyInput($"  {new string('x', length)}  ");
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.RejectAsync(AdminId, company.Id, request, TestContext.Current.CancellationToken));
 
-        FieldErrorDto field = Assert.Single(exception.Fields);
+        FieldError field = Assert.Single(exception.Fields);
         Assert.Equal("reason", field.Field);
         Assert.Equal("O motivo tem de ter entre 10 e 500 caracteres.", field.Reason);
         Assert.Equal(CompanyStatus.Pending, company.Status);
@@ -308,7 +308,7 @@ public sealed class CompanyApprovalServiceTests
         Company company = this.AddCompany("Lumen Software, Lda.", status, Created);
 
         OperationConflictException exception = await Assert.ThrowsAsync<OperationConflictException>(
-            () => this.service.RejectAsync(AdminId, company.Id, new RejectCompanyRequest(ValidReason), TestContext.Current.CancellationToken));
+            () => this.service.RejectAsync(AdminId, company.Id, new RejectCompanyInput(ValidReason), TestContext.Current.CancellationToken));
 
         Assert.Equal("ERR-30", exception.Error.Code);
         Assert.Equal($"A operação não é permitida no estado atual: {label}.", exception.Error.Message);
@@ -328,7 +328,7 @@ public sealed class CompanyApprovalServiceTests
         this.unitOfWork.FailWith = new ConcurrencyConflictException(new InvalidOperationException("xmin"));
 
         OperationConflictException exception = await Assert.ThrowsAsync<OperationConflictException>(
-            () => this.service.RejectAsync(AdminId, company.Id, new RejectCompanyRequest(ValidReason), TestContext.Current.CancellationToken));
+            () => this.service.RejectAsync(AdminId, company.Id, new RejectCompanyInput(ValidReason), TestContext.Current.CancellationToken));
 
         Assert.Equal("ERR-41", exception.Error.Code);
         Assert.Equal(0, this.unitOfWork.Saves);

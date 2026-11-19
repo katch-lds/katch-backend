@@ -6,6 +6,7 @@ using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -74,7 +75,8 @@ public sealed class FilesAndReferenceListsControllersTests
     }
 
     /// <summary>
-    /// As listas de localidades, competências e benefícios devolvem <c>200</c> com o resultado do serviço (6.13.1 a 6.13.3).
+    /// As listas de localidades, competências e benefícios devolvem <c>200</c> com o resultado do serviço no formato da
+    /// API (6.13.1 a 6.13.3, I138).
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
@@ -82,18 +84,22 @@ public sealed class FilesAndReferenceListsControllersTests
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         var service = new ServiceDouble<IReferenceListService>();
-        List<ReferenceItemDto> locations = [];
-        List<ReferenceItemDto> skills = [];
-        List<ReferenceItemDto> benefits = [];
+        List<ReferenceItemModel> locations = [new ReferenceItemModel(Guid.NewGuid(), "Porto")];
+        List<ReferenceItemModel> skills = [new ReferenceItemModel(Guid.NewGuid(), "C#")];
+        List<ReferenceItemModel> benefits = [];
         service
             .Returns(nameof(IReferenceListService.ListLocationsAsync), locations)
             .Returns(nameof(IReferenceListService.ListSkillsAsync), skills)
             .Returns(nameof(IReferenceListService.ListBenefitsAsync), benefits);
         var controller = new ReferenceListsController(service.Service);
 
-        Assert.Same(locations, Assert.IsType<OkObjectResult>((await controller.ListLocations(token)).Result).Value);
-        Assert.Same(skills, Assert.IsType<OkObjectResult>((await controller.ListSkills(token)).Result).Value);
-        Assert.Same(benefits, Assert.IsType<OkObjectResult>((await controller.ListBenefits(token)).Result).Value);
+        Assert.Equal(
+            [new ReferenceItemDto(locations[0].Id, "Porto")],
+            Assert.IsType<List<ReferenceItemDto>>(Assert.IsType<OkObjectResult>((await controller.ListLocations(token)).Result).Value));
+        Assert.Equal(
+            [new ReferenceItemDto(skills[0].Id, "C#")],
+            Assert.IsType<List<ReferenceItemDto>>(Assert.IsType<OkObjectResult>((await controller.ListSkills(token)).Result).Value));
+        Assert.Empty(Assert.IsType<List<ReferenceItemDto>>(Assert.IsType<OkObjectResult>((await controller.ListBenefits(token)).Result).Value));
     }
 
     /// <summary>
@@ -107,7 +113,7 @@ public sealed class FilesAndReferenceListsControllersTests
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         var service = new ServiceDouble<IReferenceListService>();
-        var item = new ReferenceItemDto(Guid.NewGuid(), "C#");
+        var item = new ReferenceItemModel(Guid.NewGuid(), "C#");
         foreach (string method in new[]
         {
             nameof(IReferenceListService.AddSkillAsync),
@@ -129,13 +135,14 @@ public sealed class FilesAndReferenceListsControllersTests
 
         Assert.Equal(StatusCodes.Status201Created, skill.StatusCode);
         Assert.Equal(StatusCodes.Status201Created, benefit.StatusCode);
-        Assert.Same(item, renamedSkill.Value);
-        Assert.Same(item, renamedBenefit.Value);
+        Assert.Equal(new ReferenceItemDto(item.Id, "C#"), skill.Value);
+        Assert.Equal(new ReferenceItemDto(item.Id, "C#"), renamedSkill.Value);
+        Assert.Equal(new ReferenceItemDto(item.Id, "C#"), renamedBenefit.Value);
         Assert.All(service.Calls, call => Assert.Equal(this.accountId, call.Arguments[0]));
-        Assert.Same(ReferenceItemRequest.Empty, service.Calls[0].Arguments[1]);
+        Assert.Equal(ReferenceItemInput.Empty, service.Calls[0].Arguments[1]);
         Assert.Equal(itemId, service.Calls[1].Arguments[1]);
-        Assert.Equal("C# 14", service.Calls[1].Argument<ReferenceItemRequest>(2).Name);
-        Assert.Same(ReferenceItemRequest.Empty, service.Calls[3].Arguments[2]);
+        Assert.Equal("C# 14", service.Calls[1].Argument<ReferenceItemInput>(2).Name);
+        Assert.Equal(ReferenceItemInput.Empty, service.Calls[3].Arguments[2]);
     }
 
     /// <summary>

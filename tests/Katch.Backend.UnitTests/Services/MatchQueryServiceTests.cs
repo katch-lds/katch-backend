@@ -3,10 +3,10 @@
 using System.Globalization;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.UnitTests.Services;
 
@@ -27,9 +27,9 @@ public sealed class MatchQueryServiceTests
         MatchView view = NewView(Now.AddDays(-1), logoPath: "company_logo/lumen.png");
         var (service, matches, _) = Create(view);
 
-        List<MatchDto> result = await service.ListForCandidateAsync(view.Match.CandidateId, TestContext.Current.CancellationToken);
+        List<MatchModel> result = await service.ListForCandidateAsync(view.Match.CandidateId, TestContext.Current.CancellationToken);
 
-        MatchDto dto = Assert.Single(result);
+        MatchModel dto = Assert.Single(result);
         Assert.Equal(view.Match.Id, dto.MatchId);
         Assert.Equal("Programador Backend .NET", dto.JobTitle);
         Assert.Equal(JobStatus.Published, dto.JobStatus);
@@ -55,9 +55,9 @@ public sealed class MatchQueryServiceTests
         Company company = NewCompany();
         companies.Company = company;
 
-        List<MatchDto> result = await service.ListForRecruiterAsync(company.RecruiterId, TestContext.Current.CancellationToken);
+        List<MatchModel> result = await service.ListForRecruiterAsync(company.RecruiterId, TestContext.Current.CancellationToken);
 
-        MatchDto dto = Assert.Single(result);
+        MatchModel dto = Assert.Single(result);
         Assert.Equal("Ana Ferreira", dto.CounterpartName);
         Assert.Equal("ana@exemplo.pt", dto.ContactEmail);
         Assert.Equal("912345678", dto.ContactPhone);
@@ -77,7 +77,7 @@ public sealed class MatchQueryServiceTests
         MatchView middle = NewView(Now.AddDays(-3));
         var (service, _, _) = Create(oldest, newest, middle);
 
-        List<MatchDto> result = await service.ListForCandidateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        List<MatchModel> result = await service.ListForCandidateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Equal([newest.Match.Id, middle.Match.Id, oldest.Match.Id], result.Select(dto => dto.MatchId).ToList());
     }

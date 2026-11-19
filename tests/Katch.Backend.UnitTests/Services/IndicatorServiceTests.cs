@@ -2,11 +2,11 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.UnitTests.Services;
 
@@ -31,12 +31,12 @@ public sealed class IndicatorServiceTests
     [Fact]
     public async Task EachCountGoesToItsIndicator()
     {
-        IndicatorsDto indicators = await this.Service().GetAsync(
+        IndicatorsModel indicators = await this.Service().GetAsync(
             new DateOnly(2026, 10, 1),
             new DateOnly(2026, 10, 9),
             TestContext.Current.CancellationToken);
 
-        Assert.Equal(new IndicatorsDto(1, 2, 3, 4, 5, 6, 7), indicators);
+        Assert.Equal(new IndicatorsModel(1, 2, 3, 4, 5, 6, 7), indicators);
 
         // Em outubro, antes de 2026-10-25, Lisboa está em UTC+1.
         var start = new DateTimeOffset(2026, 9, 30, 23, 0, 0, TimeSpan.Zero);
@@ -74,7 +74,7 @@ public sealed class IndicatorServiceTests
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.Service().GetAsync(new DateOnly(2026, 10, 10), new DateOnly(2026, 10, 9), TestContext.Current.CancellationToken));
 
-        Assert.Equal([new FieldErrorDto("from", FieldReasons.PeriodStartAfterEnd)], exception.Fields);
+        Assert.Equal([new FieldError("from", FieldReasons.PeriodStartAfterEnd)], exception.Fields);
         Assert.Null(this.counts.ActiveCandidatesAt);
     }
 
@@ -88,7 +88,7 @@ public sealed class IndicatorServiceTests
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.Service().GetAsync(new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 30), TestContext.Current.CancellationToken));
 
-        Assert.Equal([new FieldErrorDto("to", FieldReasons.PeriodEndInFuture)], exception.Fields);
+        Assert.Equal([new FieldError("to", FieldReasons.PeriodEndInFuture)], exception.Fields);
         Assert.Null(this.counts.ActiveCandidatesAt);
     }
 
@@ -104,8 +104,8 @@ public sealed class IndicatorServiceTests
 
         Assert.Equal(
             [
-                new FieldErrorDto("from", FieldReasons.PeriodStartAfterEnd),
-                new FieldErrorDto("to", FieldReasons.PeriodEndInFuture),
+                new FieldError("from", FieldReasons.PeriodStartAfterEnd),
+                new FieldError("to", FieldReasons.PeriodEndInFuture),
             ],
             exception.Fields);
     }
@@ -162,7 +162,7 @@ public sealed class IndicatorServiceTests
     }
 
     /// <summary>
-    /// Devolve um valor diferente por indicador (1 a 7, pela ordem do <see cref="IndicatorsDto"/>) e regista os
+    /// Devolve um valor diferente por indicador (1 a 7, pela ordem do <see cref="IndicatorsModel"/>) e regista os
     /// argumentos, para detetar contagens trocadas.
     /// </summary>
     private sealed class FakeCounts : IUserRepository, ICompanyRepository, IJobRepository, IMatchRepository, IMessageRepository

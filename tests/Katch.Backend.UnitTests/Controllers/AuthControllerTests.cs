@@ -2,11 +2,13 @@
 
 using System.Security.Claims;
 using Katch.Backend.Controllers;
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -56,7 +58,7 @@ public sealed class AuthControllerTests
     public async Task RegistrationsReturnCreatedAndPassEmptyRequestsToTheService()
     {
         var service = new ServiceDouble<IAuthService>();
-        var session = ControllerTesting.Sentinel<LoginResponse>();
+        LoginResult session = ServiceModels.Session;
         service
             .Returns(nameof(IAuthService.RegisterCandidateAsync), session)
             .Returns(nameof(IAuthService.CreateRecruiterAccountAsync), session);
@@ -67,12 +69,12 @@ public sealed class AuthControllerTests
 
         CreatedResult created = Assert.IsType<CreatedResult>(candidate.Result);
         Assert.Equal("/api/candidate/profile", created.Location);
-        Assert.Same(session, created.Value);
+        Assert.Equal(session.ToDto(), created.Value);
         ObjectResult recruiterCreated = Assert.IsType<ObjectResult>(recruiter.Result);
         Assert.Equal(StatusCodes.Status201Created, recruiterCreated.StatusCode);
-        Assert.Same(session, recruiterCreated.Value);
-        Assert.Same(RegisterCandidateRequest.Empty, service.Calls[0].Arguments[0]);
-        Assert.Same(CreateRecruiterAccountRequest.Empty, service.Calls[1].Arguments[0]);
+        Assert.Equal(session.ToDto(), recruiterCreated.Value);
+        Assert.Equal(RegisterCandidateInput.Empty, service.Calls[0].Arguments[0]);
+        Assert.Equal(CreateRecruiterAccountInput.Empty, service.Calls[1].Arguments[0]);
     }
 
     /// <summary>
@@ -88,15 +90,15 @@ public sealed class AuthControllerTests
     public async Task LoginReadsTheClientApp(string header, ClientApp expected)
     {
         var service = new ServiceDouble<IAuthService>();
-        var session = ControllerTesting.Sentinel<LoginResponse>();
+        LoginResult session = ServiceModels.Session;
         service.Returns(nameof(IAuthService.LoginAsync), session);
         AuthController controller = new AuthController(service.Service).WithUser(null);
 
         ActionResult<LoginResponse> result = await controller.Login(header, null, TestContext.Current.CancellationToken);
 
-        Assert.Same(session, Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Equal(session.ToDto(), Assert.IsType<OkObjectResult>(result.Result).Value);
         ServiceCall call = service.SingleCall(nameof(IAuthService.LoginAsync));
-        Assert.Same(LoginRequest.Empty, call.Arguments[0]);
+        Assert.Equal(LoginInput.Empty, call.Arguments[0]);
         Assert.Equal(expected, call.Arguments[1]);
     }
 
@@ -121,7 +123,7 @@ public sealed class AuthControllerTests
             () => controller.Login(header, new LoginRequest("ana@exemplo.pt", "katch2026"), TestContext.Current.CancellationToken));
 
         Assert.Equal(
-            new FieldErrorDto("X-Client-App", required ? FieldReasons.Required : FieldReasons.InvalidValue),
+            new FieldError("X-Client-App", required ? FieldReasons.Required : FieldReasons.InvalidValue),
             Assert.Single(exception.Fields));
         Assert.Empty(service.Calls);
     }
@@ -145,29 +147,29 @@ public sealed class AuthControllerTests
         Assert.IsType<NoContentResult>(changed);
         ServiceCall call = service.SingleCall(nameof(IAuthService.ChangePasswordAsync));
         Assert.Equal(userId, call.Arguments[0]);
-        Assert.Same(ChangePasswordRequest.Empty, call.Arguments[1]);
+        Assert.Equal(ChangePasswordInput.Empty, call.Arguments[1]);
     }
 
     private sealed class RecordingAuthService : IAuthService
     {
         public int ChangePasswordCalls { get; private set; }
 
-        public Task<LoginResponse> RegisterCandidateAsync(RegisterCandidateRequest request, CancellationToken cancellationToken = default)
+        public Task<LoginResult> RegisterCandidateAsync(RegisterCandidateInput request, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<LoginResponse> CreateRecruiterAccountAsync(CreateRecruiterAccountRequest request, CancellationToken cancellationToken = default)
+        public Task<LoginResult> CreateRecruiterAccountAsync(CreateRecruiterAccountInput request, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<LoginResponse> LoginAsync(LoginRequest request, ClientApp app, CancellationToken cancellationToken = default)
+        public Task<LoginResult> LoginAsync(LoginInput request, ClientApp app, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, CancellationToken cancellationToken = default)
+        public Task ChangePasswordAsync(Guid userId, ChangePasswordInput request, CancellationToken cancellationToken = default)
         {
             this.ChangePasswordCalls++;
             return Task.CompletedTask;

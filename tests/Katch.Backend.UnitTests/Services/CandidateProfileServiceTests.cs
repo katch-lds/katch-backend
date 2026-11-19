@@ -2,10 +2,10 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -89,13 +89,13 @@ public sealed class CandidateProfileServiceTests
     {
         this.candidate.AddSkill(this.sql);
 
-        CandidateProfileDto profile = await this.service.AddSkillAsync(
+        CandidateProfileModel profile = await this.service.AddSkillAsync(
             this.candidate.Id,
-            new AddSkillRequest(this.csharp.Id),
+            new AddSkillInput(this.csharp.Id),
             TestContext.Current.CancellationToken);
 
         Assert.Equal(1, this.unitOfWork.Saves);
-        Assert.Equal([new ReferenceItemDto(this.csharp.Id, "C#"), new ReferenceItemDto(this.sql.Id, "SQL")], profile.Skills);
+        Assert.Equal([new ReferenceItemModel(this.csharp.Id, "C#"), new ReferenceItemModel(this.sql.Id, "SQL")], profile.Skills);
         Assert.Contains(this.candidate.Skills, skill => skill.Id == this.csharp.Id);
     }
 
@@ -107,7 +107,7 @@ public sealed class CandidateProfileServiceTests
     public async Task AddSkillWithoutSkillIdIsRequired()
     {
         ValidationFailedException error = await Assert.ThrowsAsync<ValidationFailedException>(() =>
-            this.service.AddSkillAsync(this.candidate.Id, AddSkillRequest.Empty, TestContext.Current.CancellationToken));
+            this.service.AddSkillAsync(this.candidate.Id, AddSkillInput.Empty, TestContext.Current.CancellationToken));
 
         AssertField(error, "skillId", Required);
         Assert.Equal(0, this.unitOfWork.Saves);
@@ -123,7 +123,7 @@ public sealed class CandidateProfileServiceTests
         ValidationFailedException error = await Assert.ThrowsAsync<ValidationFailedException>(() =>
             this.service.AddSkillAsync(
                 this.candidate.Id,
-                new AddSkillRequest(Guid.NewGuid()),
+                new AddSkillInput(Guid.NewGuid()),
                 TestContext.Current.CancellationToken));
 
         AssertField(error, "skillId", NotInList);
@@ -143,7 +143,7 @@ public sealed class CandidateProfileServiceTests
         ValidationFailedException error = await Assert.ThrowsAsync<ValidationFailedException>(() =>
             this.service.AddSkillAsync(
                 this.candidate.Id,
-                new AddSkillRequest(this.docker.Id),
+                new AddSkillInput(this.docker.Id),
                 TestContext.Current.CancellationToken));
 
         AssertField(error, "skillId", AlreadyAdded);
@@ -163,7 +163,7 @@ public sealed class CandidateProfileServiceTests
         ValidationFailedException error = await Assert.ThrowsAsync<ValidationFailedException>(() =>
             this.service.AddSkillAsync(
                 this.candidate.Id,
-                new AddSkillRequest(this.csharp.Id),
+                new AddSkillInput(this.csharp.Id),
                 TestContext.Current.CancellationToken));
 
         AssertField(error, "skillId", AlreadyAdded);
@@ -221,12 +221,12 @@ public sealed class CandidateProfileServiceTests
     [MemberData(nameof(ValidLabels))]
     public async Task AddCustomSkillAcceptsLabelsWithinP07(string label)
     {
-        CandidateProfileDto profile = await this.service.AddCustomSkillAsync(
+        CandidateProfileModel profile = await this.service.AddCustomSkillAsync(
             this.candidate.Id,
-            new AddCustomSkillRequest(label),
+            new AddCustomSkillInput(label),
             TestContext.Current.CancellationToken);
 
-        CustomSkillDto customSkill = Assert.Single(profile.CustomSkills);
+        CustomSkillModel customSkill = Assert.Single(profile.CustomSkills);
         Assert.Equal(label, customSkill.Label);
         Assert.Equal(Assert.Single(this.candidate.CustomSkills).Id, customSkill.CustomSkillId);
         Assert.Equal(1, this.unitOfWork.Saves);
@@ -244,7 +244,7 @@ public sealed class CandidateProfileServiceTests
         ValidationFailedException error = await Assert.ThrowsAsync<ValidationFailedException>(() =>
             this.service.AddCustomSkillAsync(
                 this.candidate.Id,
-                new AddCustomSkillRequest(label),
+                new AddCustomSkillInput(label),
                 TestContext.Current.CancellationToken));
 
         AssertField(error, "label", LabelFormat);
@@ -265,7 +265,7 @@ public sealed class CandidateProfileServiceTests
         ValidationFailedException error = await Assert.ThrowsAsync<ValidationFailedException>(() =>
             this.service.AddCustomSkillAsync(
                 this.candidate.Id,
-                new AddCustomSkillRequest(label),
+                new AddCustomSkillInput(label),
                 TestContext.Current.CancellationToken));
 
         AssertField(error, "label", Required);
@@ -278,9 +278,9 @@ public sealed class CandidateProfileServiceTests
     [Fact]
     public async Task AddCustomSkillTrimsTheLabel()
     {
-        CandidateProfileDto profile = await this.service.AddCustomSkillAsync(
+        CandidateProfileModel profile = await this.service.AddCustomSkillAsync(
             this.candidate.Id,
-            new AddCustomSkillRequest("  Blazor "),
+            new AddCustomSkillInput("  Blazor "),
             TestContext.Current.CancellationToken);
 
         Assert.Equal("Blazor", Assert.Single(profile.CustomSkills).Label);
@@ -298,7 +298,7 @@ public sealed class CandidateProfileServiceTests
         ValidationFailedException error = await Assert.ThrowsAsync<ValidationFailedException>(() =>
             this.service.AddCustomSkillAsync(
                 this.candidate.Id,
-                new AddCustomSkillRequest("BLAZOR"),
+                new AddCustomSkillInput("BLAZOR"),
                 TestContext.Current.CancellationToken));
 
         AssertField(error, "label", AlreadyAdded);
@@ -318,7 +318,7 @@ public sealed class CandidateProfileServiceTests
         ValidationFailedException error = await Assert.ThrowsAsync<ValidationFailedException>(() =>
             this.service.AddCustomSkillAsync(
                 this.candidate.Id,
-                new AddCustomSkillRequest("Blazor"),
+                new AddCustomSkillInput("Blazor"),
                 TestContext.Current.CancellationToken));
 
         AssertField(error, "label", AlreadyAdded);
@@ -337,7 +337,7 @@ public sealed class CandidateProfileServiceTests
         ValidationFailedException error = await Assert.ThrowsAsync<ValidationFailedException>(() =>
             this.service.AddCustomSkillAsync(
                 this.candidate.Id,
-                new AddCustomSkillRequest("Gestão de equipas"),
+                new AddCustomSkillInput("Gestão de equipas"),
                 TestContext.Current.CancellationToken));
 
         AssertField(error, "label", LabelFormat);
@@ -355,7 +355,7 @@ public sealed class CandidateProfileServiceTests
         CheckConstraintViolationException error = await Assert.ThrowsAsync<CheckConstraintViolationException>(() =>
             this.service.AddCustomSkillAsync(
                 this.candidate.Id,
-                new AddCustomSkillRequest("Blazor"),
+                new AddCustomSkillInput("Blazor"),
                 TestContext.Current.CancellationToken));
 
         Assert.Equal("ck_outra_restricao", error.ConstraintName);
@@ -389,10 +389,10 @@ public sealed class CandidateProfileServiceTests
         Guid unknown = Guid.NewGuid();
 
         await Assert.ThrowsAsync<ElementNotFoundException>(() =>
-            this.service.AddSkillAsync(unknown, new AddSkillRequest(this.csharp.Id), cancellationToken));
+            this.service.AddSkillAsync(unknown, new AddSkillInput(this.csharp.Id), cancellationToken));
         await Assert.ThrowsAsync<ElementNotFoundException>(() => this.service.RemoveSkillAsync(unknown, this.csharp.Id, cancellationToken));
         await Assert.ThrowsAsync<ElementNotFoundException>(() =>
-            this.service.AddCustomSkillAsync(unknown, new AddCustomSkillRequest("Blazor"), cancellationToken));
+            this.service.AddCustomSkillAsync(unknown, new AddCustomSkillInput("Blazor"), cancellationToken));
         await Assert.ThrowsAsync<ElementNotFoundException>(() => this.service.RemoveCustomSkillAsync(unknown, Guid.NewGuid(), cancellationToken));
     }
 
@@ -414,7 +414,7 @@ public sealed class CandidateProfileServiceTests
         this.candidate.AddCustomSkill("Entity Framework");
         this.candidate.AddCustomSkill("Blazor");
 
-        CandidateProfileDto profile = await this.service.GetAsync(this.candidate.Id, TestContext.Current.CancellationToken);
+        CandidateProfileModel profile = await this.service.GetAsync(this.candidate.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(this.candidate.Id, profile.CandidateId);
         Assert.Equal("ana.ferreira@exemplo.pt", profile.Email);
@@ -432,7 +432,7 @@ public sealed class CandidateProfileServiceTests
 
     private static void AssertField(ValidationFailedException error, string field, string reason)
     {
-        FieldErrorDto fieldError = Assert.Single(error.Fields);
+        FieldError fieldError = Assert.Single(error.Fields);
         Assert.Equal(field, fieldError.Field);
         Assert.Equal(reason, fieldError.Reason);
     }

@@ -1,9 +1,11 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Controllers;
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
@@ -37,17 +39,17 @@ public sealed class JobsControllerTests
     [Fact]
     public async Task CreateReturnsCreatedWithTheJob()
     {
-        var job = ControllerTesting.Sentinel<JobDto>();
+        JobModel job = ServiceModels.Job;
         this.service.Returns(nameof(IJobService.CreateAsync), job);
 
         ActionResult<JobDto> result = await this.controller.Create(null, TestContext.Current.CancellationToken);
 
         ObjectResult created = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
-        Assert.Same(job, created.Value);
+        Assert.Equivalent(job.ToDto(), created.Value, strict: true);
         ServiceCall call = this.service.SingleCall(nameof(IJobService.CreateAsync));
         Assert.Equal(this.recruiterId, call.Arguments[0]);
-        Assert.Same(JobRequest.Empty, call.Arguments[1]);
+        Assert.Equal(JobInput.Empty, call.Arguments[1]);
     }
 
     /// <summary>
@@ -58,18 +60,24 @@ public sealed class JobsControllerTests
     [Fact]
     public async Task ListAndUpdateReturnTheServiceResult()
     {
-        List<JobDto> jobs = [ControllerTesting.Sentinel<JobDto>()];
-        var job = ControllerTesting.Sentinel<JobDto>();
+        List<JobModel> jobs = [ServiceModels.Job];
+        JobModel job = ServiceModels.Job;
         this.service
             .Returns(nameof(IJobService.ListOwnAsync), jobs)
             .Returns(nameof(IJobService.UpdateAsync), job);
 
-        Assert.Same(jobs, (await this.controller.List(TestContext.Current.CancellationToken)).Value);
-        Assert.Same(job, (await this.controller.Update(this.jobId, null, TestContext.Current.CancellationToken)).Value);
+        Assert.Equivalent(
+            jobs.Select(item => item.ToDto()).ToList(),
+            (await this.controller.List(TestContext.Current.CancellationToken)).Value,
+            strict: true);
+        Assert.Equivalent(
+            job.ToDto(),
+            (await this.controller.Update(this.jobId, null, TestContext.Current.CancellationToken)).Value,
+            strict: true);
 
         ServiceCall update = this.service.Calls[1];
         Assert.Equal(this.jobId, update.Arguments[1]);
-        Assert.Same(JobRequest.Empty, update.Arguments[2]);
+        Assert.Equal(JobInput.Empty, update.Arguments[2]);
     }
 
     /// <summary>
@@ -81,7 +89,8 @@ public sealed class JobsControllerTests
     public async Task EachTransitionCallsTheMatchingServiceOperation()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
-        var job = ControllerTesting.Sentinel<JobDto>();
+        JobModel job = ServiceModels.Job;
+        JobDto expected = job.ToDto();
         foreach (string method in new[]
         {
             nameof(IJobService.PublishAsync),
@@ -93,10 +102,10 @@ public sealed class JobsControllerTests
             this.service.Returns(method, job);
         }
 
-        Assert.Same(job, (await this.controller.Publish(this.jobId, token)).Value);
-        Assert.Same(job, (await this.controller.Suspend(this.jobId, token)).Value);
-        Assert.Same(job, (await this.controller.Republish(this.jobId, token)).Value);
-        Assert.Same(job, (await this.controller.Close(this.jobId, token)).Value);
+        Assert.Equivalent(expected, (await this.controller.Publish(this.jobId, token)).Value, strict: true);
+        Assert.Equivalent(expected, (await this.controller.Suspend(this.jobId, token)).Value, strict: true);
+        Assert.Equivalent(expected, (await this.controller.Republish(this.jobId, token)).Value, strict: true);
+        Assert.Equivalent(expected, (await this.controller.Close(this.jobId, token)).Value, strict: true);
 
         Assert.Equal(
             [nameof(IJobService.PublishAsync), nameof(IJobService.SuspendAsync), nameof(IJobService.RepublishAsync), nameof(IJobService.CloseAsync)],
@@ -117,7 +126,7 @@ public sealed class JobsControllerTests
     [Fact]
     public async Task RejectedTransitionPropagatesTheServiceError()
     {
-        var conflict = new OperationConflictException(new ApiErrorDto("ERR-30", "Estado inválido."));
+        var conflict = new OperationConflictException(new ServiceError("ERR-30", "Estado inválido."));
         this.service.Throws(nameof(IJobService.CloseAsync), conflict);
 
         OperationConflictException exception = await Assert.ThrowsAsync<OperationConflictException>(

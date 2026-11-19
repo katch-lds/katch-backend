@@ -2,11 +2,13 @@
 
 using System.Globalization;
 using Katch.Backend.Controllers;
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -37,9 +39,9 @@ public sealed class MatchAndConversationControllersTests
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         var service = new ServiceDouble<ICandidateEvaluationService>();
-        List<WaitingCandidateDto> waiting = [];
-        var profile = ControllerTesting.Sentinel<CandidateFullProfileDto>();
-        var match = ControllerTesting.Sentinel<MatchDto>();
+        List<WaitingCandidateModel> waiting = [];
+        CandidateFullProfileModel profile = ServiceModels.CandidateFullProfile;
+        MatchModel match = ServiceModels.Match;
         service
             .Returns(nameof(ICandidateEvaluationService.ListWaitingAsync), waiting)
             .Returns(nameof(ICandidateEvaluationService.OpenProfileAsync), profile)
@@ -48,9 +50,9 @@ public sealed class MatchAndConversationControllersTests
             .WithUser(this.accountId, AccountRoles.Recruiter);
         Guid jobId = Guid.NewGuid();
 
-        Assert.Same(waiting, (await controller.ListWaiting(jobId, token)).Value);
-        Assert.Same(profile, (await controller.OpenProfile(this.matchId, token)).Value);
-        Assert.Same(match, (await controller.Accept(this.matchId, token)).Value);
+        Assert.Empty((await controller.ListWaiting(jobId, token)).Value!);
+        Assert.Equivalent(profile.ToDto(), (await controller.OpenProfile(this.matchId, token)).Value, strict: true);
+        Assert.Equal(match.ToDto(), (await controller.Accept(this.matchId, token)).Value);
         Assert.IsType<NoContentResult>(await controller.Reject(this.matchId, token));
 
         Assert.All(service.Calls, call => Assert.Equal(this.accountId, call.Arguments[0]));
@@ -87,14 +89,14 @@ public sealed class MatchAndConversationControllersTests
     {
         var service = new ServiceDouble<IMatchService>();
         var authorization = new ServiceDouble<IAuthorizationService>();
-        List<MatchDto> matches = [];
+        List<MatchModel> matches = [ServiceModels.Match];
         service.Returns(nameof(IMatchService.ListForCandidateAsync), matches);
         MatchesController controller = new MatchesController(service.Service, authorization.Service)
             .WithUser(this.accountId, AccountRoles.Candidate);
 
         ActionResult<List<MatchDto>> result = await controller.List(TestContext.Current.CancellationToken);
 
-        Assert.Same(matches, result.Value);
+        Assert.Equal([matches[0].ToDto()], result.Value!);
         Assert.Equal(this.accountId, service.SingleCall(nameof(IMatchService.ListForCandidateAsync)).Arguments[0]);
         Assert.Empty(authorization.Calls);
     }
@@ -108,7 +110,7 @@ public sealed class MatchAndConversationControllersTests
     {
         var service = new ServiceDouble<IMatchService>();
         var authorization = new ServiceDouble<IAuthorizationService>();
-        List<MatchDto> matches = [];
+        List<MatchModel> matches = [ServiceModels.Match];
         service.Returns(nameof(IMatchService.ListForRecruiterAsync), matches);
         authorization.Returns(nameof(IAuthorizationService.AuthorizeAsync), AuthorizationResult.Success());
         MatchesController controller = new MatchesController(service.Service, authorization.Service)
@@ -116,7 +118,7 @@ public sealed class MatchAndConversationControllersTests
 
         ActionResult<List<MatchDto>> result = await controller.List(TestContext.Current.CancellationToken);
 
-        Assert.Same(matches, result.Value);
+        Assert.Equal([matches[0].ToDto()], result.Value!);
         Assert.Equal(AuthorizationPolicies.ApprovedCompany, authorization.SingleCall(nameof(IAuthorizationService.AuthorizeAsync)).Arguments[2]);
     }
 
@@ -161,9 +163,9 @@ public sealed class MatchAndConversationControllersTests
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         var service = new ServiceDouble<IConversationService>();
-        List<ConversationSummaryDto> conversations = [];
-        List<MessageDto> messages = [];
-        var message = ControllerTesting.Sentinel<MessageDto>();
+        List<ConversationSummaryModel> conversations = [];
+        List<MessageModel> messages = [ServiceModels.Message];
+        MessageModel message = ServiceModels.Message;
         service
             .Returns(nameof(IConversationService.ListAsync), conversations)
             .Returns(nameof(IConversationService.OpenAsync), messages)
@@ -171,15 +173,15 @@ public sealed class MatchAndConversationControllersTests
         ConversationsController controller = new ConversationsController(service.Service)
             .WithUser(this.accountId, AccountRoles.Candidate);
 
-        Assert.Same(conversations, (await controller.List(token)).Value);
-        Assert.Same(messages, (await controller.Open(this.matchId, null, token)).Value);
+        Assert.Empty((await controller.List(token)).Value!);
+        Assert.Equal([message.ToDto()], (await controller.Open(this.matchId, null, token)).Value!);
         ObjectResult sent = Assert.IsType<ObjectResult>((await controller.Send(this.matchId, null, token)).Result);
         Assert.IsType<NoContentResult>(await controller.Close(this.matchId, token));
 
         Assert.Equal(StatusCodes.Status201Created, sent.StatusCode);
-        Assert.Same(message, sent.Value);
+        Assert.Equal(message.ToDto(), sent.Value);
         Assert.Null(service.Calls[1].Arguments[2]);
-        Assert.Same(SendMessageRequest.Empty, service.Calls[2].Arguments[2]);
+        Assert.Equal(SendMessageInput.Empty, service.Calls[2].Arguments[2]);
         Assert.All(service.Calls, call => Assert.Equal(this.accountId, call.Arguments[0]));
     }
 
@@ -198,7 +200,7 @@ public sealed class MatchAndConversationControllersTests
     public async Task ConversationAfterIsReadInUtc(string after, string expectedUtc)
     {
         var service = new ServiceDouble<IConversationService>();
-        service.Returns(nameof(IConversationService.OpenAsync), new List<MessageDto>());
+        service.Returns(nameof(IConversationService.OpenAsync), new List<MessageModel>());
         ConversationsController controller = new ConversationsController(service.Service)
             .WithUser(this.accountId, AccountRoles.Recruiter);
 
@@ -207,7 +209,7 @@ public sealed class MatchAndConversationControllersTests
         if (expectedUtc.Length == 0)
         {
             ValidationFailedException invalid = Assert.IsType<ValidationFailedException>(exception);
-            Assert.Equal(new FieldErrorDto("after", FieldReasons.InvalidValue), Assert.Single(invalid.Fields));
+            Assert.Equal(new FieldError("after", FieldReasons.InvalidValue), Assert.Single(invalid.Fields));
             Assert.Empty(service.Calls);
             return;
         }

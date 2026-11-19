@@ -1,6 +1,5 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,18 +17,6 @@ public static class ControllerTesting
     /// Nome do campo do ficheiro nos carregamentos (documentação da API v02, secção 2.6).
     /// </summary>
     public const string UploadField = "file";
-
-    /// <summary>
-    /// Cria uma instância do tipo sem correr o construtor, para servir de resultado do serviço: o teste verifica que o
-    /// controller devolve esse mesmo objeto (<see cref="Assert.Same"/>), sem depender do conteúdo do DTO.
-    /// </summary>
-    /// <typeparam name="T">Tipo do resultado.</typeparam>
-    /// <returns>A instância.</returns>
-    public static T Sentinel<T>()
-        where T : class
-    {
-        return (T)RuntimeHelpers.GetUninitializedObject(typeof(T));
-    }
 
     /// <summary>
     /// Associa ao controller um pedido autenticado com a conta e o tipo de conta indicados.

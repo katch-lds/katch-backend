@@ -2,11 +2,11 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -59,10 +59,10 @@ public sealed class JobExplorationServiceTests
             await fixture.Service.DeclineAsync(fixture.CandidateId, fixture.AddJob(), TestContext.Current.CancellationToken);
         }
 
-        QuotaDto quota = await fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+        QuotaModel quota = await fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
         Assert.Equal(15, fixture.Store.Committed.Count);
         Assert.All(fixture.Store.Committed, match => Assert.Equal(MatchStatus.DeclinedByCandidate, match.Status));
-        Assert.Equal(new QuotaDto(Candidate.MaxInterests, Candidate.MaxInterests, null), quota);
+        Assert.Equal(new QuotaModel(Candidate.MaxInterests, Candidate.MaxInterests, null), quota);
     }
 
     /// <summary>
@@ -75,9 +75,9 @@ public sealed class JobExplorationServiceTests
         Fixture fixture = new();
         Guid jobId = fixture.AddJob();
 
-        QuotaDto quota = await fixture.Service.ExpressInterestAsync(fixture.CandidateId, jobId, TestContext.Current.CancellationToken);
+        QuotaModel quota = await fixture.Service.ExpressInterestAsync(fixture.CandidateId, jobId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(new QuotaDto(9, 10, null), quota);
+        Assert.Equal(new QuotaModel(9, 10, null), quota);
         Match match = Assert.Single(fixture.Store.Committed);
         Assert.Equal(MatchStatus.Waiting, match.Status);
         Assert.Equal(Now, match.CandidateActionAt);
@@ -94,12 +94,12 @@ public sealed class JobExplorationServiceTests
     {
         Fixture fixture = new(() => CandidateWith(remaining: 1));
 
-        QuotaDto quota = await fixture.Service.ExpressInterestAsync(
+        QuotaModel quota = await fixture.Service.ExpressInterestAsync(
             fixture.CandidateId,
             fixture.AddJob(),
             TestContext.Current.CancellationToken);
 
-        Assert.Equal(new QuotaDto(0, 10, Now.AddHours(24)), quota);
+        Assert.Equal(new QuotaModel(0, 10, Now.AddHours(24)), quota);
     }
 
     /// <summary>
@@ -147,9 +147,9 @@ public sealed class JobExplorationServiceTests
             return;
         }
 
-        QuotaDto quota = await fixture.Service.ExpressInterestAsync(fixture.CandidateId, jobId, TestContext.Current.CancellationToken);
+        QuotaModel quota = await fixture.Service.ExpressInterestAsync(fixture.CandidateId, jobId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(new QuotaDto(9, 10, null), quota);
+        Assert.Equal(new QuotaModel(9, 10, null), quota);
         Assert.Single(fixture.Store.Committed);
     }
 
@@ -304,12 +304,12 @@ public sealed class JobExplorationServiceTests
         fixture.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
         fixture.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
 
-        QuotaDto quota = await fixture.Service.ExpressInterestAsync(
+        QuotaModel quota = await fixture.Service.ExpressInterestAsync(
             fixture.CandidateId,
             fixture.AddJob(),
             TestContext.Current.CancellationToken);
 
-        Assert.Equal(new QuotaDto(9, 10, null), quota);
+        Assert.Equal(new QuotaModel(9, 10, null), quota);
         Assert.Single(fixture.Store.Committed);
         Assert.Equal(2, fixture.Store.Discards);
         Assert.Equal(3, fixture.Candidates.Loads);
@@ -353,12 +353,12 @@ public sealed class JobExplorationServiceTests
             fixture.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
         }
 
-        QuotaDto quota = await fixture.Service.ExpressInterestAsync(
+        QuotaModel quota = await fixture.Service.ExpressInterestAsync(
             fixture.CandidateId,
             fixture.AddJob(),
             TestContext.Current.CancellationToken);
 
-        Assert.Equal(new QuotaDto(9, 10, null), quota);
+        Assert.Equal(new QuotaModel(9, 10, null), quota);
         Assert.Single(fixture.Store.Committed);
         Assert.Equal(30, fixture.Store.Discards);
         Assert.Equal(31, fixture.Candidates.Loads);
@@ -454,7 +454,7 @@ public sealed class JobExplorationServiceTests
     {
         Fixture fixture = new(() => ExhaustedAt(Now.AddHours(-hoursSinceLastInterest)));
 
-        QuotaDto quota = await fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+        QuotaModel quota = await fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
 
         Assert.Equal(expectedAvailable, quota.Available);
         Assert.Equal(Candidate.MaxInterests, quota.Total);
@@ -471,9 +471,9 @@ public sealed class JobExplorationServiceTests
     {
         Fixture fixture = new(() => CandidateWith(remaining: 6));
 
-        QuotaDto quota = await fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+        QuotaModel quota = await fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(new QuotaDto(6, 10, null), quota);
+        Assert.Equal(new QuotaModel(6, 10, null), quota);
         Assert.Equal(0, fixture.Store.Saves);
     }
 
@@ -490,9 +490,9 @@ public sealed class JobExplorationServiceTests
             fixture.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
         }
 
-        QuotaDto quota = await fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+        QuotaModel quota = await fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(new QuotaDto(10, 10, null), quota);
+        Assert.Equal(new QuotaModel(10, 10, null), quota);
         Assert.Equal(30, fixture.Store.Discards);
         Assert.Equal(1, fixture.Store.Saves);
         Assert.Equal(Enumerable.Range(1, 30), fixture.Delay.Attempts);
@@ -509,9 +509,9 @@ public sealed class JobExplorationServiceTests
         fixture.Store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
         fixture.Store.OnDiscard = () => fixture.Candidates.SetSource(() => CandidateWith(remaining: 10));
 
-        QuotaDto quota = await fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+        QuotaModel quota = await fixture.Service.GetQuotaAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(new QuotaDto(10, 10, null), quota);
+        Assert.Equal(new QuotaModel(10, 10, null), quota);
         Assert.Equal(1, fixture.Store.Discards);
         Assert.Equal(0, fixture.Store.Saves);
     }
@@ -599,7 +599,7 @@ public sealed class JobExplorationServiceTests
         job.AddPhoto("job_photo/" + new string('2', 32) + ".png");
         fixture.Jobs.Eligible.Add(new EligibleJob(job, 22));
 
-        JobCardDto? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+        JobCardModel? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(card);
         Assert.Equal(job.Id, card.JobId);
@@ -632,7 +632,7 @@ public sealed class JobExplorationServiceTests
         Job job = NewJob(company.Id, location.Id, isUrgent: false);
         fixture.Jobs.Eligible.Add(new EligibleJob(job, 0));
 
-        JobCardDto? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+        JobCardModel? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(card);
         Assert.Null(card.LogoUrl);
@@ -652,7 +652,7 @@ public sealed class JobExplorationServiceTests
     {
         Fixture fixture = new();
 
-        JobCardDto? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+        JobCardModel? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
 
         Assert.Null(card);
         Assert.Equal(1, fixture.Jobs.EligibleQueries);
@@ -690,7 +690,7 @@ public sealed class JobExplorationServiceTests
         Location location = fixture.AddLocation("Braga", "Braga");
         fixture.Jobs.Eligible.Add(new EligibleJob(NewJob(company.Id, location.Id, isUrgent: false), 5));
 
-        JobCardDto? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
+        JobCardModel? card = await fixture.Service.GetNextCardAsync(fixture.CandidateId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(card);
         Assert.Equal(0, fixture.Candidates.Current!.SwipeRightsRemaining);
@@ -718,9 +718,9 @@ public sealed class JobExplorationServiceTests
         job.Benefits.Add(new Benefit("Seguro de saúde"));
         job.Benefits.Add(new Benefit("Ginásio"));
 
-        JobDetailDto detail = await fixture.Service.GetDetailAsync(fixture.CandidateId, job.Id, TestContext.Current.CancellationToken);
+        JobDetailModel detail = await fixture.Service.GetDetailAsync(fixture.CandidateId, job.Id, TestContext.Current.CancellationToken);
 
-        JobCardDto card = detail.Card;
+        JobCardModel card = detail.Card;
         Assert.Equal(job.Id, card.JobId);
         Assert.Equal("Programador Backend .NET", card.Title);
         Assert.Equal("Lumen Software, Lda.", card.CompanyName);
@@ -765,7 +765,7 @@ public sealed class JobExplorationServiceTests
         Location location = fixture.AddLocation("Vila Verde", "Braga", kilometresNorth: 22);
         Job job = fixture.AddJobForDetail(NewJob(company.Id, location.Id, isUrgent: false));
 
-        JobDetailDto detail = await fixture.Service.GetDetailAsync(fixture.CandidateId, job.Id, TestContext.Current.CancellationToken);
+        JobDetailModel detail = await fixture.Service.GetDetailAsync(fixture.CandidateId, job.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(22, detail.Card.DistanceKm);
         Assert.Null(detail.Card.LogoUrl);
@@ -844,7 +844,7 @@ public sealed class JobExplorationServiceTests
         Location location = fixture.AddLocation("Braga", "Braga");
         Job job = fixture.AddJobForDetail(NewJob(company.Id, location.Id, isUrgent: false, expiresAt: Now.AddSeconds(1)));
 
-        JobDetailDto detail = await fixture.Service.GetDetailAsync(fixture.CandidateId, job.Id, TestContext.Current.CancellationToken);
+        JobDetailModel detail = await fixture.Service.GetDetailAsync(fixture.CandidateId, job.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, detail.Card.DistanceKm);
         fixture.Clock.UtcNow = Now.AddSeconds(1);
@@ -853,8 +853,8 @@ public sealed class JobExplorationServiceTests
     }
 
     /// <summary>
-    /// A página de uma Empresa aprovada traz a designação, a descrição, o sítio na Internet, o logótipo e a galeria, com
-    /// os URL da API, e nunca os contactos (RF017, RF025).
+    /// A página de uma Empresa aprovada é a própria Empresa, com a designação, a descrição, o sítio na Internet, o logótipo
+    /// e a galeria; a conversão nos URL da API, sem os contactos, é feita na camada da API (RF017, RF025, I138).
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
@@ -866,14 +866,14 @@ public sealed class JobExplorationServiceTests
         company.SetLogo("company_logo/0123456789abcdef0123456789abcdef.png");
         company.AddGalleryPhoto("company_photo/11111111111111111111111111111111.jpg");
 
-        CompanyPageDto page = await fixture.Service.GetCompanyPageAsync(company.Id, TestContext.Current.CancellationToken);
+        Company page = await fixture.Service.GetCompanyPageAsync(company.Id, TestContext.Current.CancellationToken);
 
-        Assert.Equal(company.Id, page.CompanyId);
+        Assert.Same(company, page);
         Assert.Equal("Lumen Software, Lda.", page.CompanyName);
         Assert.Equal("Software de gestão de frotas.", page.Description);
         Assert.Equal("https://www.lumen-exemplo.pt", page.Website);
-        Assert.Equal("/api/files/COMPANY_LOGO/0123456789abcdef0123456789abcdef.png", page.LogoUrl);
-        Assert.Equal(["/api/files/COMPANY_PHOTO/11111111111111111111111111111111.jpg"], page.PhotoUrls);
+        Assert.Equal("company_logo/0123456789abcdef0123456789abcdef.png", page.LogoPath);
+        Assert.Equal(["company_photo/11111111111111111111111111111111.jpg"], page.PhotoPaths);
         Assert.Equal(0, fixture.Store.Saves);
     }
 

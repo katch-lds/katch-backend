@@ -2,11 +2,11 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -79,7 +79,7 @@ public sealed class CandidateEvaluationServiceTests
         var second = new WaitingInterest(Guid.NewGuid(), Guid.NewGuid(), "Bruno Costa", null, this.location, Now.AddDays(-1));
         this.matches.Waiting[this.job.Id] = [first, second];
 
-        List<WaitingCandidateDto> waiting = await this.service.ListWaitingAsync(this.recruiterId, this.job.Id, TestContext.Current.CancellationToken);
+        List<WaitingCandidateModel> waiting = await this.service.ListWaitingAsync(this.recruiterId, this.job.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal([first.MatchId, second.MatchId], waiting.Select(item => item.MatchId));
         Assert.Equal("Guimarães (Braga)", waiting[0].LocationName);
@@ -97,7 +97,7 @@ public sealed class CandidateEvaluationServiceTests
     [Fact]
     public async Task ListWaitingReturnsAnEmptyListWhenNobodyIsWaiting()
     {
-        List<WaitingCandidateDto> waiting = await this.service.ListWaitingAsync(this.recruiterId, this.job.Id, TestContext.Current.CancellationToken);
+        List<WaitingCandidateModel> waiting = await this.service.ListWaitingAsync(this.recruiterId, this.job.Id, TestContext.Current.CancellationToken);
 
         Assert.Empty(waiting);
     }
@@ -148,7 +148,7 @@ public sealed class CandidateEvaluationServiceTests
     {
         Match match = this.AddInterest();
 
-        CandidateFullProfileDto profile = await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
+        CandidateFullProfileModel profile = await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(Now, profile.ProfileOpenedAt);
         Assert.Equal(Now, match.ProfileOpenedAt);
@@ -167,7 +167,7 @@ public sealed class CandidateEvaluationServiceTests
         await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
         this.clock.UtcNow = Now.AddHours(3);
 
-        CandidateFullProfileDto profile = await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
+        CandidateFullProfileModel profile = await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(Now, profile.ProfileOpenedAt);
         Assert.Equal(1, this.store.Saves);
@@ -204,10 +204,10 @@ public sealed class CandidateEvaluationServiceTests
         this.candidate.AddCustomSkill("Java");
         Match match = this.AddInterest();
 
-        CandidateFullProfileDto profile = await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
+        CandidateFullProfileModel profile = await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(
-            [new SkillTagDto("Java", false), new SkillTagDto("Python", false), new SkillTagDto("SQL", true)],
+            [new SkillTagModel("Java", false), new SkillTagModel("Python", false), new SkillTagModel("SQL", true)],
             profile.Skills);
     }
 
@@ -223,7 +223,7 @@ public sealed class CandidateEvaluationServiceTests
         this.candidate.SetLinks(["https://github.com/ana", "https://ana.pt"]);
         Match match = this.AddInterest();
 
-        CandidateFullProfileDto profile = await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
+        CandidateFullProfileModel profile = await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal("Ana Ferreira", profile.FullName);
         Assert.Equal("/api/files/PROFILE_PHOTO/abc.png", profile.PhotoUrl);
@@ -244,7 +244,7 @@ public sealed class CandidateEvaluationServiceTests
     {
         Match match = this.AddInterest();
 
-        CandidateFullProfileDto profile = await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
+        CandidateFullProfileModel profile = await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
 
         Assert.Null(profile.PhotoUrl);
         Assert.False(profile.HasCv);
@@ -339,7 +339,7 @@ public sealed class CandidateEvaluationServiceTests
         this.store.FailNextSaves.Enqueue(new ConcurrencyConflictException(new InvalidOperationException()));
         this.store.OnDiscard = () => this.matches.Replace(match.Id, Match.ExpressInterest(this.candidate.Id, this.job.Id, Now.AddDays(-1)));
 
-        CandidateFullProfileDto profile = await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
+        CandidateFullProfileModel profile = await this.service.OpenProfileAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(Now, profile.ProfileOpenedAt);
         Assert.Equal(1, this.store.Discards);
