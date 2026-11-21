@@ -31,6 +31,7 @@ public sealed class AdminAccountsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-085: Consultar as contas de utilizador.
     /// Consulta todas as contas de utilizador, por ordem alfabética do correio eletrónico (6.10.1; RF085).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -47,6 +48,7 @@ public sealed class AdminAccountsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-088: Consultar a lista de Candidatos.
     /// Consulta todos os Candidatos, por ordem alfabética do nome (6.10.2; RF088).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -63,6 +65,7 @@ public sealed class AdminAccountsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-086: Bloquear uma conta.
     /// Bloqueia uma conta de Candidato ou de Recrutador (6.10.3; RF086, RF075, RF112).
     /// </summary>
     /// <param name="userId">Conta a bloquear.</param>
@@ -85,6 +88,7 @@ public sealed class AdminAccountsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-089: Suspender a conta de um Candidato.
     /// Suspende a conta de um Candidato (6.10.4; RF089, RF075, RF112).
     /// </summary>
     /// <param name="candidateId">Conta do Candidato a suspender.</param>
@@ -107,6 +111,7 @@ public sealed class AdminAccountsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-087: Reativar uma conta.
     /// Reativa uma conta bloqueada ou suspensa (6.10.5; RF087, RF090, RF075, RF112).
     /// </summary>
     /// <param name="userId">Conta a reativar.</param>

@@ -37,6 +37,7 @@ public sealed class ConversationsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-027: Consultar a lista de conversas.
     /// Lista as conversas do utilizador, abertas e em modo apenas de consulta, com as mensagens por ler (6.8.1; RF027,
     /// RF029, RF075).
     /// </summary>
@@ -54,6 +55,7 @@ public sealed class ConversationsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-028: Abrir uma conversa.
     /// Abre a conversa: devolve as mensagens, da mais antiga para a mais recente, e marca como lidas as da outra parte
     /// (6.8.2; RF026, RF069, RF070). Com <paramref name="after"/>, só as mensagens enviadas depois desse instante.
     /// </summary>
@@ -82,6 +84,7 @@ public sealed class ConversationsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-026: Enviar uma mensagem.
     /// Envia uma mensagem na conversa (6.8.3; RF030; P03).
     /// </summary>
     /// <param name="matchId">Identificador do match.</param>
@@ -116,6 +119,7 @@ public sealed class ConversationsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-030: Encerrar uma conversa.
     /// Encerra a conversa: passa a modo apenas de consulta para as duas partes, com o histórico visível (6.8.4; RF071,
     /// RF072, RF075).
     /// </summary>

@@ -52,6 +52,7 @@ public sealed class CompanyController : ControllerBase
     }
 
     /// <summary>
+    /// RF-041: Registar a Empresa.
     /// Regista a Empresa do Recrutador (UC07): com os dados válidos, a Empresa fica pendente de aprovação e a submissão
     /// é registada (RF041 a RF043, RF112). Todos os campos em erro são indicados na mesma resposta (RF042).
     /// </summary>
@@ -78,6 +79,7 @@ public sealed class CompanyController : ControllerBase
     }
 
     /// <summary>
+    /// RF-045: Corrigir e submeter novamente o pedido.
     /// Corrige os dados do pedido recusado e submete-o novamente (UC07): a Empresa volta a pendente, o motivo da recusa
     /// é limpo e a data de submissão é atualizada (RF045, RF112).
     /// </summary>
@@ -104,6 +106,7 @@ public sealed class CompanyController : ControllerBase
     }
 
     /// <summary>
+    /// RF-044: Consultar o estado do pedido de registo.
     /// Consulta o estado do pedido de registo, com o motivo da recusa no estado recusado (RF044). É o que a área de
     /// gestão web consulta enquanto as operações reservadas estão vedadas (RF039).
     /// </summary>
@@ -118,6 +121,7 @@ public sealed class CompanyController : ControllerBase
     }
 
     /// <summary>
+    /// RF-044: Consultar os dados de registo da própria Empresa.
     /// Consulta os dados de registo da própria Empresa, em qualquer estado, para pré-preencher os formulários de
     /// correção e de alteração (6.4.8; RF044, RF045, RF049).
     /// </summary>
@@ -132,6 +136,7 @@ public sealed class CompanyController : ControllerBase
     }
 
     /// <summary>
+    /// RF-049: Alterar os dados de registo da Empresa aprovada.
     /// Altera os dados de registo da Empresa aprovada, que se mantém aprovada (6.4.4; RF049, RF112). O NIF tem de ser
     /// igual ao registado.
     /// </summary>
@@ -158,6 +163,7 @@ public sealed class CompanyController : ControllerBase
     }
 
     /// <summary>
+    /// RF-046: Consultar a página de apresentação da própria Empresa.
     /// Consulta a página de apresentação da própria Empresa, para pré-preencher o formulário da página (6.4.9; RF046 a
     /// RF048).
     /// </summary>
@@ -174,6 +180,7 @@ public sealed class CompanyController : ControllerBase
     }
 
     /// <summary>
+    /// RF-046: Gravar a página de apresentação.
     /// Grava a descrição da atividade e o sítio na Internet da página de apresentação (6.4.5; RF046; P08, P10). Um valor
     /// <see langword="null"/> limpa o campo.
     /// </summary>
@@ -200,6 +207,7 @@ public sealed class CompanyController : ControllerBase
     }
 
     /// <summary>
+    /// RF-047: Carregar o logótipo.
     /// Guarda o logótipo, em JPEG ou PNG até 2 MB, substituindo o anterior (6.4.6; RF047; RNF016; P01). O pedido é
     /// <c>multipart/form-data</c> com o campo <c>file</c>.
     /// </summary>
@@ -227,6 +235,7 @@ public sealed class CompanyController : ControllerBase
     }
 
     /// <summary>
+    /// RF-048: Acrescentar uma fotografia à galeria.
     /// Acrescenta uma fotografia, em JPEG ou PNG até 5 MB, no fim da galeria (6.4.7; RF048; RNF016; P01, P13). O pedido
     /// é <c>multipart/form-data</c> com o campo <c>file</c>.
     /// </summary>

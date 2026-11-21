@@ -31,6 +31,7 @@ public sealed class FilesController : ControllerBase
     }
 
     /// <summary>
+    /// RF-010: Obter uma fotografia ou um logótipo.
     /// Obtém um ficheiro (6.9.1). Um tipo desconhecido, o curriculum vitae, um nome inválido ou inexistente e a falta de
     /// autorização dão todos a mesma resposta <c>404</c> (ERR-20), para não revelar a existência do ficheiro.
     /// </summary>

@@ -43,6 +43,7 @@ public sealed class CandidateProfileController : ControllerBase
     }
 
     /// <summary>
+    /// RF-006: Consultar o perfil profissional.
     /// Consulta o perfil profissional do Candidato (6.2.1; RF006 a RF012).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -57,6 +58,7 @@ public sealed class CandidateProfileController : ControllerBase
     }
 
     /// <summary>
+    /// RF-006: Gravar os dados do perfil profissional.
     /// Grava a função pretendida, a localidade, a disponibilidade e o resumo da experiência (6.2.2; RF006; P08, P14).
     /// </summary>
     /// <param name="request">Novos valores dos quatro campos; <see langword="null"/> limpa os opcionais.</param>
@@ -78,6 +80,7 @@ public sealed class CandidateProfileController : ControllerBase
     }
 
     /// <summary>
+    /// RF-007: Definir ou ajustar as preferências de procura.
     /// Grava as preferências de procura, aplicadas ao cartão seguinte (6.2.3; RF007, RF023; P06, P09, P16).
     /// </summary>
     /// <param name="request">Novas preferências; <see langword="null"/> ou lista vazia significa sem filtro.</param>
@@ -99,6 +102,7 @@ public sealed class CandidateProfileController : ControllerBase
     }
 
     /// <summary>
+    /// RF-012: Indicar as hiperligações profissionais.
     /// Substitui as hiperligações profissionais, de 0 a 3, pela ordem indicada (6.2.6; RF012; P10).
     /// </summary>
     /// <param name="request">Endereços; a lista vazia apaga todas.</param>
@@ -120,6 +124,7 @@ public sealed class CandidateProfileController : ControllerBase
     }
 
     /// <summary>
+    /// RF-010: Carregar a fotografia de perfil.
     /// Guarda a fotografia de perfil, em JPEG ou PNG até 5 MB, substituindo a anterior (6.2.7; RF010; RNF015, RNF016;
     /// P01). O pedido é <c>multipart/form-data</c> com o campo <c>file</c>.
     /// </summary>
@@ -147,6 +152,7 @@ public sealed class CandidateProfileController : ControllerBase
     }
 
     /// <summary>
+    /// RF-011: Enviar o curriculum vitae.
     /// Guarda o curriculum vitae, em PDF até 5 MB, substituindo o anterior (6.2.8; RF011; RNF007, RNF015, RNF016; P02).
     /// O pedido é <c>multipart/form-data</c> com o campo <c>file</c>. O curriculum vitae não tem URL.
     /// </summary>
@@ -170,6 +176,7 @@ public sealed class CandidateProfileController : ControllerBase
     }
 
     /// <summary>
+    /// RF-011: Obter o próprio curriculum vitae.
     /// Obtém o curriculum vitae do próprio Candidato (6.2.9; RF011; RNF007).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -187,6 +194,7 @@ public sealed class CandidateProfileController : ControllerBase
     }
 
     /// <summary>
+    /// RF-008: Acrescentar uma competência da lista.
     /// Associa ao perfil uma competência da lista pré-definida (RF008).
     /// </summary>
     /// <param name="request">Competência a acrescentar; sem corpo, o campo é indicado como obrigatório.</param>
@@ -212,6 +220,7 @@ public sealed class CandidateProfileController : ControllerBase
     }
 
     /// <summary>
+    /// RF-008: Retirar uma competência da lista.
     /// Retira do perfil uma competência da lista pré-definida (RF008).
     /// </summary>
     /// <param name="skillId">Identificador da competência associada ao perfil.</param>
@@ -229,6 +238,7 @@ public sealed class CandidateProfileController : ControllerBase
     }
 
     /// <summary>
+    /// RF-009: Acrescentar uma competência «Outro».
     /// Acrescenta ao perfil uma competência da opção «Outro», validada no servidor segundo o P07 (RF009).
     /// </summary>
     /// <param name="request">Designação da competência; sem corpo, o campo é indicado como obrigatório.</param>
@@ -254,6 +264,7 @@ public sealed class CandidateProfileController : ControllerBase
     }
 
     /// <summary>
+    /// RF-009: Retirar uma competência «Outro».
     /// Retira do perfil uma competência da opção «Outro» (RF009).
     /// </summary>
     /// <param name="customSkillId">Identificador da competência «Outro».</param>

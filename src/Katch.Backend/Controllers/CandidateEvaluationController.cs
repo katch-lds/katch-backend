@@ -35,6 +35,7 @@ public sealed class CandidateEvaluationController : ControllerBase
     }
 
     /// <summary>
+    /// RF-060: Consultar os candidatos em espera.
     /// Lista os Candidatos em espera de resposta numa vaga da Empresa, do interesse mais antigo para o mais recente
     /// (6.6.1; RF060, RF113).
     /// </summary>
@@ -54,6 +55,7 @@ public sealed class CandidateEvaluationController : ControllerBase
     }
 
     /// <summary>
+    /// RF-061: Abrir o perfil completo do Candidato.
     /// Abre o perfil completo do Candidato do interesse, com as competências coincidentes com a vaga destacadas, e
     /// regista a primeira abertura (6.6.2; RF061, RF062, RF118).
     /// </summary>
@@ -73,6 +75,7 @@ public sealed class CandidateEvaluationController : ControllerBase
     }
 
     /// <summary>
+    /// RF-061: Obter o curriculum vitae.
     /// Descarrega o curriculum vitae do Candidato do interesse (6.6.3; RF061; RNF007). A resposta não é guardada em
     /// cache, para que o ficheiro deixe de estar disponível quando o interesse deixar de estar em espera.
     /// </summary>
@@ -94,6 +97,7 @@ public sealed class CandidateEvaluationController : ControllerBase
     }
 
     /// <summary>
+    /// RF-063: Aceitar o Candidato.
     /// Aceita o Candidato do interesse: confirma o match e abre a conversa numa só transação (6.6.4; RF063, RF065, RF066,
     /// RF068, RF117). O perfil completo tem de ter sido aberto antes.
     /// </summary>
@@ -112,6 +116,7 @@ public sealed class CandidateEvaluationController : ControllerBase
     }
 
     /// <summary>
+    /// RF-064: Recusar o Candidato.
     /// Recusa o Candidato do interesse, que deixa de ser apresentado para a vaga (6.6.5; RF064, RF065, RF117). Não há
     /// conversa, contacto nem notificação. O perfil completo tem de ter sido aberto antes.
     /// </summary>

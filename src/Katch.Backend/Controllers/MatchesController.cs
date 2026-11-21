@@ -35,6 +35,7 @@ public sealed class MatchesController : ControllerBase
     }
 
     /// <summary>
+    /// RF-024: Consultar os matches.
     /// Lista os matches confirmados do Candidato (RF024, RF025) ou das vagas da Empresa do Recrutador (RF067), do mais
     /// recente para o mais antigo. Ao Recrutador exige-se a Empresa aprovada; o Candidato continua a ver os matches de
     /// Empresas suspensas.

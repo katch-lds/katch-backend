@@ -36,6 +36,7 @@ public sealed class JobExplorationController : ControllerBase
     }
 
     /// <summary>
+    /// RF-013: Obter o cartão de vaga seguinte.
     /// Obtém o cartão da vaga seguinte que cumpre o filtro do RF014, com a distância à localidade do Candidato (RF013 a
     /// RF015). Os cartões são apresentados um de cada vez: depois de o Candidato responder, o pedido seguinte traz outra
     /// vaga.
@@ -60,6 +61,7 @@ public sealed class JobExplorationController : ControllerBase
     }
 
     /// <summary>
+    /// RF-016: Consultar o detalhe de uma vaga.
     /// Consulta o detalhe de uma vaga (RF016; UC05, A2): o cartão, a descrição completa, as competências, os benefícios e o
     /// identificador da Empresa, para a página de apresentação. A rota só aceita um GUID, por isso <c>next</c> e
     /// <c>quota</c> não são lidos como identificadores de vaga.
@@ -83,6 +85,7 @@ public sealed class JobExplorationController : ControllerBase
     }
 
     /// <summary>
+    /// RF-018: Recusar uma vaga.
     /// Recusa uma vaga (RF018, RF112): fica registada a recusa e a data, sem consumir a quota e sem limite de recusas.
     /// </summary>
     /// <param name="jobId">Identificador da vaga.</param>
@@ -105,6 +108,7 @@ public sealed class JobExplorationController : ControllerBase
     }
 
     /// <summary>
+    /// RF-019: Manifestar interesse numa vaga.
     /// Manifesta interesse numa vaga (RF019, RF020, RF112, RF113): numa só transação regista o interesse em espera e
     /// consome um interesse da quota. Se este interesse esgotar a quota, <c>blockedUntil</c> traz o fim do bloqueio.
     /// </summary>
@@ -129,6 +133,7 @@ public sealed class JobExplorationController : ControllerBase
     }
 
     /// <summary>
+    /// RF-022: Consultar os interesses disponíveis.
     /// Consulta os interesses disponíveis (RF020 a RF022): se o bloqueio já terminou, a quota é reposta antes de responder.
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -144,6 +149,7 @@ public sealed class JobExplorationController : ControllerBase
     }
 
     /// <summary>
+    /// RF-017: Consultar a página de apresentação da Empresa.
     /// Consulta a página de apresentação da Empresa, a partir do detalhe da vaga (6.3.3; RF017): designação, descrição,
     /// sítio na Internet, logótipo e galeria, sem os contactos (RF025).
     /// </summary>
