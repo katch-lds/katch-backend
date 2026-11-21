@@ -463,6 +463,24 @@ public sealed class AuthServiceLoginTests
         Assert.Equal(0, this.unitOfWork.Saves);
     }
 
+    /// <summary>
+    /// O fim de sessão incrementa a versão das sessões da conta e grava uma vez; uma conta inexistente é um erro
+    /// inesperado (SEG-003).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task LogoutRevokesTheSessionsOfTheAccount()
+    {
+        AppUser user = this.AddUser(UserType.Candidate);
+
+        await this.service.LogoutAsync(user.Id, TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => this.service.LogoutAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
+
+        Assert.Equal(1, user.TokenVersion);
+        Assert.Equal(1, this.unitOfWork.Saves);
+    }
+
     private static LoginInput Credentials()
     {
         return new LoginInput(Email, ValidPassword);

@@ -157,13 +157,13 @@ public sealed class JobExplorationService : IJobExplorationService
     {
         // Uma Empresa pendente, recusada ou suspensa, ou com o Recrutador bloqueado, não é visível ao Candidato: a mesma
         // resposta que a inexistente.
-        if (!await this.companies.IsVisibleToCandidatesAsync(companyId, cancellationToken))
+        Company? company = await this.companies.GetByIdAsync(companyId, cancellationToken);
+        if (company is null || !await this.companies.IsVisibleToCandidatesAsync(companyId, cancellationToken))
         {
             throw new ElementNotFoundException();
         }
 
-        return await this.companies.GetByIdAsync(companyId, cancellationToken)
-            ?? throw new ElementNotFoundException();
+        return company;
     }
 
     private static QuotaModel ToQuota(Candidate candidate)
