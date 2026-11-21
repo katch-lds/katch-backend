@@ -116,7 +116,7 @@ public sealed class AdminAccountsTests : IClassFixture<KatchWebApplicationFactor
 
     /// <summary>
     /// Depois do bloqueio, a conta deixa de iniciar sessão e a credencial já emitida deixa de ser aceite (ERR-03); a
-    /// reativação repõe as duas; ficam registados <c>ACCOUNT_BLOCKED</c> e <c>ACCOUNT_REACTIVATED</c> com o
+    /// reativação repõe o início de sessão, mas não a credencial anterior ao bloqueio, que passa a ERR-01 (SEG-018); ficam registados <c>ACCOUNT_BLOCKED</c> e <c>ACCOUNT_REACTIVATED</c> com o
     /// Administrador (RF086, RF087, RF112).
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
@@ -147,10 +147,11 @@ public sealed class AdminAccountsTests : IClassFixture<KatchWebApplicationFactor
             Assert.Equal(HttpStatusCode.NoContent, reactivated.StatusCode);
         }
 
-        using (HttpResponseMessage probe = await this.SendAsync(HttpMethod.Get, ProbeRoute, token))
-        {
-            Assert.Equal(HttpStatusCode.OK, probe.StatusCode);
-        }
+        await AdminTestData.AssertErrorAsync(
+            await this.SendAsync(HttpMethod.Get, ProbeRoute, token),
+            HttpStatusCode.Unauthorized,
+            "ERR-01",
+            InvalidSessionMessage);
 
         using (HttpResponseMessage login = await this.LoginAsync(candidate.User.Email, "mobile"))
         {

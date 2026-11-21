@@ -315,7 +315,12 @@ razão «A palavra-passe é demasiado comum. Escolha outra.».
 servidor confirma em cada pedido, na mesma consulta do estado da conta. O fim de sessão e a alteração da palavra-passe
 incrementam a versão: **todas** as credenciais da conta, em qualquer dispositivo e incluindo a do próprio pedido, passam
 a receber `401` `ERR-01`, e o cliente tem de iniciar sessão outra vez. As credenciais emitidas antes da migration
-`AddLoginSecurity` não têm a claim `ver` e também deixam de ser aceites.
+`AddLoginSecurity` não têm a claim `ver` e também deixam de ser aceites. O bloqueio e a suspensão da conta também
+terminam as sessões: com a conta bloqueada o pedido recebe `403` `ERR-03` (ou `ERR-04`), e depois da reativação a
+credencial anterior ao bloqueio recebe `401` `ERR-01`, por isso é preciso iniciar sessão outra vez.
+
+Uma rota que não existe responde `404` `ERR-20` com o corpo `ApiErrorDto` a quem tem sessão e `401` `ERR-01` a quem não a
+tem (para não revelar que a rota não existe); um método que o endpoint não aceita responde `405`.
 
 **Experimentar no Swagger** (`/swagger`): em `POST /api/auth/login` preencha `X-Client-App` (lista `mobile`/`web`) e o
 corpo, execute, copie o `token` da resposta, clique em **Authorize** e cole-o (sem o prefixo `Bearer`); os pedidos

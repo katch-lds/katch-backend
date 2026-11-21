@@ -7,6 +7,8 @@ using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Authentication;
+using Katch.Backend.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -195,6 +197,40 @@ public sealed class LogoutTests : IClassFixture<KatchWebApplicationFactory>
         using HttpResponseMessage response = await this.PostAsync(token);
 
         await AuthenticationTests.AssertErrorAsync(response, HttpStatusCode.Unauthorized, "ERR-01", InvalidSession);
+    }
+
+    /// <summary>
+    /// Com a conta bloqueada, a credencial anterior recebe ERR-03 (o estado vem primeiro); depois da reativação, essa
+    /// credencial já não vale (ERR-01) e um início de sessão novo funciona (SEG-018).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task BlockingRevokesTheTokenForGoodEvenAfterReactivation()
+    {
+        AppUser user = await AuthTestAccounts.SeedAsync(this.factory, UserType.Candidate);
+        string token = this.IssueToken(user);
+
+        await this.ChangeAccountAsync(user.Id, account => account.Block(DateTimeOffset.UtcNow));
+        using HttpResponseMessage whileBlocked = await this.PostAsync(token);
+        await this.ChangeAccountAsync(user.Id, account => account.Reactivate(DateTimeOffset.UtcNow));
+        using HttpResponseMessage afterReactivation = await this.PostAsync(token);
+        using HttpResponseMessage login = await AuthTestAccounts.LoginAsync(
+            this.factory,
+            AuthTestAccounts.Credentials(user.Email, AuthTestAccounts.Password),
+            "mobile");
+
+        await AuthenticationTests.AssertErrorAsync(whileBlocked, HttpStatusCode.Forbidden, "ERR-03", "A conta está bloqueada.");
+        await AuthenticationTests.AssertErrorAsync(afterReactivation, HttpStatusCode.Unauthorized, "ERR-01", InvalidSession);
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+    }
+
+    private async Task ChangeAccountAsync(Guid userId, Action<AppUser> change)
+    {
+        using IServiceScope scope = this.factory.Services.CreateScope();
+        KatchDbContext context = scope.ServiceProvider.GetRequiredService<KatchDbContext>();
+        AppUser account = await context.Users.SingleAsync(item => item.Id == userId, TestContext.Current.CancellationToken);
+        change(account);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
     private string IssueToken(AppUser user, DateTimeOffset? issuedAt = null)

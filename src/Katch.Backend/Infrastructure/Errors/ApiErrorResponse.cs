@@ -362,6 +362,16 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Escreve o ERR-20 (404): a rota pedida não existe.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteNotFoundAsync(HttpContext context)
+    {
+        return WriteAsync(context, StatusCodes.Status404NotFound, NotFoundCode, NotFoundMessage);
+    }
+
+    /// <summary>
     /// Escreve o ERR-14 (429): o limite de pedidos da janela foi excedido.
     /// </summary>
     /// <param name="context">Contexto do pedido.</param>

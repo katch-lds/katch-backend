@@ -4,9 +4,12 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Katch.Backend.Domain;
+using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Hosting;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Katch.Backend.IntegrationTests;
 
@@ -166,6 +169,26 @@ public sealed class ExposureTests : IClassFixture<KatchWebApplicationFactory>
         using JsonDocument json = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         Assert.Equal("ERR-13", json.RootElement.GetProperty("code").GetString());
+    }
+
+    /// <summary>
+    /// Uma rota inexistente responde 404 ERR-20 com <c>ApiErrorDto</c> a quem tem sessão; sem sessão continua a ser 401,
+    /// que não revela que a rota não existe (FUN-007). Um método que o endpoint não aceita continua a ser 405.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task UnknownRouteIs404Err20WithASession()
+    {
+        using HttpClient client = this.factory.CreateClient();
+        AppUser user = await AuthTestAccounts.SeedAsync(this.factory, Domain.Enums.UserType.Admin);
+        string token = this.factory.Services.GetRequiredService<ITokenService>().CreateToken(user).Token;
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("/api/nao-existe", UriKind.Relative));
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("ERR-20", (await AuthTestAccounts.ReadJsonAsync(response)).GetProperty("code").GetString());
     }
 
     /// <summary>

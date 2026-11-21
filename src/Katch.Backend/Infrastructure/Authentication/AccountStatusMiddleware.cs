@@ -58,12 +58,14 @@ internal sealed class AccountStatusMiddleware
             .Select(user => new { user.Status, user.TokenVersion })
             .SingleOrDefaultAsync(context.RequestAborted);
 
-        if (account is null || account.TokenVersion != tokenVersion)
+        if (account is null)
         {
             await ApiErrorResponse.WriteInvalidSessionAsync(context);
             return;
         }
 
+        // O estado vem antes da versão: uma conta bloqueada ou suspensa recebe sempre ERR-03 ou ERR-04, mesmo com uma
+        // credencial anterior ao bloqueio, que o bloqueio já revogou (SEG-018).
         switch (account.Status)
         {
             case AccountStatus.Blocked:
@@ -73,6 +75,12 @@ internal sealed class AccountStatusMiddleware
                 await ApiErrorResponse.WriteAccountSuspendedAsync(context);
                 return;
             default:
+                if (account.TokenVersion != tokenVersion)
+                {
+                    await ApiErrorResponse.WriteInvalidSessionAsync(context);
+                    return;
+                }
+
                 await this.next(context);
                 return;
         }

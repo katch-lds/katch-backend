@@ -247,6 +247,24 @@ public sealed class AppUserTests
     }
 
     /// <summary>
+    /// O bloqueio e a suspensão terminam as sessões da conta, por isso uma credencial anterior não volta a valer depois
+    /// da reativação (SEG-018).
+    /// </summary>
+    [Fact]
+    public void BlockAndSuspendRevokeTheSessions()
+    {
+        AppUser blocked = CreateUser(UserType.Candidate);
+        AppUser suspended = CreateUser(UserType.Candidate);
+
+        blocked.Block(Later);
+        suspended.Suspend(Later);
+        blocked.Reactivate(Later);
+
+        Assert.Equal(1, blocked.TokenVersion);
+        Assert.Equal(1, suspended.TokenVersion);
+    }
+
+    /// <summary>
     /// O fim de sessão e a mudança da palavra-passe incrementam a versão das sessões (SEG-003).
     /// </summary>
     [Fact]

@@ -42,6 +42,12 @@ app.UseKatchRequestLogging();
 app.UseKatchSecurityHeaders();
 app.UseKatchExceptionHandler();
 
+// Um 404 sem corpo (rota inexistente, com sessão) passa a ter o ApiErrorDto ERR-20 (FUN-007).
+app.UseStatusCodePages(context =>
+    context.HttpContext.Response.StatusCode == StatusCodes.Status404NotFound
+        ? ApiErrorResponse.WriteNotFoundAsync(context.HttpContext)
+        : Task.CompletedTask);
+
 if (app.Configuration.GetValue<bool>(HostingServiceCollectionExtensions.SwaggerEnabledKey))
 {
     app.UseSwagger();

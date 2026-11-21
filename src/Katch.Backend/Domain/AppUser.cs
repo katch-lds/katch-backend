@@ -280,5 +280,6 @@ public sealed class AppUser
 
         this.Status = target;
         this.UpdatedAt = now;
+        this.RevokeSessions();
     }
 }
