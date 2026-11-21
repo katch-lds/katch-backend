@@ -322,6 +322,10 @@ public sealed class AuthService : IAuthService
         {
             errors.Add(new FieldError(field, FieldReasons.PasswordPolicy));
         }
+        else if (CommonPasswords.Contains(password))
+        {
+            errors.Add(new FieldError(field, FieldReasons.PasswordTooCommon));
+        }
     }
 
     private async Task ValidateEmailAsync(string email, List<FieldError> errors, CancellationToken cancellationToken)

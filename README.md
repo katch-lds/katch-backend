@@ -306,6 +306,11 @@ O início de sessão verifica, **por esta ordem**, as credenciais (`401` `ERR-02
 Na alteração da palavra-passe, a atual errada devolve `400` `ERR-10` no campo `currentPassword` (e não `401`, para o
 cliente não a confundir com uma sessão expirada) e a nova fora do P05 devolve `400` `ERR-10` em `newPassword`.
 
+**Palavras-passe comuns.** No registo, na alteração da palavra-passe e na palavra-passe do Administrador
+(`Katch__AdminPassword`), além do P05 é recusada uma lista de palavras-passe comuns que o cumprem (`password1`,
+`qwerty123`, `benfica1`, ...; `Infrastructure/CommonPasswords.cs`), sem distinguir maiúsculas: `400` `ERR-10` com a
+razão «A palavra-passe é demasiado comum. Escolha outra.».
+
 **Fim das sessões.** Cada credencial leva a versão das sessões da conta (claim `ver`, coluna `token_version`), que o
 servidor confirma em cada pedido, na mesma consulta do estado da conta. O fim de sessão e a alteração da palavra-passe
 incrementam a versão: **todas** as credenciais da conta, em qualquer dispositivo e incluindo a do próprio pedido, passam

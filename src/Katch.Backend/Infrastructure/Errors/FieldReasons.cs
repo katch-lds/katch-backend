@@ -40,6 +40,11 @@ public static class FieldReasons
     public const string PasswordPolicy = "A palavra-passe tem de ter pelo menos 8 caracteres, uma letra e um algarismo.";
 
     /// <summary>
+    /// Palavra-passe que cumpre o P05 mas está na lista de palavras-passe comuns (SEG-009).
+    /// </summary>
+    public const string PasswordTooCommon = "A palavra-passe é demasiado comum. Escolha outra.";
+
+    /// <summary>
     /// Palavra-passe com mais de 128 caracteres (documentação da API v02, secção 8.1).
     /// </summary>
     public const string PasswordTooLong = "A palavra-passe tem no máximo 128 caracteres.";

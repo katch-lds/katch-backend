@@ -136,6 +136,8 @@ public sealed class AuthServiceTests
     [InlineData("password", "katch20", FieldReasons.PasswordPolicy)]
     [InlineData("password", "katchkatch", FieldReasons.PasswordPolicy)]
     [InlineData("password", "2026202620", FieldReasons.PasswordPolicy)]
+    [InlineData("password", "Password123", FieldReasons.PasswordTooCommon)]
+    [InlineData("password", "benfica1", FieldReasons.PasswordTooCommon)]
     public async Task InvalidFieldIsRejectedWithItsReason(string field, string value, string reason)
     {
         RegisterCandidateInput request = field switch

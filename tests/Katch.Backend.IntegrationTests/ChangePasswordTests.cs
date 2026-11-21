@@ -183,6 +183,7 @@ public sealed class ChangePasswordTests : IClassFixture<KatchWebApplicationFacto
     [InlineData("katch20", PasswordPolicy)]
     [InlineData("katchkatch", PasswordPolicy)]
     [InlineData("2026202620", PasswordPolicy)]
+    [InlineData("Qwerty123", "A palavra-passe é demasiado comum. Escolha outra.")]
     [InlineData("", "O campo é obrigatório.")]
     [InlineData("        ", "O campo é obrigatório.")]
     public async Task NewPasswordOutsideP05Returns400(string newPassword, string reason)
