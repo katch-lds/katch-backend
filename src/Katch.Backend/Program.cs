@@ -6,6 +6,7 @@ using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Cors;
 using Katch.Backend.Infrastructure.Hosting;
 using Katch.Backend.Infrastructure.Persistence;
+using Katch.Backend.Infrastructure.RateLimiting;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
 
@@ -18,6 +19,7 @@ string connectionString = builder.Configuration.GetConnectionString("Katch")
 
 builder.Services.AddDbContext<KatchDbContext>(options => options.UseKatchPostgres(connectionString));
 builder.Services.AddKatchHosting();
+builder.Services.AddKatchRateLimiting();
 builder.Services.AddKatchCors();
 builder.Services.AddKatchAuthentication();
 builder.Services.AddKatchApplicationServices();
@@ -46,6 +48,7 @@ app.UseHttpsRedirection();
 app.UseKatchCors();
 app.UseKatchRequestBodyLimit();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAccountStatusCheck();
 app.UseAuthorization();
 app.MapControllers();

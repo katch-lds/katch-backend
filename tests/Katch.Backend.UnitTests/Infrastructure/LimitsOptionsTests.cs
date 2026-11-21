@@ -1,5 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using System.Globalization;
+using System.Reflection;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Hosting;
 using Katch.Backend.Infrastructure.Persistence;
@@ -16,6 +18,24 @@ namespace Katch.Backend.UnitTests.Infrastructure;
 public sealed class LimitsOptionsTests
 {
     /// <summary>
+    /// Gets each limit with a zero and a negative value.
+    /// </summary>
+    public static TheoryData<string, int> NonPositiveLimits
+    {
+        get
+        {
+            var data = new TheoryData<string, int>();
+            foreach (PropertyInfo property in typeof(LimitsOptions).GetProperties())
+            {
+                data.Add(property.Name, 0);
+                data.Add(property.Name, -7);
+            }
+
+            return data;
+        }
+    }
+
+    /// <summary>
     /// Os valores por omissão são válidos e o corpo fica nos 64 KB da documentação da API (secção 4.2).
     /// </summary>
     [Fact]
@@ -28,21 +48,23 @@ public sealed class LimitsOptionsTests
     }
 
     /// <summary>
-    /// Um limite nulo ou negativo para a aplicação com uma mensagem que indica a variável, sem repetir o valor.
+    /// Cada limite nulo ou negativo para a aplicação com uma mensagem que indica a variável, sem repetir o valor.
     /// </summary>
+    /// <param name="property">Limite configurado.</param>
     /// <param name="value">Valor configurado.</param>
     [Theory]
-    [InlineData(0)]
-    [InlineData(-5)]
-    public void NonPositiveLimitIsRejected(long value)
+    [MemberData(nameof(NonPositiveLimits))]
+    public void NonPositiveLimitIsRejected(string property, int value)
     {
-        ValidateOptionsResult result = new LimitsOptionsValidator().Validate(
-            null,
-            new LimitsOptions { MaxRequestBodyBytes = value });
+        var options = new LimitsOptions();
+        PropertyInfo limit = typeof(LimitsOptions).GetProperty(property)!;
+        limit.SetValue(options, Convert.ChangeType(value, limit.PropertyType, CultureInfo.InvariantCulture));
+
+        ValidateOptionsResult result = new LimitsOptionsValidator().Validate(null, options);
 
         string failure = Assert.Single(result.Failures!);
-        Assert.Contains("Limits__MaxRequestBodyBytes", failure, StringComparison.Ordinal);
-        Assert.DoesNotContain(value.ToString(System.Globalization.CultureInfo.InvariantCulture), failure, StringComparison.Ordinal);
+        Assert.Contains($"Limits__{property}", failure, StringComparison.Ordinal);
+        Assert.DoesNotContain(value.ToString(CultureInfo.InvariantCulture), failure, StringComparison.Ordinal);
     }
 
     /// <summary>

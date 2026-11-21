@@ -5,11 +5,13 @@ using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Errors;
+using Katch.Backend.Infrastructure.RateLimiting;
 using Katch.Backend.Services;
 using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Katch.Backend.Controllers;
 
@@ -55,6 +57,7 @@ public sealed class AuthController : ControllerBase
     /// <returns><c>201</c> com a credencial de sessão, ou <c>400</c> (ERR-10) com os campos em erro.</returns>
     [HttpPost("candidates")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Registration)]
     [Consumes("application/json")]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]
@@ -78,6 +81,7 @@ public sealed class AuthController : ControllerBase
     /// <returns><c>201</c> com a credencial de sessão, sem <c>Location</c>, ou <c>400</c> (ERR-10) com os campos em erro.</returns>
     [HttpPost("recruiters")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Registration)]
     [Consumes("application/json")]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]
@@ -112,6 +116,7 @@ public sealed class AuthController : ControllerBase
     /// </returns>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Login)]
     [Consumes("application/json")]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]

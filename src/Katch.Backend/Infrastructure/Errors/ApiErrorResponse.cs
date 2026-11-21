@@ -75,6 +75,11 @@ public static class ApiErrorResponse
     public const string UnsupportedContentTypeCode = "ERR-13";
 
     /// <summary>
+    /// Código do erro de limite de pedidos excedido.
+    /// </summary>
+    public const string TooManyRequestsCode = "ERR-14";
+
+    /// <summary>
     /// Código do erro de elemento inexistente ou não disponível.
     /// </summary>
     public const string NotFoundCode = "ERR-20";
@@ -195,6 +200,11 @@ public static class ApiErrorResponse
     public const string UnsupportedContentTypeMessage = "O tipo de conteúdo do pedido não é suportado.";
 
     /// <summary>
+    /// Mensagem do ERR-14.
+    /// </summary>
+    public const string TooManyRequestsMessage = "Demasiados pedidos. Tente novamente dentro de instantes.";
+
+    /// <summary>
     /// Mensagem do ERR-20.
     /// </summary>
     public const string NotFoundMessage = "O elemento pedido não existe ou não está disponível.";
@@ -305,6 +315,16 @@ public static class ApiErrorResponse
     public static Task WriteRequestTooLargeAsync(HttpContext context)
     {
         return WriteAsync(context, StatusCodes.Status413PayloadTooLarge, RequestTooLargeCode, RequestTooLargeMessage);
+    }
+
+    /// <summary>
+    /// Escreve o ERR-14 (429): o limite de pedidos da janela foi excedido.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteTooManyRequestsAsync(HttpContext context)
+    {
+        return WriteAsync(context, StatusCodes.Status429TooManyRequests, TooManyRequestsCode, TooManyRequestsMessage);
     }
 
     /// <summary>

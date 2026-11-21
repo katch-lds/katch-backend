@@ -3,10 +3,12 @@
 using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
+using Katch.Backend.Infrastructure.RateLimiting;
 using Katch.Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Katch.Backend.Controllers;
 
@@ -38,6 +40,7 @@ public sealed class ReferenceListsController : ControllerBase
     /// <returns><c>200</c> com as localidades por ordem alfabética, só com o identificador e a designação.</returns>
     [HttpGet("locations")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Locations)]
     [ProducesResponseType<List<ReferenceItemDto>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<List<ReferenceItemDto>>> ListLocations(CancellationToken cancellationToken)
     {

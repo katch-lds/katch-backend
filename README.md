@@ -557,6 +557,15 @@ uma mensagem que indica a variável a corrigir.
 | Variável | Por omissão | Efeito |
 | --- | --- | --- |
 | `Limits__MaxRequestBodyBytes` | `65536` (64 KB) | Corpo máximo dos pedidos fora dos carregamentos; acima disto, `413` ERR-12 (API v02, secção 4.2). Os carregamentos mantêm os 6 MB |
+| `Limits__RateLimitWindowSeconds` | `60` | Duração da janela dos limites de pedidos |
+| `Limits__LoginPermitLimit` | `10` | Inícios de sessão por IP em cada janela |
+| `Limits__RegistrationPermitLimit` | `10` | Registos de Candidato e de Recrutador (contagem comum) por IP em cada janela |
+| `Limits__LocationsPermitLimit` | `30` | Consultas anónimas das localidades por IP em cada janela |
+| `Limits__UserPermitLimit` | `300` | Pedidos de cada conta autenticada em cada janela (a consulta periódica de 3 s gasta cerca de 40 por minuto) |
+
+**Limite de pedidos.** Acima de um limite, a resposta é `429` ERR-14 («Demasiados pedidos. Tente novamente dentro de
+instantes.») com o cabeçalho `Retry-After` (segundos até ao fim da janela). Sem os cabeçalhos do proxy ligados, todos os
+pedidos parecem vir do mesmo IP (o do proxy): no Railway, `ForwardedHeaders__Enabled=true` é obrigatório.
 
 **Anfitriões aceites (`AllowedHosts`).** O `appsettings.json` só aceita `localhost`, `127.0.0.1` e `10.0.2.2` (a API
 local vista do emulador Android); um pedido com outro cabeçalho `Host` recebe `400`. Para testar a app num telemóvel

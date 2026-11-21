@@ -25,6 +25,14 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
     /// </summary>
     public const string AllowedOrigin = "http://localhost:4173";
 
+    private static readonly string[] RateLimitSettings =
+    [
+        "Limits:LoginPermitLimit",
+        "Limits:RegistrationPermitLimit",
+        "Limits:LocationsPermitLimit",
+        "Limits:UserPermitLimit",
+    ];
+
     private readonly SqliteConnection connection = new("DataSource=:memory:");
 
     private readonly string fileStorageRoot = Path.Combine(Path.GetTempPath(), "katch-tests-" + Guid.NewGuid().ToString("N"));
@@ -39,6 +47,12 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
     /// never runs during the tests that do not concern it; the tests of the task itself set it before the first use.
     /// </summary>
     public int BackgroundJobsIntervalSeconds { get; init; } = 86_400;
+
+    /// <summary>
+    /// Gets the number of requests allowed in each rate limit window, the same for every limit. All the requests of the
+    /// tests come from the same client, so it is very high by default; the tests of the limits set it low.
+    /// </summary>
+    public int RateLimitPermits { get; init; } = 1_000_000;
 
     /// <summary>
     /// Gets the folder where the application stores the uploaded files, a temporary folder of this instance that is
@@ -62,6 +76,11 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting(
             "BackgroundJobs:IntervalSeconds",
             this.BackgroundJobsIntervalSeconds.ToString(CultureInfo.InvariantCulture));
+
+        foreach (string limit in RateLimitSettings)
+        {
+            builder.UseSetting(limit, this.RateLimitPermits.ToString(CultureInfo.InvariantCulture));
+        }
 
         builder.ConfigureServices(services =>
         {

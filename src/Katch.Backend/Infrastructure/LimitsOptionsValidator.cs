@@ -16,6 +16,11 @@ internal sealed class LimitsOptionsValidator : IValidateOptions<LimitsOptions>
 
         var failures = new List<string>();
         RequirePositive(options.MaxRequestBodyBytes, nameof(LimitsOptions.MaxRequestBodyBytes), failures);
+        RequirePositive(options.RateLimitWindowSeconds, nameof(LimitsOptions.RateLimitWindowSeconds), failures);
+        RequirePositive(options.LoginPermitLimit, nameof(LimitsOptions.LoginPermitLimit), failures);
+        RequirePositive(options.RegistrationPermitLimit, nameof(LimitsOptions.RegistrationPermitLimit), failures);
+        RequirePositive(options.LocationsPermitLimit, nameof(LimitsOptions.LocationsPermitLimit), failures);
+        RequirePositive(options.UserPermitLimit, nameof(LimitsOptions.UserPermitLimit), failures);
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
