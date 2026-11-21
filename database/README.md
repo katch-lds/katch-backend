@@ -73,7 +73,16 @@ dotnet ef migrations script --idempotent --project src/Katch.Backend -o database
 dotnet ef migrations script <ÚltimaMigration> 0 --idempotent --project src/Katch.Backend -o database/00-reset-schema.sql
 ```
 
-`<ÚltimaMigration>` é o nome da migration mais recente (por exemplo, `AddMessageAndOperationLog`). Não use a sua
+`<ÚltimaMigration>` é o nome da migration mais recente (por exemplo, `AddLoginSecurity`). Não use a sua
 palavra-passe pessoal em `Katch__AdminPassword`: o resumo fica no script.
+
+Gerar o 01 de novo muda o resumo da conta de Administrador (o sal é aleatório). Para acrescentar só uma migration nova
+sem o mudar, como na `AddLoginSecurity` (I136), gera-se o script dessa migration e junta-se ao fim do 01, e o da
+reversão ao início do 00 (depois do BOM):
+
+```powershell
+dotnet ef migrations script <Anterior> <Nova> --idempotent --project src/Katch.Backend -o nova.sql
+dotnet ef migrations script <Nova> <Anterior> --idempotent --project src/Katch.Backend -o reverter.sql
+```
 
 A pipeline CI (`database-scripts`) executa os scripts sobre PostgreSQL 18 numa base vazia em cada Merge Request.

@@ -8,6 +8,7 @@ using Katch.Backend.Repositories;
 using Katch.Backend.Services;
 using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Options;
 
 namespace Katch.Backend.UnitTests.Services;
 
@@ -40,7 +41,8 @@ public sealed class AuthServiceTests
             this.unitOfWork,
             new IdentityPasswordHasher(),
             this.tokens,
-            new FixedClock(Now));
+            new FixedClock(Now),
+            Options.Create(new LimitsOptions()));
     }
 
     /// <summary>

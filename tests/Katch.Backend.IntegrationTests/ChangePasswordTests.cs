@@ -109,11 +109,12 @@ public sealed class ChangePasswordTests : IClassFixture<KatchWebApplicationFacto
     }
 
     /// <summary>
-    /// A credencial usada na alteração mantém-se válida até expirar (documentação da API v02, secção 6.1.5).
+    /// A alteração termina as sessões da conta (SEG-003): a credencial usada deixa de ser aceite (ERR-01) e uma
+    /// credencial nova, obtida com a nova palavra-passe, é aceite.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
-    public async Task CurrentTokenRemainsValidAfterTheChange()
+    public async Task CurrentTokenIsRevokedAfterTheChange()
     {
         AppUser user = await AuthTestAccounts.SeedAsync(this.factory, UserType.Candidate);
         string token = this.IssueToken(user);
@@ -121,12 +122,25 @@ public sealed class ChangePasswordTests : IClassFixture<KatchWebApplicationFacto
         using HttpResponseMessage change = await this.PutAsync(
             token,
             new { currentPassword = AuthTestAccounts.Password, newPassword = NewPassword });
-        using HttpResponseMessage next = await this.PutAsync(
+        using HttpResponseMessage revoked = await this.PutAsync(
             token,
+            new { currentPassword = NewPassword, newPassword = "outra2026" });
+        using HttpResponseMessage login = await AuthTestAccounts.LoginAsync(
+            this.factory,
+            AuthTestAccounts.Credentials(user.Email, NewPassword),
+            "mobile");
+        string newToken = (await AuthTestAccounts.ReadJsonAsync(login)).GetProperty("token").GetString()!;
+        using HttpResponseMessage accepted = await this.PutAsync(
+            newToken,
             new { currentPassword = NewPassword, newPassword = "outra2026" });
 
         Assert.Equal(HttpStatusCode.NoContent, change.StatusCode);
-        Assert.Equal(HttpStatusCode.NoContent, next.StatusCode);
+        await AuthenticationTests.AssertErrorAsync(
+            revoked,
+            HttpStatusCode.Unauthorized,
+            "ERR-01",
+            "A sessão expirou ou não é válida. Inicie sessão novamente.");
+        Assert.Equal(HttpStatusCode.NoContent, accepted.StatusCode);
     }
 
     /// <summary>

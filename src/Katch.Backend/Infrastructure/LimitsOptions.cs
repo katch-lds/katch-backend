@@ -57,4 +57,23 @@ public sealed class LimitsOptions
     /// 40 per minute).
     /// </summary>
     public int UserPermitLimit { get; set; } = 300;
+
+    // ==================================================================================================================
+    // 3. Bloqueio por tentativas de início de sessão
+    // ==================================================================================================================
+
+    /// <summary>
+    /// Gets or sets the number of consecutive failed sign-ins that lock the account.
+    /// </summary>
+    public int MaxFailedLogins { get; set; } = 5;
+
+    /// <summary>
+    /// Gets or sets the duration of the first lock, in seconds; each new lock doubles it.
+    /// </summary>
+    public int LockoutSeconds { get; set; } = 60;
+
+    /// <summary>
+    /// Gets or sets the maximum duration of a lock, in seconds.
+    /// </summary>
+    public int MaxLockoutSeconds { get; set; } = 900;
 }

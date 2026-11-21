@@ -297,11 +297,20 @@ O início de sessão verifica, **por esta ordem**, as credenciais (`401` `ERR-02
 - O estado da conta e o ponto de acesso só são revelados a quem apresenta a palavra-passe correta.
 - A situação da Empresa não conta: um Recrutador com a Empresa pendente, recusada ou suspensa inicia sessão; só as
   operações `ApprovedCompany` lhe ficam vedadas (`ERR-07`).
+- **Bloqueio por tentativas.** 5 falhas seguidas bloqueiam o início de sessão da conta durante 1 minuto; cada novo
+  bloqueio, sem um início de sessão válido pelo meio, dobra a espera, até 15 minutos (`Limits__MaxFailedLogins`,
+  `Limits__LockoutSeconds`, `Limits__MaxLockoutSeconds`, secção 15). Durante o bloqueio a resposta é sempre o mesmo
+  `401` `ERR-02`, mesmo com a palavra-passe certa, para não revelar que a conta existe. Um início de sessão válido
+  repõe o contador.
 
 Na alteração da palavra-passe, a atual errada devolve `400` `ERR-10` no campo `currentPassword` (e não `401`, para o
-cliente não a confundir com uma sessão expirada) e a nova fora do P05 devolve `400` `ERR-10` em `newPassword`. A
-credencial usada continua válida até expirar, tal como a de um fim de sessão: a autenticação não guarda estado no
-servidor e o cliente é que descarta a credencial (API v02, secção 3.5).
+cliente não a confundir com uma sessão expirada) e a nova fora do P05 devolve `400` `ERR-10` em `newPassword`.
+
+**Fim das sessões.** Cada credencial leva a versão das sessões da conta (claim `ver`, coluna `token_version`), que o
+servidor confirma em cada pedido, na mesma consulta do estado da conta. O fim de sessão e a alteração da palavra-passe
+incrementam a versão: **todas** as credenciais da conta, em qualquer dispositivo e incluindo a do próprio pedido, passam
+a receber `401` `ERR-01`, e o cliente tem de iniciar sessão outra vez. As credenciais emitidas antes da migration
+`AddLoginSecurity` não têm a claim `ver` e também deixam de ser aceites.
 
 **Experimentar no Swagger** (`/swagger`): em `POST /api/auth/login` preencha `X-Client-App` (lista `mobile`/`web`) e o
 corpo, execute, copie o `token` da resposta, clique em **Authorize** e cole-o (sem o prefixo `Bearer`); os pedidos
@@ -562,6 +571,9 @@ uma mensagem que indica a variável a corrigir.
 | `Limits__RegistrationPermitLimit` | `10` | Registos de Candidato e de Recrutador (contagem comum) por IP em cada janela |
 | `Limits__LocationsPermitLimit` | `30` | Consultas anónimas das localidades por IP em cada janela |
 | `Limits__UserPermitLimit` | `300` | Pedidos de cada conta autenticada em cada janela (a consulta periódica de 3 s gasta cerca de 40 por minuto) |
+| `Limits__MaxFailedLogins` | `5` | Inícios de sessão falhados seguidos que bloqueiam a conta (secção 9) |
+| `Limits__LockoutSeconds` | `60` | Duração do primeiro bloqueio; cada novo bloqueio dobra-a |
+| `Limits__MaxLockoutSeconds` | `900` | Duração máxima de um bloqueio (não pode ser inferior a `Limits__LockoutSeconds`) |
 
 **Limite de pedidos.** Acima de um limite, a resposta é `429` ERR-14 («Demasiados pedidos. Tente novamente dentro de
 instantes.») com o cabeçalho `Retry-After` (segundos até ao fim da janela). Sem os cabeçalhos do proxy ligados, todos os

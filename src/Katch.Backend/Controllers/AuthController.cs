@@ -136,10 +136,10 @@ public sealed class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Termina a sessão (UC01; RF105 a RF107). A autenticação não guarda estado no servidor: o pedido só confirma o fim
-    /// da sessão e o cliente descarta a credencial, que continua tecnicamente válida até expirar (documentação da API
-    /// v02, secção 3.5).
+    /// Termina a sessão (UC01; RF105 a RF107). As credenciais emitidas até aqui para a conta, incluindo as de outros
+    /// dispositivos, deixam de ser aceites (ERR-01).
     /// </summary>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><c>204</c>, ou <c>401</c> (ERR-01) sem credencial válida, ou <c>403</c> (ERR-03, ERR-04) se a conta estiver
     /// bloqueada ou suspensa.</returns>
     [HttpPost("logout")]
@@ -147,14 +147,20 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
-    public IActionResult Logout()
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
+        if (!this.User.TryGetAccountId(out Guid userId))
+        {
+            return this.Unauthorized(ApiErrorResponse.InvalidSession());
+        }
+
+        await this.authService.LogoutAsync(userId, cancellationToken);
         return this.NoContent();
     }
 
     /// <summary>
     /// Altera a palavra-passe da própria conta, seja qual for o tipo de conta (UC02; RF002, RF040, RF084). O início de
-    /// sessão seguinte só aceita a nova palavra-passe; a credencial atual mantém-se válida até expirar.
+    /// sessão seguinte só aceita a nova palavra-passe e as sessões da conta terminam, incluindo a do pedido.
     /// </summary>
     /// <param name="request">Palavra-passe atual e palavra-passe nova.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>

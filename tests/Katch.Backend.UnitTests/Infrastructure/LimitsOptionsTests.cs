@@ -62,9 +62,24 @@ public sealed class LimitsOptionsTests
 
         ValidateOptionsResult result = new LimitsOptionsValidator().Validate(null, options);
 
+        Assert.Contains(result.Failures!, failure => failure.Contains($"Limits__{property}", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            result.Failures!,
+            failure => failure.Contains(value.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// O bloqueio máximo não pode ser inferior ao primeiro.
+    /// </summary>
+    [Fact]
+    public void MaxLockoutBelowTheFirstLockoutIsRejected()
+    {
+        ValidateOptionsResult result = new LimitsOptionsValidator().Validate(
+            null,
+            new LimitsOptions { LockoutSeconds = 120, MaxLockoutSeconds = 60 });
+
         string failure = Assert.Single(result.Failures!);
-        Assert.Contains($"Limits__{property}", failure, StringComparison.Ordinal);
-        Assert.DoesNotContain(value.ToString(CultureInfo.InvariantCulture), failure, StringComparison.Ordinal);
+        Assert.Contains("Limits__MaxLockoutSeconds", failure, StringComparison.Ordinal);
     }
 
     /// <summary>

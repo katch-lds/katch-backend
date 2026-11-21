@@ -12,6 +12,28 @@ namespace Katch.Backend.Infrastructure.Authentication;
 public static class ClaimsPrincipalExtensions
 {
     /// <summary>
+    /// Claim com a versão das sessões da conta (<c>AppUser.TokenVersion</c>) no instante da emissão.
+    /// </summary>
+    public const string TokenVersionClaim = "ver";
+
+    /// <summary>
+    /// Lê a versão das sessões (claim <see cref="TokenVersionClaim"/>) da credencial de sessão.
+    /// </summary>
+    /// <param name="principal">Utilizador autenticado do pedido.</param>
+    /// <param name="tokenVersion">A versão, se a claim existir e for um inteiro.</param>
+    /// <returns><see langword="true"/> se a credencial indicar a versão.</returns>
+    public static bool TryGetTokenVersion(this ClaimsPrincipal principal, out int tokenVersion)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        return int.TryParse(
+            principal.FindFirstValue(TokenVersionClaim),
+            System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out tokenVersion);
+    }
+
+    /// <summary>
     /// Lê o identificador da conta (claim <c>sub</c>) da credencial de sessão.
     /// </summary>
     /// <param name="principal">Utilizador autenticado do pedido.</param>

@@ -6,6 +6,7 @@ using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services.Models;
+using Microsoft.Extensions.Options;
 
 namespace Katch.Backend.Services;
 
@@ -37,6 +38,7 @@ public sealed class AuthService : IAuthService
     private readonly IPasswordHasher passwordHasher;
     private readonly ITokenService tokenService;
     private readonly IClock clock;
+    private readonly LimitsOptions limits;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AuthService"/> class.
@@ -48,6 +50,7 @@ public sealed class AuthService : IAuthService
     /// <param name="passwordHasher">Cálculo do resumo da palavra-passe.</param>
     /// <param name="tokenService">Emissão da credencial de sessão.</param>
     /// <param name="clock">Relógio do instante do registo.</param>
+    /// <param name="limits">Limites globais, com o bloqueio por tentativas falhadas.</param>
     public AuthService(
         IUserRepository users,
         ICandidateRepository candidates,
@@ -55,8 +58,11 @@ public sealed class AuthService : IAuthService
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         ITokenService tokenService,
-        IClock clock)
+        IClock clock,
+        IOptions<LimitsOptions> limits)
     {
+        ArgumentNullException.ThrowIfNull(limits);
+
         this.users = users;
         this.candidates = candidates;
         this.referenceData = referenceData;
@@ -64,6 +70,7 @@ public sealed class AuthService : IAuthService
         this.passwordHasher = passwordHasher;
         this.tokenService = tokenService;
         this.clock = clock;
+        this.limits = limits.Value;
     }
 
     /// <inheritdoc/>
@@ -174,12 +181,31 @@ public sealed class AuthService : IAuthService
             throw new ValidationFailedException(errors);
         }
 
-        // 1.º As credenciais. A palavra-passe é verificada mesmo sem conta, e a recusa é a mesma nos dois casos.
+        // 1.º As credenciais. A palavra-passe é verificada mesmo sem conta, e a recusa é a mesma nos dois casos. Durante
+        // o bloqueio por falhas, também a palavra-passe certa recebe a mesma recusa, para não revelar que a conta existe.
         AppUser? user = await this.users.GetByEmailAsync(email, cancellationToken);
         bool passwordMatches = this.passwordHasher.Verify(user?.PasswordHash ?? ReferenceHash, password);
-        if (user is null || !passwordMatches)
+        DateTimeOffset now = this.clock.UtcNow;
+        if (user is null || user.IsLockedOut(now))
         {
             throw new LoginRejectedException(LoginRejection.InvalidCredentials);
+        }
+
+        if (!passwordMatches)
+        {
+            user.RegisterFailedLogin(
+                now,
+                this.limits.MaxFailedLogins,
+                TimeSpan.FromSeconds(this.limits.LockoutSeconds),
+                TimeSpan.FromSeconds(this.limits.MaxLockoutSeconds));
+            await this.unitOfWork.SaveChangesAsync(cancellationToken);
+            throw new LoginRejectedException(LoginRejection.InvalidCredentials);
+        }
+
+        if (user.FailedLoginCount > 0)
+        {
+            user.RegisterValidLogin();
+            await this.unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         // 2.º O estado da conta, que só é revelado a quem apresentou a palavra-passe correta.
@@ -196,6 +222,16 @@ public sealed class AuthService : IAuthService
         }
 
         return this.tokenService.CreateToken(user);
+    }
+
+    /// <inheritdoc/>
+    public async Task LogoutAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        AppUser user = await this.users.GetByIdAsync(userId, cancellationToken)
+            ?? throw new InvalidOperationException("A conta da credencial de sessão não existe.");
+
+        user.RevokeSessions();
+        await this.unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     /// <inheritdoc/>

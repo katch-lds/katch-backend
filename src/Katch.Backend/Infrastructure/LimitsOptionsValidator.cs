@@ -21,6 +21,17 @@ internal sealed class LimitsOptionsValidator : IValidateOptions<LimitsOptions>
         RequirePositive(options.RegistrationPermitLimit, nameof(LimitsOptions.RegistrationPermitLimit), failures);
         RequirePositive(options.LocationsPermitLimit, nameof(LimitsOptions.LocationsPermitLimit), failures);
         RequirePositive(options.UserPermitLimit, nameof(LimitsOptions.UserPermitLimit), failures);
+        RequirePositive(options.MaxFailedLogins, nameof(LimitsOptions.MaxFailedLogins), failures);
+        RequirePositive(options.LockoutSeconds, nameof(LimitsOptions.LockoutSeconds), failures);
+        RequirePositive(options.MaxLockoutSeconds, nameof(LimitsOptions.MaxLockoutSeconds), failures);
+
+        if (options.MaxLockoutSeconds < options.LockoutSeconds)
+        {
+            failures.Add(
+                "O bloqueio máximo não pode ser inferior ao primeiro bloqueio. Corrija as variáveis de ambiente "
+                + $"{LimitsOptions.SectionName}__{nameof(LimitsOptions.MaxLockoutSeconds)} e "
+                + $"{LimitsOptions.SectionName}__{nameof(LimitsOptions.LockoutSeconds)}.");
+        }
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }

@@ -28,8 +28,13 @@ public sealed class AppUserConfigurationTests
 
         Assert.Equal("app_user", entity.GetTableName());
         Assert.Equal(
-            ["created_at", "email", "id", "password_hash", "status", "terms_accepted_at", "updated_at", "user_type"],
+            [
+                "created_at", "email", "failed_login_count", "id", "locked_until", "password_hash", "status",
+                "terms_accepted_at", "token_version", "updated_at", "user_type",
+            ],
             entity.GetProperties().Select(property => property.GetColumnName(table)!).Order(StringComparer.Ordinal).ToArray());
+        Assert.Equal(0, entity.FindProperty(nameof(AppUser.FailedLoginCount))!.GetDefaultValue());
+        Assert.Equal(0, entity.FindProperty(nameof(AppUser.TokenVersion))!.GetDefaultValue());
 
         Assert.Equal("id", Assert.Single(entity.FindPrimaryKey()!.Properties).GetColumnName(table));
         Assert.Equal("gen_random_uuid()", entity.FindProperty(nameof(AppUser.Id))!.GetDefaultValueSql());
@@ -41,8 +46,8 @@ public sealed class AppUserConfigurationTests
     }
 
     /// <summary>
-    /// Obrigatoriedade e comprimentos das colunas: correio e resumo obrigatórios com 255 caracteres; a aceitação
-    /// das condições é a única coluna que admite nulo.
+    /// Obrigatoriedade e comprimentos das colunas: correio e resumo obrigatórios com 255 caracteres; só a aceitação
+    /// das condições e o fim do bloqueio por tentativas admitem nulo.
     /// </summary>
     [Fact]
     public void MapsNullabilityAndLengths()
@@ -52,8 +57,12 @@ public sealed class AppUserConfigurationTests
         Assert.Equal(255, entity.FindProperty(nameof(AppUser.Email))!.GetMaxLength());
         Assert.Equal(255, entity.FindProperty(nameof(AppUser.PasswordHash))!.GetMaxLength());
         Assert.Equal(
-            [nameof(AppUser.TermsAcceptedAt)],
-            entity.GetProperties().Where(property => property.IsNullable).Select(property => property.Name).ToArray());
+            [nameof(AppUser.LockedUntil), nameof(AppUser.TermsAcceptedAt)],
+            entity.GetProperties()
+                .Where(property => property.IsNullable)
+                .Select(property => property.Name)
+                .Order(StringComparer.Ordinal)
+                .ToArray());
     }
 
     /// <summary>
