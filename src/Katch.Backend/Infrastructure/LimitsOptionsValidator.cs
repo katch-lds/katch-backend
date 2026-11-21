@@ -24,6 +24,7 @@ internal sealed class LimitsOptionsValidator : IValidateOptions<LimitsOptions>
         RequirePositive(options.MaxFailedLogins, nameof(LimitsOptions.MaxFailedLogins), failures);
         RequirePositive(options.LockoutSeconds, nameof(LimitsOptions.LockoutSeconds), failures);
         RequirePositive(options.MaxLockoutSeconds, nameof(LimitsOptions.MaxLockoutSeconds), failures);
+        RequirePositive(options.IndicatorsMaxPeriodDays, nameof(LimitsOptions.IndicatorsMaxPeriodDays), failures);
 
         if (options.MaxLockoutSeconds < options.LockoutSeconds)
         {

@@ -76,4 +76,13 @@ public sealed class LimitsOptions
     /// Gets or sets the maximum duration of a lock, in seconds.
     /// </summary>
     public int MaxLockoutSeconds { get; set; } = 900;
+
+    // ==================================================================================================================
+    // 4. Indicadores
+    // ==================================================================================================================
+
+    /// <summary>
+    /// Gets or sets the maximum length of the period of the indicators, in days, both ends included.
+    /// </summary>
+    public int IndicatorsMaxPeriodDays { get; set; } = 366;
 }

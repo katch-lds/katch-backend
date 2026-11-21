@@ -176,10 +176,32 @@ public sealed class QuotaRestoreWorkerTests
         Assert.Equal(0, probe.Calls);
     }
 
-    private static ServiceProvider CreateProvider(Probe probe)
+    /// <summary>
+    /// Se outra instância da API tiver o bloqueio da tarefa, a execução é saltada sem chamar o serviço (ROB-007).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task SkipsTheRunWhileAnotherInstanceHoldsTheLock()
+    {
+        var probe = new Probe();
+        var jobLock = new FakeBackgroundJobLock { HeldElsewhere = true };
+        await using ServiceProvider provider = CreateProvider(probe, jobLock);
+        var worker = new QuotaRestoreWorker(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            Options.Create(new BackgroundJobsOptions()),
+            new ListLogger());
+
+        await worker.RestoreAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, probe.Calls);
+        Assert.Equal([QuotaRestoreWorker.LockKey], jobLock.Keys);
+    }
+
+    private static ServiceProvider CreateProvider(Probe probe, FakeBackgroundJobLock? jobLock = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton(probe);
+        services.AddSingleton<IBackgroundJobLock>(jobLock ?? new FakeBackgroundJobLock());
         services.AddScoped<IQuotaService>(provider => new ProbeQuotaService(provider.GetRequiredService<Probe>()));
         return services.BuildServiceProvider();
     }

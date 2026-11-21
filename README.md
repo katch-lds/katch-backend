@@ -579,6 +579,12 @@ uma mensagem que indica a variável a corrigir.
 | `Limits__MaxFailedLogins` | `5` | Inícios de sessão falhados seguidos que bloqueiam a conta (secção 9) |
 | `Limits__LockoutSeconds` | `60` | Duração do primeiro bloqueio; cada novo bloqueio dobra-a |
 | `Limits__MaxLockoutSeconds` | `900` | Duração máxima de um bloqueio (não pode ser inferior a `Limits__LockoutSeconds`) |
+| `Limits__IndicatorsMaxPeriodDays` | `366` | Período máximo dos indicadores, com os dois extremos; acima disto, `400` ERR-10 no campo `from` |
+
+**Tarefas periódicas com várias instâncias.** Cada execução da reposição das quotas e do encerramento das vagas
+expiradas pede um bloqueio consultivo do PostgreSQL (`pg_try_advisory_lock`): se outra instância da API já o tiver, a
+execução é saltada e repete no intervalo seguinte. O teste em PostgreSQL (`BackgroundJobLockTests`) só corre com a
+variável `KATCH_TEST_POSTGRES` (cadeia de ligação a uma base descartável); sem ela, fica como saltado.
 
 **Limite de pedidos.** Acima de um limite, a resposta é `429` ERR-14 («Demasiados pedidos. Tente novamente dentro de
 instantes.») com o cabeçalho `Retry-After` (segundos até ao fim da janela). Sem os cabeçalhos do proxy ligados, todos os

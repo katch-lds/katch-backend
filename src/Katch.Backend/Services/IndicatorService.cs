@@ -5,6 +5,7 @@ using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services.Models;
+using Microsoft.Extensions.Options;
 
 namespace Katch.Backend.Services;
 
@@ -25,6 +26,7 @@ public sealed class IndicatorService : IIndicatorService
     private readonly IMatchRepository matches;
     private readonly IMessageRepository messages;
     private readonly IClock clock;
+    private readonly int maxPeriodDays;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IndicatorService"/> class.
@@ -35,14 +37,19 @@ public sealed class IndicatorService : IIndicatorService
     /// <param name="matches">Repositório das respostas às vagas e dos matches.</param>
     /// <param name="messages">Repositório das mensagens.</param>
     /// <param name="clock">Relógio, para a data atual.</param>
+    /// <param name="limits">Limites globais, com o período máximo.</param>
     public IndicatorService(
         IUserRepository users,
         ICompanyRepository companies,
         IJobRepository jobs,
         IMatchRepository matches,
         IMessageRepository messages,
-        IClock clock)
+        IClock clock,
+        IOptions<LimitsOptions> limits)
     {
+        ArgumentNullException.ThrowIfNull(limits);
+
+        this.maxPeriodDays = limits.Value.IndicatorsMaxPeriodDays;
         this.users = users;
         this.companies = companies;
         this.jobs = jobs;
@@ -100,6 +107,10 @@ public sealed class IndicatorService : IIndicatorService
         if (firstDay > lastDay)
         {
             errors.Add(new FieldError("from", FieldReasons.PeriodStartAfterEnd));
+        }
+        else if (lastDay.DayNumber - firstDay.DayNumber + 1 > this.maxPeriodDays)
+        {
+            errors.Add(new FieldError("from", FieldReasons.PeriodTooLong(this.maxPeriodDays)));
         }
 
         if (lastDay > Today(this.clock.UtcNow))

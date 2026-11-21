@@ -216,4 +216,14 @@ public static class FieldReasons
     {
         return $"O texto não pode exceder {maxLength} caracteres.";
     }
+
+    /// <summary>
+    /// Período dos indicadores mais longo do que o máximo (ROB-009).
+    /// </summary>
+    /// <param name="maxDays">Número máximo de dias do período.</param>
+    /// <returns>A razão, com o máximo.</returns>
+    public static string PeriodTooLong(int maxDays)
+    {
+        return $"O período não pode exceder {maxDays} dias.";
+    }
 }
