@@ -47,6 +47,23 @@ public sealed class LocalFileStorageTests : IDisposable
     }
 
     /// <summary>
+    /// Uma imagem é guardada sem os metadados (SEG-010): o EXIF de um JPEG não chega ao disco.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task SavedImagesLoseTheirMetadata()
+    {
+        byte[] exif = [0xFF, 0xE1, 0x00, 0x08, 0x45, 0x78, 0x69, 0x66, 0x00, 0x00];
+        byte[] jpeg = [0xFF, 0xD8, .. exif, 0xFF, 0xD9];
+
+        string path = await this.storage.SaveAsync(new MemoryStream(jpeg), FileKind.ProfilePhoto, TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            [0xFF, 0xD8, 0xFF, 0xD9],
+            await File.ReadAllBytesAsync(Path.Combine(this.root, path), TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>
     /// Dois ficheiros iguais têm nomes diferentes e o PDF fica na pasta do curriculum vitae.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
