@@ -59,7 +59,8 @@ public interface IMatchRepository
     /// <summary>
     /// Lista os interesses em espera (<see cref="Domain.Enums.MatchStatus.Waiting"/>) de uma vaga, com os dados do
     /// Candidato apresentados na lista de candidatos em espera, do interesse mais antigo para o mais recente (RF060,
-    /// RF113). As recusas da vaga e os interesses já decididos não são devolvidos. Só para leitura.
+    /// RF113). As recusas da vaga, os interesses já decididos e os de Candidatos com a conta bloqueada ou suspensa não são
+    /// devolvidos. Só para leitura.
     /// </summary>
     /// <param name="jobId">Identificador da vaga.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -68,7 +69,7 @@ public interface IMatchRepository
 
     /// <summary>
     /// Conta os interesses em espera de decisão de cada vaga indicada (RF060), para o <c>waitingCandidates</c> das vagas
-    /// do Recrutador. É uma contagem feita na base de dados, sem carregar as respostas.
+    /// do Recrutador, só de Candidatos com a conta ativa. É uma contagem feita na base de dados, sem carregar as respostas.
     /// </summary>
     /// <param name="jobIds">Identificadores das vagas.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>

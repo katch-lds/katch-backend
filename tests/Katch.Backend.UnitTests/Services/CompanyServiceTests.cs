@@ -491,6 +491,11 @@ public sealed class CompanyServiceTests
             throw new NotSupportedException();
         }
 
+        public Task<bool> IsVisibleToCandidatesAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

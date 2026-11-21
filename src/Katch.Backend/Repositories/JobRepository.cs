@@ -29,13 +29,14 @@ public sealed class JobRepository : IJobRepository
     }
 
     /// <inheritdoc/>
-    public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+    public Task<JobWithCompanyVisibility?> GetWithCompanyVisibilityAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
         // O filtro global das vagas exclui as eliminadas (DM-09).
         return (from job in this.context.Jobs.AsNoTracking()
-                join company in this.context.Companies.AsNoTracking() on job.CompanyId equals company.Id
                 where job.Id == jobId
-                select new JobWithCompanyStatus(job, company.Status))
+                select new JobWithCompanyVisibility(
+                    job,
+                    this.context.CompaniesVisibleToCandidates().Any(company => company.Id == job.CompanyId)))
             .FirstOrDefaultAsync(cancellationToken);
     }
 
@@ -168,11 +169,10 @@ public sealed class JobRepository : IJobRepository
         // O filtro global das vagas exclui as eliminadas (DM-09).
         IQueryable<JobDistance> eligible =
             from job in this.context.Jobs.AsNoTracking()
-            join company in this.context.Companies.AsNoTracking() on job.CompanyId equals company.Id
+            join company in this.context.CompaniesVisibleToCandidates() on job.CompanyId equals company.Id
             join location in this.context.Locations.AsNoTracking() on job.LocationId equals location.Id
             where job.Status == JobStatus.Published
                 && (job.ExpiresAt == null || job.ExpiresAt > now)
-                && company.Status == CompanyStatus.Approved
                 && !this.context.Matches.Any(match => match.CandidateId == candidateId && match.JobId == job.Id)
             select new JobDistance
             {

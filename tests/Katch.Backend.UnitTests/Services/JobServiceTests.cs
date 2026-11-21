@@ -770,6 +770,11 @@ public sealed class JobServiceTests
             throw new NotSupportedException();
         }
 
+        Task<bool> ICompanyRepository.IsVisibleToCandidatesAsync(Guid id, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<List<Location>> ListLocationsAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Locations.ToList());
@@ -790,7 +795,7 @@ public sealed class JobServiceTests
             return Task.FromResult(this.Benefits.Find(item => item.Id == id));
         }
 
-        public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobWithCompanyVisibility?> GetWithCompanyVisibilityAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

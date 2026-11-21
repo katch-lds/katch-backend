@@ -11,12 +11,13 @@ namespace Katch.Backend.Repositories;
 public interface IJobRepository
 {
     /// <summary>
-    /// Obtém uma vaga com o estado da sua Empresa. As vagas eliminadas não são devolvidas.
+    /// Obtém uma vaga e se a sua Empresa está visível aos Candidatos (aprovada e com o Recrutador ativo). As vagas
+    /// eliminadas não são devolvidas.
     /// </summary>
     /// <param name="jobId">Identificador da vaga.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
-    /// <returns>A vaga e o estado da Empresa, ou <see langword="null"/> se a vaga não existir ou estiver eliminada.</returns>
-    public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default);
+    /// <returns>A vaga e a visibilidade da Empresa, ou <see langword="null"/> se a vaga não existir ou estiver eliminada.</returns>
+    public Task<JobWithCompanyVisibility?> GetWithCompanyVisibilityAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Conta as vagas publicadas pela primeira vez no período, pela data da primeira publicação, que não muda numa nova

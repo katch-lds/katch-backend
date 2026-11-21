@@ -317,6 +317,11 @@ public sealed class CompanyAdminServiceTests
             return Task.FromResult(this.All.SingleOrDefault(company => company.Id == id));
         }
 
+        public Task<bool> IsVisibleToCandidatesAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.All
@@ -344,7 +349,7 @@ public sealed class CompanyAdminServiceTests
     {
         public List<JobWithCount> Published { get; } = [];
 
-        public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobWithCompanyVisibility?> GetWithCompanyVisibilityAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

@@ -434,7 +434,7 @@ public sealed class CandidateDecisionServiceTests
             return Task.FromResult(this.Jobs.GetValueOrDefault(jobId));
         }
 
-        public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobWithCompanyVisibility?> GetWithCompanyVisibilityAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -612,6 +612,11 @@ public sealed class CandidateDecisionServiceTests
         }
 
         Task<Company?> ICompanyRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        Task<bool> ICompanyRepository.IsVisibleToCandidatesAsync(Guid id, CancellationToken cancellationToken)
         {
             throw new NotSupportedException();
         }
