@@ -4,6 +4,15 @@
 -- listas pré-definidas (02-seed-reference-data.sql) e a conta de Administrador criada pela migration AddAdmin.
 -- Palavras-passe: só os resumos, nunca em claro (RNF003). Resumos no formato V3 do ASP.NET Core Identity (PBKDF2-HMAC-SHA512), com sal próprio por conta.
 -- Idempotente: identificadores fixos e ON CONFLICT DO NOTHING; o registo de autoria só é inserido se faltar.
+-- Parâmetros: -v demo=1, obrigatório. As contas criadas partilham uma palavra-passe conhecida pelo grupo, por isso o
+-- script só corre quando é pedido de forma explícita, numa base de desenvolvimento ou de demonstração (SEG-014).
+-- Devolve: os dados inseridos; sem -v demo=1, termina com erro sem alterar nada.
+
+\set ON_ERROR_STOP on
+\if :{?demo}
+\else
+DO $$ BEGIN RAISE EXCEPTION 'Dados de demonstração recusados: corra o script com -v demo=1, só numa base de desenvolvimento ou de demonstração.'; END $$;
+\endif
 
 BEGIN;
 

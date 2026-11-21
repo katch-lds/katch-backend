@@ -1,0 +1,13 @@
+# Dependabot das ações do CI
+#
+# As ações do ci.yml estão fixadas pelo SHA do commit, porque uma tag pode ser movida (SEG-017). O Dependabot abre,
+# uma vez por semana, um Merge Request para a main quando sai uma versão nova, com o SHA e a versão em comentário;
+# segue a revisão e a pipeline como qualquer outro Merge Request.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(ci)"
