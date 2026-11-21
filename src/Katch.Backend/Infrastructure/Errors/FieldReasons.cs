@@ -40,6 +40,11 @@ public static class FieldReasons
     public const string PasswordPolicy = "A palavra-passe tem de ter pelo menos 8 caracteres, uma letra e um algarismo.";
 
     /// <summary>
+    /// Texto com caracteres de controlo além da tabulação e das mudanças de linha (SEG-006).
+    /// </summary>
+    public const string ControlCharacters = "O texto contém caracteres não permitidos.";
+
+    /// <summary>
     /// Palavra-passe que cumpre o P05 mas está na lista de palavras-passe comuns (SEG-009).
     /// </summary>
     public const string PasswordTooCommon = "A palavra-passe é demasiado comum. Escolha outra.";

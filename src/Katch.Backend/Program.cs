@@ -4,6 +4,7 @@ using Katch.Backend.BackgroundJobs;
 using Katch.Backend.Infrastructure.Api;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Cors;
+using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Infrastructure.Hosting;
 using Katch.Backend.Infrastructure.Persistence;
 using Katch.Backend.Infrastructure.RateLimiting;
@@ -37,8 +38,10 @@ builder.Services.AddSwaggerGen(options =>
 WebApplication app = builder.Build();
 
 app.UseKatchForwardedHeaders();
+app.UseKatchSecurityHeaders();
+app.UseKatchExceptionHandler();
 
-if (app.Environment.IsDevelopment())
+if (app.Configuration.GetValue<bool>(HostingServiceCollectionExtensions.SwaggerEnabledKey))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
@@ -47,6 +50,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseKatchCors();
 app.UseKatchRequestBodyLimit();
+app.UseKatchUnsupportedMediaType();
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAccountStatusCheck();

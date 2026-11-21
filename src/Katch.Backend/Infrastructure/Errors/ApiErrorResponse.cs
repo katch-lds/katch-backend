@@ -145,6 +145,11 @@ public static class ApiErrorResponse
     public const string ConcurrencyConflictCode = "ERR-41";
 
     /// <summary>
+    /// Código do erro inesperado.
+    /// </summary>
+    public const string UnexpectedErrorCode = "ERR-50";
+
+    /// <summary>
     /// Mensagem do ERR-01.
     /// </summary>
     public const string InvalidSessionMessage = "A sessão expirou ou não é válida. Inicie sessão novamente.";
@@ -254,6 +259,11 @@ public static class ApiErrorResponse
     /// </summary>
     public const string ConcurrencyConflictMessage = "O elemento foi alterado por outro pedido. Atualize e tente novamente.";
 
+    /// <summary>
+    /// Mensagem do ERR-50, sem pormenores da exceção.
+    /// </summary>
+    public const string UnexpectedErrorMessage = "Ocorreu um erro inesperado. Tente novamente.";
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
@@ -315,6 +325,40 @@ public static class ApiErrorResponse
     public static Task WriteRequestTooLargeAsync(HttpContext context)
     {
         return WriteAsync(context, StatusCodes.Status413PayloadTooLarge, RequestTooLargeCode, RequestTooLargeMessage);
+    }
+
+    /// <summary>
+    /// Escreve o ERR-13 (415): o tipo de conteúdo do pedido não é suportado.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteUnsupportedContentTypeAsync(HttpContext context)
+    {
+        return WriteAsync(
+            context,
+            StatusCodes.Status415UnsupportedMediaType,
+            UnsupportedContentTypeCode,
+            UnsupportedContentTypeMessage);
+    }
+
+    /// <summary>
+    /// Escreve o ERR-10 (400) sem campos: o pedido não pôde ser lido.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteValidationFailedAsync(HttpContext context)
+    {
+        return WriteAsync(context, StatusCodes.Status400BadRequest, ValidationFailedCode, ValidationFailedMessage);
+    }
+
+    /// <summary>
+    /// Escreve o ERR-50 (500): falha inesperada, sem pormenores da exceção.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteUnexpectedErrorAsync(HttpContext context)
+    {
+        return WriteAsync(context, StatusCodes.Status500InternalServerError, UnexpectedErrorCode, UnexpectedErrorMessage);
     }
 
     /// <summary>

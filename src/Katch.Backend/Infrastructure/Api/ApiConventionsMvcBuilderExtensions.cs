@@ -38,6 +38,7 @@ public static class ApiConventionsMvcBuilderExtensions
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper));
             options.JsonSerializerOptions.Converters.Add(new UtcDateTimeOffsetJsonConverter());
+            options.JsonSerializerOptions.Converters.Add(new ControlCharacterStringConverter());
         });
         builder.ConfigureApiBehaviorOptions(options =>
             options.InvalidModelStateResponseFactory = context =>
@@ -47,7 +48,8 @@ public static class ApiConventionsMvcBuilderExtensions
 
     /// <summary>
     /// Converte os erros de leitura do pedido em erros de campo: a chave <c>$.locationId</c> passa a <c>locationId</c>;
-    /// os erros do corpo inteiro (JSON mal formado) não identificam um campo e ficam só no código ERR-10.
+    /// os erros do corpo inteiro (JSON mal formado) não identificam um campo e ficam só no código ERR-10. Um texto com
+    /// caracteres de controlo (<see cref="ControlCharacterStringConverter"/>) tem a razão própria.
     /// </summary>
     /// <param name="modelState">Estado do modelo com os erros de leitura.</param>
     /// <returns>Um erro por campo identificado.</returns>
@@ -57,14 +59,18 @@ public static class ApiConventionsMvcBuilderExtensions
 
         return modelState
             .Where(entry => entry.Value is { Errors.Count: > 0 } && entry.Key.StartsWith("$.", StringComparison.Ordinal))
-            .Select(entry => entry.Key[2..])
-            .Distinct(StringComparer.Ordinal)
-            .Select(field => new FieldErrorDto(field, ReasonFor(field)))
+            .Select(entry => new FieldErrorDto(entry.Key[2..], ReasonFor(entry.Key[2..], entry.Value!.Errors)))
+            .DistinctBy(error => error.Field, StringComparer.Ordinal)
             .ToList();
     }
 
-    private static string ReasonFor(string field)
+    private static string ReasonFor(string field, ModelErrorCollection errors)
     {
+        if (errors.Any(error => error.ErrorMessage == FieldReasons.ControlCharacters))
+        {
+            return FieldReasons.ControlCharacters;
+        }
+
         return field switch
         {
             "locationId" or "industry" or "contractType" or "workMode" or "skillId" => FieldReasons.NotInList,

@@ -68,6 +68,7 @@ public sealed class KatchWebApplicationFactory : WebApplicationFactory<Program>
         // O Program exige uma cadeia de ligação; esta nunca é usada, porque o contexto passa a SQLite.
         builder.UseSetting("ConnectionStrings:Katch", "Host=localhost;Database=katch_tests");
         builder.UseEnvironment("Development");
+        builder.UseSetting("Swagger:Enabled", "true");
 
         // O segredo JWT é gerado em cada execução; nunca existe um valor fixo no código.
         builder.UseSetting("Jwt:Secret", Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)));

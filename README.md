@@ -148,8 +148,8 @@ Now listening on: http://localhost:5180
 Application started. Press Ctrl+C to shut down.
 ```
 
-Abra `http://localhost:5180/swagger` no browser. Se a lista de endpoints estiver vazia, é porque ainda não há
-controllers implementados; o que importa é a API ter arrancado sem erros. Para parar, **Ctrl+C**.
+Abra `http://localhost:5180/swagger` no browser. O Swagger só é publicado com `Swagger__Enabled=true`, que os perfis
+`http` e `https` do `launchSettings.json` já definem (secção 15). Para parar, **Ctrl+C**.
 
 Para usar HTTPS (`https://localhost:7180`), corra uma vez `dotnet dev-certs https --trust` e use
 `--launch-profile https`.
@@ -596,10 +596,25 @@ sem proxy, estes cabeçalhos viriam do próprio cliente.
 **Verificações de saúde.** Anónimas, fora de `/api`: `GET /health` responde `200 Healthy` enquanto a API corre;
 `GET /health/ready` também verifica a ligação à base de dados e responde `503 Unhealthy` sem ela.
 
+**Swagger (`Swagger__Enabled`).** O documento OpenAPI e o Swagger UI só são publicados com `Swagger__Enabled=true`,
+seja qual for o ambiente. Já não é preciso correr em `Development` para ter o Swagger.
+
+**Erros e cabeçalhos de segurança.** Qualquer exceção não tratada responde `500` ERR-50 («Ocorreu um erro inesperado.
+Tente novamente.»), sem a mensagem nem o tipo da exceção, que ficam só no registo da API. Um `Content-Type` que o
+endpoint não aceita responde `415` ERR-13, também nos endpoints anónimos e antes da autenticação. Todas as respostas
+levam `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` e, fora do Swagger
+UI, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` (a API só devolve JSON e ficheiros, que os
+clientes leem por pedido HTTP). Fora de `Development`, os pedidos HTTPS levam também o HSTS.
+
+**Texto livre.** Os textos dos pedidos JSON não podem ter caracteres de controlo além da tabulação e das mudanças de
+linha: `400` ERR-10 no campo, com a razão «O texto contém caracteres não permitidos.».
+
 **Variáveis no Railway:**
 
 | Variável | Valor |
 | --- | --- |
+| `ASPNETCORE_ENVIRONMENT` | `Production` (sem página de exceções e com HSTS) |
+| `Swagger__Enabled` | `true` enquanto as contas de avaliação usarem o Swagger |
 | `ForwardedHeaders__Enabled` | `true` |
 | `AllowedHosts` | o domínio público da API (por exemplo, `katch-backend-production.up.railway.app`) |
 

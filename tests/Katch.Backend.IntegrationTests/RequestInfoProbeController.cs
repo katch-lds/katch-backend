@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Katch.Backend.IntegrationTests;
 
 /// <summary>
-/// Endpoint de teste que devolve o IP do cliente e o esquema vistos pela API, depois dos cabeçalhos do proxy.
+/// Endpoints de teste: o IP do cliente e o esquema vistos pela API, depois dos cabeçalhos do proxy, e uma falha
+/// inesperada.
 /// </summary>
 [ApiController]
 [Route("test-request-info")]
@@ -25,5 +26,17 @@ public sealed class RequestInfoProbeController : ControllerBase
             RemoteIp = this.HttpContext.Connection.RemoteIpAddress?.ToString(),
             this.Request.Scheme,
         });
+    }
+
+    /// <summary>
+    /// Lança uma exceção não tratada, com um texto que não pode chegar ao cliente.
+    /// </summary>
+    /// <returns>Nunca devolve.</returns>
+    /// <exception cref="InvalidOperationException">Sempre.</exception>
+    [HttpGet("failure")]
+    [AllowAnonymous]
+    public IActionResult Failure()
+    {
+        throw new InvalidOperationException($"Pormenor interno de {this.Request.Path}: Host=db;Password=segredo");
     }
 }

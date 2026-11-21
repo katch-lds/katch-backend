@@ -28,7 +28,14 @@ public static class HostingServiceCollectionExtensions
     /// </summary>
     public const string ReadinessRoute = "/health/ready";
 
+    /// <summary>
+    /// Configuração que publica o documento OpenAPI e o Swagger UI (variável de ambiente <c>Swagger__Enabled</c>).
+    /// </summary>
+    public const string SwaggerEnabledKey = "Swagger:Enabled";
+
     private const string ReadyTag = "ready";
+
+    private const string SwaggerPath = "/swagger";
 
     /// <summary>
     /// Regista os limites globais (validados no arranque), o limite do corpo no Kestrel, os cabeçalhos do proxy e as
@@ -74,6 +81,45 @@ public static class HostingServiceCollectionExtensions
         if (app.Configuration.GetValue<bool>(ForwardedHeadersEnabledKey))
         {
             app.UseForwardedHeaders();
+        }
+
+        return app;
+    }
+
+    /// <summary>
+    /// Acrescenta a todas as respostas <c>X-Content-Type-Options: nosniff</c>, <c>X-Frame-Options: DENY</c> e
+    /// <c>Referrer-Policy: no-referrer</c>, e, fora do Swagger UI, uma CSP que não permite carregar nada nem embeber a
+    /// resposta (a API só devolve JSON e ficheiros, que os clientes leem por pedido HTTP). Os cabeçalhos são escritos
+    /// quando a resposta começa, por isso também valem nas respostas do tratamento de exceções. Em produção, liga o
+    /// HSTS (só nos pedidos HTTPS).
+    /// </summary>
+    /// <param name="app">Aplicação.</param>
+    /// <returns>A mesma aplicação, para encadear chamadas.</returns>
+    public static WebApplication UseKatchSecurityHeaders(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        app.Use((context, next) =>
+        {
+            context.Response.OnStarting(() =>
+            {
+                IHeaderDictionary headers = context.Response.Headers;
+                headers.XContentTypeOptions = "nosniff";
+                headers.XFrameOptions = "DENY";
+                headers["Referrer-Policy"] = "no-referrer";
+                if (!context.Request.Path.StartsWithSegments(SwaggerPath))
+                {
+                    headers.ContentSecurityPolicy = "default-src 'none'; frame-ancestors 'none'";
+                }
+
+                return Task.CompletedTask;
+            });
+            return next(context);
+        });
+
+        if (!app.Environment.IsDevelopment())
+        {
+            app.UseHsts();
         }
 
         return app;
