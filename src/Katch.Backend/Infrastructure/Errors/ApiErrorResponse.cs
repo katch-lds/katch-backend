@@ -298,6 +298,16 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Escreve o ERR-12 (413): o pedido excede a dimensão máxima permitida.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteRequestTooLargeAsync(HttpContext context)
+    {
+        return WriteAsync(context, StatusCodes.Status413PayloadTooLarge, RequestTooLargeCode, RequestTooLargeMessage);
+    }
+
+    /// <summary>
     /// Cria o corpo do erro que corresponde ao motivo da recusa de um início de sessão: ERR-02 (401), ERR-03, ERR-04 ou
     /// ERR-05 (403).
     /// </summary>

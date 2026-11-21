@@ -22,6 +22,7 @@ PowerShell (menu Iniciar, "Windows PowerShell") ou escreva `powershell` no termi
 12. [Quota de interesses e tarefa periódica](#12-quota-de-interesses-e-tarefa-periódica)
 13. [Recusa, interesse e quota do Candidato](#13-recusa-interesse-e-quota-do-candidato)
 14. [CORS do frontend web](#14-cors-do-frontend-web)
+15. [Alojamento, limites e verificações de saúde](#15-alojamento-limites-e-verificações-de-saúde)
 
 ## 1. Estrutura do repositório
 
@@ -545,3 +546,36 @@ curl.exe -i -X OPTIONS http://localhost:5180/api/auth/login -H "Origin: https://
 
 Os testes estão em `KatchCorsOptionsTests` (unitários, validação das origens e política registada) e em `CorsTests`
 (integração: preflight, pedido de origem autorizada e não autorizada e erros 400, 401 e 403).
+
+## 15. Alojamento, limites e verificações de saúde
+
+**Limites globais (`LimitsOptions`, secção `Limits`).** Os limites partilhados ou que mudam com frequência estão em
+`src/Katch.Backend/Infrastructure/LimitsOptions.cs`, com o valor por omissão de cada um. Qualquer valor pode ser
+substituído pela variável `Limits__<Nome>` e é validado no arranque: um valor inválido faz a API **não arrancar**, com
+uma mensagem que indica a variável a corrigir.
+
+| Variável | Por omissão | Efeito |
+| --- | --- | --- |
+| `Limits__MaxRequestBodyBytes` | `65536` (64 KB) | Corpo máximo dos pedidos fora dos carregamentos; acima disto, `413` ERR-12 (API v02, secção 4.2). Os carregamentos mantêm os 6 MB |
+
+**Anfitriões aceites (`AllowedHosts`).** O `appsettings.json` só aceita `localhost`, `127.0.0.1` e `10.0.2.2` (a API
+local vista do emulador Android); um pedido com outro cabeçalho `Host` recebe `400`. Para testar a app num telemóvel
+na rede local, acrescente o IP do computador: `$env:AllowedHosts = "localhost;127.0.0.1;10.0.2.2;192.168.1.20"`.
+
+**Proxy do alojamento (`ForwardedHeaders__Enabled`).** No Railway o HTTPS termina no proxy. Com
+`ForwardedHeaders__Enabled=true`, a API usa o IP do cliente e o esquema que o proxy acrescenta no fim de
+`X-Forwarded-For` e `X-Forwarded-Proto` (só o último valor, que o cliente não controla). Localmente fica desligado:
+sem proxy, estes cabeçalhos viriam do próprio cliente.
+
+**Verificações de saúde.** Anónimas, fora de `/api`: `GET /health` responde `200 Healthy` enquanto a API corre;
+`GET /health/ready` também verifica a ligação à base de dados e responde `503 Unhealthy` sem ela.
+
+**Variáveis no Railway:**
+
+| Variável | Valor |
+| --- | --- |
+| `ForwardedHeaders__Enabled` | `true` |
+| `AllowedHosts` | o domínio público da API (por exemplo, `katch-backend-production.up.railway.app`) |
+
+Em *Settings → Deploy → Healthcheck Path* pode indicar-se `/health/ready`, para o Railway só trocar de versão quando a
+nova liga à base de dados.
