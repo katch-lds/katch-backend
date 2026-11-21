@@ -126,6 +126,19 @@ public static class HostingServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Acrescenta ao pipeline o registo de segurança e a correlação dos pedidos. Tem de ficar antes do tratamento das
+    /// exceções, para que o registo de um 500 tenha a correlação.
+    /// </summary>
+    /// <param name="app">Construtor do pipeline.</param>
+    /// <returns>O mesmo construtor, para encadear chamadas.</returns>
+    public static IApplicationBuilder UseKatchRequestLogging(this IApplicationBuilder app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        return app.UseMiddleware<RequestLoggingMiddleware>();
+    }
+
+    /// <summary>
     /// Acrescenta ao pipeline a recusa dos pedidos que declarem um corpo acima do limite global.
     /// </summary>
     /// <param name="app">Construtor do pipeline.</param>

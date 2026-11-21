@@ -38,6 +38,7 @@ builder.Services.AddSwaggerGen(options =>
 WebApplication app = builder.Build();
 
 app.UseKatchForwardedHeaders();
+app.UseKatchRequestLogging();
 app.UseKatchSecurityHeaders();
 app.UseKatchExceptionHandler();
 

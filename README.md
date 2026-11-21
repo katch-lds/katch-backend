@@ -612,6 +612,12 @@ levam `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Poli
 UI, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` (a API só devolve JSON e ficheiros, que os
 clientes leem por pedido HTTP). Fora de `Development`, os pedidos HTTPS levam também o HSTS.
 
+**Registo de segurança e correlação.** Cada resposta leva o cabeçalho `X-Correlation-Id`, que também aparece em todos
+os registos desse pedido (incluindo o da exceção de um `500`), para encontrar no registo da API o pedido de que um
+utilizador se queixa. As respostas `401`, `403` e `429` (inícios de sessão falhados, acessos negados e limites) ficam
+registadas em `Warning`, só com o método, o caminho, o estado e o identificador da conta: nunca o correio, o IP, o
+corpo ou a consulta.
+
 **Texto livre.** Os textos dos pedidos JSON não podem ter caracteres de controlo além da tabulação e das mudanças de
 linha: `400` ERR-10 no campo, com a razão «O texto contém caracteres não permitidos.».
 
