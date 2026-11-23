@@ -2,7 +2,6 @@
 
 using System.Globalization;
 using Katch.Backend.Domain;
-using Katch.Backend.Domain.Enums;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
@@ -107,19 +106,17 @@ public sealed class JobExplorationService : IJobExplorationService
     public async Task<JobDetailModel> GetDetailAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default)
     {
         // A mesma parte de estado do RF014 que a resposta à vaga verifica (vaga publicada, não eliminada e não expirada, de
-        // Empresa aprovada); a distância, o salário e as preferências não restringem o detalhe.
+        // Empresa visível); a distância, o salário e as preferências não restringem o detalhe.
         Job? job = await this.jobs.GetByIdAsync(jobId, cancellationToken);
-        if (job is null || !job.IsVisibleToCandidates(this.clock.UtcNow))
+        if (job is null
+            || !job.IsVisibleToCandidates(this.clock.UtcNow)
+            || !await this.companies.IsVisibleToCandidatesAsync(job.CompanyId, cancellationToken))
         {
             throw new ElementNotFoundException();
         }
 
         Company company = await this.companies.GetByIdAsync(job.CompanyId, cancellationToken)
             ?? throw new InvalidOperationException("A Empresa da vaga não existe.");
-        if (company.Status != CompanyStatus.Approved)
-        {
-            throw new ElementNotFoundException();
-        }
 
         Candidate candidate = await this.GetCandidateAsync(candidateId, cancellationToken);
         Location home = await this.GetLocationAsync(candidate.LocationId, cancellationToken);
@@ -158,9 +155,10 @@ public sealed class JobExplorationService : IJobExplorationService
     /// <inheritdoc/>
     public async Task<Company> GetCompanyPageAsync(Guid companyId, CancellationToken cancellationToken = default)
     {
-        // Uma Empresa pendente, recusada ou suspensa não é visível ao Candidato: a mesma resposta que a inexistente.
+        // Uma Empresa pendente, recusada ou suspensa, ou com o Recrutador bloqueado, não é visível ao Candidato: a mesma
+        // resposta que a inexistente.
         Company? company = await this.companies.GetByIdAsync(companyId, cancellationToken);
-        if (company is null || !company.IsApproved())
+        if (company is null || !await this.companies.IsVisibleToCandidatesAsync(companyId, cancellationToken))
         {
             throw new ElementNotFoundException();
         }
@@ -227,7 +225,7 @@ public sealed class JobExplorationService : IJobExplorationService
 
     private async Task EnsureCanAnswerAsync(Guid candidateId, Guid jobId, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        JobWithCompanyStatus? found = await this.jobs.GetWithCompanyStatusAsync(jobId, cancellationToken);
+        JobWithCompanyVisibility? found = await this.jobs.GetWithCompanyVisibilityAsync(jobId, cancellationToken);
 
         if (found is null || found.Job.FirstPublishedAt is null)
         {
@@ -240,7 +238,7 @@ public sealed class JobExplorationService : IJobExplorationService
         }
 
         // Só a parte de estado do RF014; a distância, o salário e as preferências são do cartão.
-        if (!found.Job.IsVisibleToCandidates(now) || found.CompanyStatus != CompanyStatus.Approved)
+        if (!found.Job.IsVisibleToCandidates(now) || !found.CompanyVisible)
         {
             throw new JobAnswerRejectedException(JobAnswerRejection.Unavailable);
         }

@@ -8,7 +8,7 @@ Scripts SQL para criar, repor e preencher a base de dados `katch` em PostgreSQL 
 | `00-reset-schema.sql` | Repõe a base: reverte todas as migrations e apaga as tabelas, os tipos enumerados e os dados | Gerado a partir das migrations |
 | `01-create-schema.sql` | Cria o esquema completo (17 tabelas, tipos enumerados, restrições e índices) e a conta de Administrador; idempotente | Gerado a partir das migrations |
 | `02-seed-reference-data.sql` | Listas pré-definidas: 30 localidades com coordenadas, 30 competências e 12 benefícios; idempotente | Escrito à mão |
-| `03-seed-demo-data.sql` | Dados de demonstração: 20 Candidatos ativos, 7 Recrutadores, 5 Empresas aprovadas, 2 pendentes, 50 vagas publicadas, respostas a vagas, 3 matches com conversa e o registo de autoria; idempotente | Escrito à mão |
+| `03-seed-demo-data.sql` | Dados de demonstração: 20 Candidatos ativos, 7 Recrutadores, 5 Empresas aprovadas, 2 pendentes, 50 vagas publicadas, respostas a vagas, 3 matches com conversa e o registo de autoria; idempotente; só corre com `-v demo=1` | Escrito à mão |
 | `04-verify.sql` | Conta as tabelas e os registos de cada tabela e confirma o P18, a ausência da tabela `notification` e que não há palavras-passe em claro; só lê | Escrito à mão |
 
 ## Palavras-passe
@@ -37,7 +37,7 @@ $env:PGPASSWORD = "<palavra-passe do postgres>"
 createdb katch                      # só se a base ainda não existir
 psql -d katch -v ON_ERROR_STOP=1 -f database/01-create-schema.sql
 psql -d katch -v ON_ERROR_STOP=1 -f database/02-seed-reference-data.sql
-psql -d katch -v ON_ERROR_STOP=1 -f database/03-seed-demo-data.sql
+psql -d katch -v ON_ERROR_STOP=1 -v demo=1 -f database/03-seed-demo-data.sql   # só em bases de desenvolvimento
 psql -d katch -f database/04-verify.sql
 ```
 
@@ -45,6 +45,10 @@ Resultado esperado do `04-verify.sql`: 17 tabelas do modelo, `existe_notificatio
 5 Empresas aprovadas, 2 pendentes, 50 vagas publicadas, 1 Administrador e 0 resumos fora do formato.
 
 Os scripts 01 a 03 podem ser executados de novo sem erros nem linhas duplicadas.
+
+**Nunca numa base de produção.** As contas do `03-seed-demo-data.sql` têm uma palavra-passe de demonstração que o
+grupo conhece. Por isso o script recusa-se a correr sem `-v demo=1` (termina com erro antes de inserir, mesmo sem
+`ON_ERROR_STOP`). No Railway só se aplicam o 01 e o 02.
 
 ## Locale da base
 
@@ -73,7 +77,16 @@ dotnet ef migrations script --idempotent --project src/Katch.Backend -o database
 dotnet ef migrations script <ÚltimaMigration> 0 --idempotent --project src/Katch.Backend -o database/00-reset-schema.sql
 ```
 
-`<ÚltimaMigration>` é o nome da migration mais recente (por exemplo, `AddMessageAndOperationLog`). Não use a sua
+`<ÚltimaMigration>` é o nome da migration mais recente (por exemplo, `AddLoginSecurity`). Não use a sua
 palavra-passe pessoal em `Katch__AdminPassword`: o resumo fica no script.
+
+Gerar o 01 de novo muda o resumo da conta de Administrador (o sal é aleatório). Para acrescentar só uma migration nova
+sem o mudar, como na `AddLoginSecurity` (I136), gera-se o script dessa migration e junta-se ao fim do 01, e o da
+reversão ao início do 00 (depois do BOM):
+
+```powershell
+dotnet ef migrations script <Anterior> <Nova> --idempotent --project src/Katch.Backend -o nova.sql
+dotnet ef migrations script <Nova> <Anterior> --idempotent --project src/Katch.Backend -o reverter.sql
+```
 
 A pipeline CI (`database-scripts`) executa os scripts sobre PostgreSQL 18 numa base vazia em cada Merge Request.

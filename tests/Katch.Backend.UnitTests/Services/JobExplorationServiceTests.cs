@@ -993,7 +993,7 @@ public sealed class JobExplorationServiceTests
 
     private sealed class Fixture
     {
-        private readonly Dictionary<Guid, JobWithCompanyStatus> jobs = [];
+        private readonly Dictionary<Guid, JobWithCompanyVisibility> jobs = [];
 
         public Fixture(Func<Candidate>? candidate = null)
         {
@@ -1062,7 +1062,7 @@ public sealed class JobExplorationServiceTests
             }
 
             configure?.Invoke(job);
-            this.jobs[job.Id] = new JobWithCompanyStatus(job, company);
+            this.jobs[job.Id] = new JobWithCompanyVisibility(job, company == CompanyStatus.Approved);
             return job.Id;
         }
 
@@ -1141,16 +1141,16 @@ public sealed class JobExplorationServiceTests
 
         public Job AddJobForDetail(Job job)
         {
-            this.jobs[job.Id] = new JobWithCompanyStatus(job, CompanyStatus.Approved);
+            this.jobs[job.Id] = new JobWithCompanyVisibility(job, CompanyVisible: true);
             return job;
         }
     }
 
     private sealed class FakeJobs : IJobRepository
     {
-        private readonly Dictionary<Guid, JobWithCompanyStatus> jobs;
+        private readonly Dictionary<Guid, JobWithCompanyVisibility> jobs;
 
-        public FakeJobs(Dictionary<Guid, JobWithCompanyStatus> jobs)
+        public FakeJobs(Dictionary<Guid, JobWithCompanyVisibility> jobs)
         {
             this.jobs = jobs;
         }
@@ -1165,7 +1165,7 @@ public sealed class JobExplorationServiceTests
 
         public int? LastTake { get; private set; }
 
-        public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobWithCompanyVisibility?> GetWithCompanyVisibilityAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.jobs.GetValueOrDefault(jobId));
         }
@@ -1238,6 +1238,11 @@ public sealed class JobExplorationServiceTests
         public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Companies.Find(company => company.Id == id));
+        }
+
+        public Task<bool> IsVisibleToCandidatesAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(this.Companies.Exists(company => company.Id == id && company.IsApproved()));
         }
 
         public Task<Location?> GetLocationAsync(Guid id, CancellationToken cancellationToken = default)

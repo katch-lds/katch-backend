@@ -30,6 +30,7 @@ public sealed class CandidateEvaluationServiceTests
     private readonly Company company;
     private readonly Job job;
     private readonly Candidate candidate;
+    private readonly AppUser candidateAccount;
     private readonly Store store;
     private readonly FakeMatches matches = new();
     private readonly FixedClock clock = new() { UtcNow = Now };
@@ -45,8 +46,10 @@ public sealed class CandidateEvaluationServiceTests
         this.job.Skills.Add(this.java);
         this.job.Skills.Add(this.sql);
 
-        var user = new AppUser("ana@exemplo.pt", "hash", UserType.Candidate, Now.AddYears(-1), Now.AddYears(-1));
-        this.candidate = new Candidate(user, "Ana Ferreira", "912345678", this.location.Id)
+        this.candidateAccount = new AppUser("ana@exemplo.pt", "hash", UserType.Candidate, Now.AddYears(-1), Now.AddYears(-1));
+        var users = new FakeUserRepository();
+        users.Add(this.candidateAccount);
+        this.candidate = new Candidate(this.candidateAccount, "Ana Ferreira", "912345678", this.location.Id)
         {
             DesiredRole = "Programadora",
             Availability = Availability.Immediate,
@@ -60,7 +63,7 @@ public sealed class CandidateEvaluationServiceTests
             this.store,
             this.store,
             this.store,
-            new FakeUserRepository(),
+            users,
             this.store,
             this.store,
             this.store,
@@ -154,6 +157,37 @@ public sealed class CandidateEvaluationServiceTests
         Assert.Equal(Now, match.ProfileOpenedAt);
         Assert.Equal(match.Id, profile.MatchId);
         Assert.Equal(1, this.store.Saves);
+    }
+
+    /// <summary>
+    /// Um Candidato com a conta bloqueada ou suspensa não pode ser avaliado: abrir o perfil, obter o CV, aceitar e recusar
+    /// dão ERR-20 e nada é gravado (FUN-005).
+    /// </summary>
+    /// <param name="suspended"><see langword="true"/> para suspender a conta; <see langword="false"/> para a bloquear.</param>
+    /// <returns>Tarefa do teste.</returns>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InactiveCandidateCannotBeEvaluated(bool suspended)
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        Match match = this.AddInterest();
+        match.OpenProfile(Now.AddMinutes(-5));
+        if (suspended)
+        {
+            this.candidateAccount.Suspend(Now);
+        }
+        else
+        {
+            this.candidateAccount.Block(Now);
+        }
+
+        await Assert.ThrowsAsync<ElementNotFoundException>(() => this.service.OpenProfileAsync(this.recruiterId, match.Id, token));
+        await Assert.ThrowsAsync<ElementNotFoundException>(() => this.service.GetCvAsync(this.recruiterId, match.Id, token));
+        await Assert.ThrowsAsync<ElementNotFoundException>(() => this.service.AcceptAsync(this.recruiterId, match.Id, token));
+        await Assert.ThrowsAsync<ElementNotFoundException>(() => this.service.RejectAsync(this.recruiterId, match.Id, token));
+        Assert.Equal(MatchStatus.Waiting, match.Status);
+        Assert.Equal(0, this.store.Saves);
     }
 
     /// <summary>
@@ -620,7 +654,7 @@ public sealed class CandidateEvaluationServiceTests
             return Task.FromResult(this.Jobs.GetValueOrDefault(jobId));
         }
 
-        public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobWithCompanyVisibility?> GetWithCompanyVisibilityAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -755,6 +789,11 @@ public sealed class CandidateEvaluationServiceTests
         }
 
         Task<Company?> ICompanyRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        Task<bool> ICompanyRepository.IsVisibleToCandidatesAsync(Guid id, CancellationToken cancellationToken)
         {
             throw new NotSupportedException();
         }

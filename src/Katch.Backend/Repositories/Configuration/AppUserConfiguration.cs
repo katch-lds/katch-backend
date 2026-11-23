@@ -73,6 +73,16 @@ public sealed class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
             .HasDefaultValueSql("now()")
             .IsRequired();
 
+        builder.Property(user => user.FailedLoginCount)
+            .HasDefaultValue(0)
+            .IsRequired();
+
+        builder.Property(user => user.LockedUntil);
+
+        builder.Property(user => user.TokenVersion)
+            .HasDefaultValue(0)
+            .IsRequired();
+
         // O índice único sobre lower(email) (uq_app_user_email) é uma expressão, que o modelo do EF Core não
         // representa: é criado e removido por SQL na migration AddAppUser.
     }

@@ -92,6 +92,12 @@ public sealed class CompanyRepository : ICompanyRepository
     }
 
     /// <inheritdoc/>
+    public Task<bool> IsVisibleToCandidatesAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return this.context.CompaniesVisibleToCandidates().AnyAsync(company => company.Id == id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<List<CompanyWithCount>> ListAllWithPublishedCountAsync(CancellationToken cancellationToken = default)
     {
         // O filtro global das vagas exclui as eliminadas (DM-09) também nesta contagem.

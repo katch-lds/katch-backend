@@ -75,6 +75,11 @@ public static class ApiErrorResponse
     public const string UnsupportedContentTypeCode = "ERR-13";
 
     /// <summary>
+    /// Código do erro de limite de pedidos excedido.
+    /// </summary>
+    public const string TooManyRequestsCode = "ERR-14";
+
+    /// <summary>
     /// Código do erro de elemento inexistente ou não disponível.
     /// </summary>
     public const string NotFoundCode = "ERR-20";
@@ -140,6 +145,11 @@ public static class ApiErrorResponse
     public const string ConcurrencyConflictCode = "ERR-41";
 
     /// <summary>
+    /// Código do erro inesperado.
+    /// </summary>
+    public const string UnexpectedErrorCode = "ERR-50";
+
+    /// <summary>
     /// Mensagem do ERR-01.
     /// </summary>
     public const string InvalidSessionMessage = "A sessão expirou ou não é válida. Inicie sessão novamente.";
@@ -195,6 +205,11 @@ public static class ApiErrorResponse
     public const string UnsupportedContentTypeMessage = "O tipo de conteúdo do pedido não é suportado.";
 
     /// <summary>
+    /// Mensagem do ERR-14.
+    /// </summary>
+    public const string TooManyRequestsMessage = "Demasiados pedidos. Tente novamente dentro de instantes.";
+
+    /// <summary>
     /// Mensagem do ERR-20.
     /// </summary>
     public const string NotFoundMessage = "O elemento pedido não existe ou não está disponível.";
@@ -243,6 +258,11 @@ public static class ApiErrorResponse
     /// Mensagem do ERR-41.
     /// </summary>
     public const string ConcurrencyConflictMessage = "O elemento foi alterado por outro pedido. Atualize e tente novamente.";
+
+    /// <summary>
+    /// Mensagem do ERR-50, sem pormenores da exceção.
+    /// </summary>
+    public const string UnexpectedErrorMessage = "Ocorreu um erro inesperado. Tente novamente.";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -295,6 +315,70 @@ public static class ApiErrorResponse
     public static Task WriteCompanyNotApprovedAsync(HttpContext context, string message)
     {
         return WriteAsync(context, StatusCodes.Status403Forbidden, CompanyNotApprovedCode, message);
+    }
+
+    /// <summary>
+    /// Escreve o ERR-12 (413): o pedido excede a dimensão máxima permitida.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteRequestTooLargeAsync(HttpContext context)
+    {
+        return WriteAsync(context, StatusCodes.Status413PayloadTooLarge, RequestTooLargeCode, RequestTooLargeMessage);
+    }
+
+    /// <summary>
+    /// Escreve o ERR-13 (415): o tipo de conteúdo do pedido não é suportado.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteUnsupportedContentTypeAsync(HttpContext context)
+    {
+        return WriteAsync(
+            context,
+            StatusCodes.Status415UnsupportedMediaType,
+            UnsupportedContentTypeCode,
+            UnsupportedContentTypeMessage);
+    }
+
+    /// <summary>
+    /// Escreve o ERR-10 (400) sem campos: o pedido não pôde ser lido.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteValidationFailedAsync(HttpContext context)
+    {
+        return WriteAsync(context, StatusCodes.Status400BadRequest, ValidationFailedCode, ValidationFailedMessage);
+    }
+
+    /// <summary>
+    /// Escreve o ERR-50 (500): falha inesperada, sem pormenores da exceção.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteUnexpectedErrorAsync(HttpContext context)
+    {
+        return WriteAsync(context, StatusCodes.Status500InternalServerError, UnexpectedErrorCode, UnexpectedErrorMessage);
+    }
+
+    /// <summary>
+    /// Escreve o ERR-20 (404): a rota pedida não existe.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteNotFoundAsync(HttpContext context)
+    {
+        return WriteAsync(context, StatusCodes.Status404NotFound, NotFoundCode, NotFoundMessage);
+    }
+
+    /// <summary>
+    /// Escreve o ERR-14 (429): o limite de pedidos da janela foi excedido.
+    /// </summary>
+    /// <param name="context">Contexto do pedido.</param>
+    /// <returns>Tarefa que termina quando a resposta está escrita.</returns>
+    public static Task WriteTooManyRequestsAsync(HttpContext context)
+    {
+        return WriteAsync(context, StatusCodes.Status429TooManyRequests, TooManyRequestsCode, TooManyRequestsMessage);
     }
 
     /// <summary>

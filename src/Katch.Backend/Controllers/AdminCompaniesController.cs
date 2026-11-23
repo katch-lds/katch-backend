@@ -34,6 +34,7 @@ public sealed class AdminCompaniesController : ControllerBase
     }
 
     /// <summary>
+    /// RF-091: Consultar as Empresas pendentes.
     /// Consulta as Empresas pendentes de aprovação, da submissão mais antiga para a mais recente (6.11.1; RF091).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -50,6 +51,7 @@ public sealed class AdminCompaniesController : ControllerBase
     }
 
     /// <summary>
+    /// RF-092: Consultar os dados submetidos.
     /// Consulta os dados de registo submetidos por uma Empresa, em qualquer estado (6.11.2; RF092).
     /// </summary>
     /// <param name="companyId">Empresa a consultar.</param>
@@ -66,6 +68,7 @@ public sealed class AdminCompaniesController : ControllerBase
     }
 
     /// <summary>
+    /// RF-093: Aprovar o registo.
     /// Aprova o registo de uma Empresa pendente (6.11.3; RF093, RF112).
     /// </summary>
     /// <param name="companyId">Empresa a aprovar.</param>
@@ -84,6 +87,7 @@ public sealed class AdminCompaniesController : ControllerBase
     }
 
     /// <summary>
+    /// RF-094: Recusar o registo com motivo.
     /// Recusa o registo de uma Empresa pendente, com o motivo (6.11.4; RF094, RF112, P12).
     /// </summary>
     /// <param name="companyId">Empresa a recusar.</param>
@@ -115,6 +119,7 @@ public sealed class AdminCompaniesController : ControllerBase
     }
 
     /// <summary>
+    /// RF-095: Suspender uma Empresa aprovada.
     /// Suspende uma Empresa aprovada (6.11.5; RF095, RF075, RF112).
     /// </summary>
     /// <param name="companyId">Empresa a suspender.</param>
@@ -134,6 +139,7 @@ public sealed class AdminCompaniesController : ControllerBase
     }
 
     /// <summary>
+    /// RF-116: Reativar uma Empresa suspensa.
     /// Reativa uma Empresa suspensa (6.11.6; RF116, RF075, RF112).
     /// </summary>
     /// <param name="companyId">Empresa a reativar.</param>
@@ -153,6 +159,7 @@ public sealed class AdminCompaniesController : ControllerBase
     }
 
     /// <summary>
+    /// RF-097: Consultar a lista global de Empresas.
     /// Consulta a lista global de Empresas, por ordem alfabética (6.11.7; RF097).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -169,6 +176,7 @@ public sealed class AdminCompaniesController : ControllerBase
     }
 
     /// <summary>
+    /// RF-098: Consultar a lista global de vagas publicadas.
     /// Consulta a lista global de vagas publicadas, da publicação mais recente para a mais antiga (6.11.8; RF098).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>

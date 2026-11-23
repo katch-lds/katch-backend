@@ -1,6 +1,5 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using System.Security.Claims;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
@@ -27,8 +26,9 @@ internal sealed class AccountStatusMiddleware
     }
 
     /// <summary>
-    /// Recusa o pedido se a conta do <c>sub</c> não existir (401 ERR-01), estiver bloqueada (403 ERR-03) ou
-    /// suspensa (403 ERR-04); os pedidos sem autenticação seguem para a autorização.
+    /// Recusa o pedido se a conta do <c>sub</c> não existir ou a sessão tiver terminado (versão da credencial diferente
+    /// da da conta) com 401 ERR-01, ou se a conta estiver bloqueada (403 ERR-03) ou suspensa (403 ERR-04); os pedidos
+    /// sem autenticação seguem para a autorização. A versão é lida na mesma consulta do estado.
     /// </summary>
     /// <param name="context">Contexto do pedido.</param>
     /// <param name="database">Contexto da base de dados do pedido.</param>
@@ -46,7 +46,7 @@ internal sealed class AccountStatusMiddleware
             return;
         }
 
-        if (!Guid.TryParse(context.User.FindFirstValue("sub"), out Guid userId))
+        if (!context.User.TryGetAccountId(out Guid userId) || !context.User.TryGetTokenVersion(out int tokenVersion))
         {
             await ApiErrorResponse.WriteInvalidSessionAsync(context);
             return;
@@ -55,7 +55,7 @@ internal sealed class AccountStatusMiddleware
         var account = await database.Users
             .AsNoTracking()
             .Where(user => user.Id == userId)
-            .Select(user => new { user.Status })
+            .Select(user => new { user.Status, user.TokenVersion })
             .SingleOrDefaultAsync(context.RequestAborted);
 
         if (account is null)
@@ -64,6 +64,8 @@ internal sealed class AccountStatusMiddleware
             return;
         }
 
+        // O estado vem antes da versão: uma conta bloqueada ou suspensa recebe sempre ERR-03 ou ERR-04, mesmo com uma
+        // credencial anterior ao bloqueio, que o bloqueio já revogou (SEG-018).
         switch (account.Status)
         {
             case AccountStatus.Blocked:
@@ -73,6 +75,12 @@ internal sealed class AccountStatusMiddleware
                 await ApiErrorResponse.WriteAccountSuspendedAsync(context);
                 return;
             default:
+                if (account.TokenVersion != tokenVersion)
+                {
+                    await ApiErrorResponse.WriteInvalidSessionAsync(context);
+                    return;
+                }
+
                 await this.next(context);
                 return;
         }

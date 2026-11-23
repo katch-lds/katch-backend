@@ -21,6 +21,7 @@ public static class BackgroundJobsServiceCollectionExtensions
 
         services.AddSingleton<IValidateOptions<BackgroundJobsOptions>, BackgroundJobsOptionsValidator>();
         services.AddOptions<BackgroundJobsOptions>().BindConfiguration(BackgroundJobsOptions.SectionName).ValidateOnStart();
+        services.AddScoped<IBackgroundJobLock, DatabaseBackgroundJobLock>();
         services.AddHostedService<QuotaRestoreWorker>();
         services.AddHostedService<JobExpirationWorker>();
         return services;

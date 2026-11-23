@@ -37,6 +37,7 @@ public sealed class ConversationsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-027: Consultar a lista de conversas.
     /// Lista as conversas do utilizador, abertas e em modo apenas de consulta, com as mensagens por ler (6.8.1; RF027,
     /// RF029, RF075).
     /// </summary>
@@ -54,6 +55,7 @@ public sealed class ConversationsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-028: Abrir uma conversa.
     /// Abre a conversa: devolve as mensagens, da mais antiga para a mais recente, e marca como lidas as da outra parte
     /// (6.8.2; RF026, RF069, RF070). Com <paramref name="after"/>, só as mensagens enviadas depois desse instante.
     /// </summary>
@@ -61,8 +63,8 @@ public sealed class ConversationsController : ControllerBase
     /// <param name="after">Instante em ISO 8601; só as mensagens com <c>sentAt</c> posterior.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>
-    /// <c>200</c> com as mensagens, <c>400</c> (ERR-10) se <c>after</c> estiver mal formado, <c>403</c> (ERR-08),
-    /// <c>404</c> (ERR-20), ou <c>409</c> (ERR-37) se o match não estiver confirmado.
+    /// <c>200</c> com as mensagens, <c>400</c> (ERR-10) se <c>after</c> estiver mal formado,
+    /// <c>404</c> (ERR-20) se o match não existir ou não for da conta, ou <c>409</c> (ERR-37) se não estiver confirmado.
     /// </returns>
     [HttpGet("{matchId:guid}/messages")]
     [ProducesResponseType<List<MessageDto>>(StatusCodes.Status200OK)]
@@ -82,14 +84,16 @@ public sealed class ConversationsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-026: Enviar uma mensagem.
     /// Envia uma mensagem na conversa (6.8.3; RF030; P03).
     /// </summary>
     /// <param name="matchId">Identificador do match.</param>
     /// <param name="request">Texto da mensagem, de 1 a 1000 caracteres.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>
-    /// <c>201</c> com a mensagem gravada, <c>400</c> (ERR-10) com o texto inválido, <c>403</c> (ERR-08), <c>404</c>
-    /// (ERR-20), ou <c>409</c> (ERR-36) com a conversa em modo apenas de consulta e (ERR-37) sem match confirmado.
+    /// <c>201</c> com a mensagem gravada, <c>400</c> (ERR-10) com o texto inválido, <c>404</c>
+    /// (ERR-20) se o match não existir ou não for da conta, ou <c>409</c> (ERR-36) com a conversa em modo apenas de
+    /// consulta e (ERR-37) sem match confirmado.
     /// </returns>
     [HttpPost("{matchId:guid}/messages")]
     [Consumes("application/json")]
@@ -115,14 +119,15 @@ public sealed class ConversationsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-030: Encerrar uma conversa.
     /// Encerra a conversa: passa a modo apenas de consulta para as duas partes, com o histórico visível (6.8.4; RF071,
     /// RF072, RF075).
     /// </summary>
     /// <param name="matchId">Identificador do match.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>
-    /// <c>204</c> sem corpo, <c>403</c> (ERR-08), <c>404</c> (ERR-20), ou <c>409</c> (ERR-36) se a conversa já estiver
-    /// encerrada e (ERR-37) sem match confirmado.
+    /// <c>204</c> sem corpo, <c>404</c> (ERR-20) se o match não existir ou não for da conta, ou <c>409</c> (ERR-36)
+    /// se a conversa já estiver encerrada e (ERR-37) sem match confirmado.
     /// </returns>
     [HttpPost("{matchId:guid}/close")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

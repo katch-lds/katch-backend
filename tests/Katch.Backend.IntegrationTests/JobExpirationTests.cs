@@ -5,6 +5,7 @@ using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -205,18 +206,43 @@ public sealed class JobExpirationTests
         return await scope.ServiceProvider.GetRequiredService<IJobService>().CloseExpiredAsync(cancellationToken);
     }
 
-    private static async Task<Job> LoadAsync(KatchWebApplicationFactory factory, Guid id, CancellationToken cancellationToken)
+    private static Task<Job> LoadAsync(KatchWebApplicationFactory factory, Guid id, CancellationToken cancellationToken)
     {
-        using IServiceScope scope = factory.Services.CreateScope();
-        KatchDbContext context = scope.ServiceProvider.GetRequiredService<KatchDbContext>();
-        return await context.Jobs.IgnoreQueryFilters().AsNoTracking().SingleAsync(job => job.Id == id, cancellationToken);
+        return RetryWhileBusyAsync(async () =>
+        {
+            using IServiceScope scope = factory.Services.CreateScope();
+            KatchDbContext context = scope.ServiceProvider.GetRequiredService<KatchDbContext>();
+            return await context.Jobs.IgnoreQueryFilters().AsNoTracking().SingleAsync(job => job.Id == id, cancellationToken);
+        });
     }
 
-    private static async Task<List<OperationLog>> LogsAsync(KatchWebApplicationFactory factory, CancellationToken cancellationToken)
+    private static Task<List<OperationLog>> LogsAsync(KatchWebApplicationFactory factory, CancellationToken cancellationToken)
     {
-        using IServiceScope scope = factory.Services.CreateScope();
-        KatchDbContext context = scope.ServiceProvider.GetRequiredService<KatchDbContext>();
-        return await context.OperationLogs.AsNoTracking().OrderBy(log => log.Id).ToListAsync(cancellationToken);
+        return RetryWhileBusyAsync(async () =>
+        {
+            using IServiceScope scope = factory.Services.CreateScope();
+            KatchDbContext context = scope.ServiceProvider.GetRequiredService<KatchDbContext>();
+            return await context.OperationLogs.AsNoTracking().OrderBy(log => log.Id).ToListAsync(cancellationToken);
+        });
+    }
+
+    /// <summary>
+    /// Repete a leitura se o SQLite em memória, com uma única ligação partilhada com o worker, ainda tiver um comando
+    /// ativo desse worker (ROB-010).
+    /// </summary>
+    private static async Task<T> RetryWhileBusyAsync<T>(Func<Task<T>> read)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await read();
+            }
+            catch (SqliteException) when (attempt < 10)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(100), TestContext.Current.CancellationToken);
+            }
+        }
     }
 
     private sealed class Seed

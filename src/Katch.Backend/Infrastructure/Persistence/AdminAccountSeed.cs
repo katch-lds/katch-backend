@@ -51,7 +51,8 @@ public static class AdminAccountSeed
     /// <param name="password">Palavra-passe da conta de Administrador.</param>
     /// <returns>O resumo da palavra-passe, com no máximo 255 caracteres.</returns>
     /// <exception cref="ArgumentException">
-    /// Se a palavra-passe tiver menos de 8 caracteres ou não tiver pelo menos uma letra e um algarismo (P05).
+    /// Se a palavra-passe tiver menos de 8 caracteres ou não tiver pelo menos uma letra e um algarismo (P05), ou se for
+    /// uma palavra-passe comum (<see cref="CommonPasswords"/>).
     /// </exception>
     public static string HashPassword(string password)
     {
@@ -65,6 +66,13 @@ public static class AdminAccountSeed
         {
             throw new ArgumentException(
                 "A palavra-passe do Administrador deve ter pelo menos 8 caracteres, com uma letra e um algarismo (P05).",
+                nameof(password));
+        }
+
+        if (CommonPasswords.Contains(password))
+        {
+            throw new ArgumentException(
+                "A palavra-passe do Administrador é demasiado comum. Escolha outra.",
                 nameof(password));
         }
 

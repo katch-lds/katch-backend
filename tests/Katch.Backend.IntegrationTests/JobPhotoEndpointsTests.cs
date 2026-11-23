@@ -560,9 +560,9 @@ public sealed partial class JobPhotoEndpointsTests : IClassFixture<KatchWebAppli
 
     private sealed class FailingPhotoJobRepository(JobRepository inner) : IJobRepository
     {
-        public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobWithCompanyVisibility?> GetWithCompanyVisibilityAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
-            return inner.GetWithCompanyStatusAsync(jobId, cancellationToken);
+            return inner.GetWithCompanyVisibilityAsync(jobId, cancellationToken);
         }
 
         public Task<Job?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

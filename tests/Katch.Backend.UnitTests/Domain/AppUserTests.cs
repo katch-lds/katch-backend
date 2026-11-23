@@ -246,6 +246,87 @@ public sealed class AppUserTests
         Assert.Equal("novo-hash", user.PasswordHash);
     }
 
+    /// <summary>
+    /// O bloqueio e a suspensão terminam as sessões da conta, por isso uma credencial anterior não volta a valer depois
+    /// da reativação (SEG-018).
+    /// </summary>
+    [Fact]
+    public void BlockAndSuspendRevokeTheSessions()
+    {
+        AppUser blocked = CreateUser(UserType.Candidate);
+        AppUser suspended = CreateUser(UserType.Candidate);
+
+        blocked.Block(Later);
+        suspended.Suspend(Later);
+        blocked.Reactivate(Later);
+
+        Assert.Equal(1, blocked.TokenVersion);
+        Assert.Equal(1, suspended.TokenVersion);
+    }
+
+    /// <summary>
+    /// O fim de sessão e a mudança da palavra-passe incrementam a versão das sessões (SEG-003).
+    /// </summary>
+    [Fact]
+    public void LogoutAndPasswordChangeRevokeTheSessions()
+    {
+        AppUser user = CreateUser(UserType.Candidate);
+
+        Assert.Equal(0, user.TokenVersion);
+        user.RevokeSessions();
+        Assert.Equal(1, user.TokenVersion);
+        user.SetPasswordHash("novo-hash", Later);
+        Assert.Equal(2, user.TokenVersion);
+    }
+
+    /// <summary>
+    /// Cada série de 5 falhas bloqueia: 1, 2, 4, 8 minutos e depois o máximo de 15; as falhas intermédias não alteram o
+    /// fim do bloqueio (SEG-002).
+    /// </summary>
+    [Fact]
+    public void EachSeriesOfFailuresLocksForDoubleTheTimeUpToTheMaximum()
+    {
+        AppUser user = CreateUser(UserType.Candidate);
+        int[] expectedMinutes = [1, 2, 4, 8, 15, 15];
+
+        foreach (int minutes in expectedMinutes)
+        {
+            DateTimeOffset? previous = user.LockedUntil;
+            for (int i = 1; i < 5; i++)
+            {
+                user.RegisterFailedLogin(Later, 5, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(15));
+                Assert.Equal(previous, user.LockedUntil);
+            }
+
+            user.RegisterFailedLogin(Later, 5, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(15));
+            Assert.Equal(Later.AddMinutes(minutes), user.LockedUntil);
+        }
+
+        Assert.Equal(30, user.FailedLoginCount);
+        Assert.True(user.IsLockedOut(Later.AddMinutes(14)));
+        Assert.False(user.IsLockedOut(Later.AddMinutes(15)));
+    }
+
+    /// <summary>
+    /// Um início de sessão válido repõe o contador e retira o bloqueio.
+    /// </summary>
+    [Fact]
+    public void ValidLoginClearsFailuresAndLock()
+    {
+        AppUser user = CreateUser(UserType.Admin);
+        for (int i = 0; i < 5; i++)
+        {
+            user.RegisterFailedLogin(Later, 5, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(15));
+        }
+
+        Assert.True(user.IsLockedOut(Later));
+        user.RegisterValidLogin();
+
+        Assert.Equal(0, user.FailedLoginCount);
+        Assert.Null(user.LockedUntil);
+        Assert.False(user.IsLockedOut(Later));
+    }
+
     private static AppUser CreateUser(UserType userType)
     {
         DateTimeOffset? terms = userType == UserType.Admin ? null : Registered;

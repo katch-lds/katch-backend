@@ -129,8 +129,8 @@ public sealed class AuthControllerTests
     }
 
     /// <summary>
-    /// O logout devolve <c>204</c> (o token é descartado pelo cliente; 6.1.4) e a alteração da palavra-passe usa a conta
-    /// da credencial, nunca a do pedido (6.1.5).
+    /// O logout e a alteração da palavra-passe devolvem <c>204</c> e usam a conta da credencial, nunca a do pedido
+    /// (6.1.4, 6.1.5).
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
@@ -140,14 +140,40 @@ public sealed class AuthControllerTests
         Guid userId = Guid.NewGuid();
         AuthController controller = new AuthController(service.Service).WithUser(userId, AccountRoles.Candidate);
 
-        IActionResult logout = controller.Logout();
+        IActionResult logout = await controller.Logout(TestContext.Current.CancellationToken);
         IActionResult changed = await controller.ChangePassword(null, TestContext.Current.CancellationToken);
 
         Assert.IsType<NoContentResult>(logout);
         Assert.IsType<NoContentResult>(changed);
-        ServiceCall call = service.SingleCall(nameof(IAuthService.ChangePasswordAsync));
-        Assert.Equal(userId, call.Arguments[0]);
-        Assert.Equal(ChangePasswordInput.Empty, call.Arguments[1]);
+        Assert.Collection(
+            service.Calls,
+            call =>
+            {
+                Assert.Equal(nameof(IAuthService.LogoutAsync), call.Method);
+                Assert.Equal(userId, call.Arguments[0]);
+            },
+            call =>
+            {
+                Assert.Equal(nameof(IAuthService.ChangePasswordAsync), call.Method);
+                Assert.Equal(userId, call.Arguments[0]);
+                Assert.Equal(ChangePasswordInput.Empty, call.Arguments[1]);
+            });
+    }
+
+    /// <summary>
+    /// Sem conta na credencial, o logout responde 401 ERR-01 sem chamar o serviço.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task LogoutWithoutAccountIsErr01()
+    {
+        var service = new ServiceDouble<IAuthService>();
+        AuthController controller = new AuthController(service.Service).WithUser(null);
+
+        IActionResult logout = await controller.Logout(TestContext.Current.CancellationToken);
+
+        Assert.Equal(StatusCodes.Status401Unauthorized, Assert.IsType<UnauthorizedObjectResult>(logout).StatusCode);
+        Assert.Empty(service.Calls);
     }
 
     private sealed class RecordingAuthService : IAuthService
@@ -165,6 +191,11 @@ public sealed class AuthControllerTests
         }
 
         public Task<LoginResult> LoginAsync(LoginInput request, ClientApp app, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task LogoutAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

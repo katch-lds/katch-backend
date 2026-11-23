@@ -17,6 +17,11 @@ namespace Katch.Backend.BackgroundJobs;
 /// </remarks>
 public sealed partial class JobExpirationWorker : BackgroundService
 {
+    /// <summary>
+    /// Chave do bloqueio consultivo desta tarefa, a mesma em todas as instâncias da API (ROB-007).
+    /// </summary>
+    internal const long LockKey = 7_100_002;
+
     private readonly IServiceScopeFactory scopeFactory;
     private readonly TimeSpan interval;
     private readonly ILogger<JobExpirationWorker> logger;
@@ -51,12 +56,16 @@ public sealed partial class JobExpirationWorker : BackgroundService
         {
             using IServiceScope scope = this.scopeFactory.CreateScope();
             var jobService = scope.ServiceProvider.GetRequiredService<IJobService>();
+            var jobLock = scope.ServiceProvider.GetRequiredService<IBackgroundJobLock>();
 
-            int closed = await jobService.CloseExpiredAsync(cancellationToken);
+            int? closed = await jobLock.RunExclusiveAsync(
+                LockKey,
+                () => jobService.CloseExpiredAsync(cancellationToken),
+                cancellationToken);
 
             if (closed > 0)
             {
-                this.LogClosed(closed);
+                this.LogClosed(closed.Value);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

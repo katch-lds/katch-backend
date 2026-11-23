@@ -67,10 +67,10 @@ public sealed class MatchRepository : IMatchRepository
     public async Task<List<WaitingInterest>> ListWaitingByJobAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
         List<WaitingInterest> waiting = await (
-                from match in this.context.Matches.AsNoTracking()
+                from match in this.WaitingOfActiveCandidates()
                 join candidate in this.context.Candidates.AsNoTracking() on match.CandidateId equals candidate.Id
                 join location in this.context.Locations.AsNoTracking() on candidate.LocationId equals location.Id
-                where match.JobId == jobId && match.Status == MatchStatus.Waiting
+                where match.JobId == jobId
                 select new WaitingInterest(
                     match.Id,
                     candidate.Id,
@@ -92,8 +92,8 @@ public sealed class MatchRepository : IMatchRepository
     {
         ArgumentNullException.ThrowIfNull(jobIds);
 
-        return this.context.Matches
-            .Where(match => jobIds.Contains(match.JobId) && match.Status == MatchStatus.Waiting)
+        return this.WaitingOfActiveCandidates()
+            .Where(match => jobIds.Contains(match.JobId))
             .GroupBy(match => match.JobId)
             .Select(group => new { JobId = group.Key, Count = group.Count() })
             .ToDictionaryAsync(item => item.JobId, item => item.Count, cancellationToken);
@@ -175,6 +175,18 @@ public sealed class MatchRepository : IMatchRepository
                     this.context.Messages.Where(message => message.MatchId == match.Id).Max(message => (DateTimeOffset?)message.SentAt),
                     this.context.Messages.Count(message => message.MatchId == match.Id && message.SenderId != userId && message.ReadAt == null)))
             .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Interesses em espera de Candidatos com a conta ativa: um Candidato bloqueado ou suspenso deixa de aparecer ao
+    /// Recrutador até a conta ser reativada (FUN-005).
+    /// </summary>
+    private IQueryable<Match> WaitingOfActiveCandidates()
+    {
+        return from match in this.context.Matches.AsNoTracking()
+               join account in this.context.Users.AsNoTracking() on match.CandidateId equals account.Id
+               where match.Status == MatchStatus.Waiting && account.Status == AccountStatus.Active
+               select match;
     }
 
     private IQueryable<MatchView> QueryMatchViews(Guid? candidateId, Guid? companyId)

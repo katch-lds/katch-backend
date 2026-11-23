@@ -28,8 +28,7 @@ public interface IConversationService
     /// <param name="after">Só as mensagens enviadas depois deste instante; <see langword="null"/> para o histórico completo.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As mensagens, da mais antiga para a mais recente.</returns>
-    /// <exception cref="ElementNotFoundException">Se o match não existir (ERR-20).</exception>
-    /// <exception cref="ElementForbiddenException">Se a conta não for uma das partes (ERR-08).</exception>
+    /// <exception cref="ElementNotFoundException">Se o match não existir ou a conta não for uma das partes (ERR-20).</exception>
     /// <exception cref="OperationConflictException">Se o match não estiver confirmado (ERR-37).</exception>
     public Task<List<MessageModel>> OpenAsync(Guid userId, Guid matchId, DateTimeOffset? after, CancellationToken cancellationToken = default);
 
@@ -41,8 +40,7 @@ public interface IConversationService
     /// <param name="request">Texto da mensagem.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A mensagem gravada.</returns>
-    /// <exception cref="ElementNotFoundException">Se o match não existir (ERR-20).</exception>
-    /// <exception cref="ElementForbiddenException">Se a conta não for uma das partes (ERR-08).</exception>
+    /// <exception cref="ElementNotFoundException">Se o match não existir ou a conta não for uma das partes (ERR-20).</exception>
     /// <exception cref="OperationConflictException">Se o match não estiver confirmado (ERR-37) ou a conversa estiver em modo apenas de consulta (ERR-36).</exception>
     /// <exception cref="ValidationFailedException">Se o texto for vazio, só de espaços ou tiver mais de 1000 caracteres (ERR-10).</exception>
     public Task<MessageModel> SendAsync(Guid userId, Guid matchId, SendMessageInput request, CancellationToken cancellationToken = default);
@@ -54,8 +52,7 @@ public interface IConversationService
     /// <param name="matchId">Identificador do match.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>Tarefa que termina quando a conversa foi encerrada.</returns>
-    /// <exception cref="ElementNotFoundException">Se o match não existir (ERR-20).</exception>
-    /// <exception cref="ElementForbiddenException">Se a conta não for uma das partes (ERR-08).</exception>
+    /// <exception cref="ElementNotFoundException">Se o match não existir ou a conta não for uma das partes (ERR-20).</exception>
     /// <exception cref="OperationConflictException">Se o match não estiver confirmado (ERR-37) ou a conversa já estiver encerrada, incluindo a perda na concorrência (ERR-36).</exception>
     public Task CloseAsync(Guid userId, Guid matchId, CancellationToken cancellationToken = default);
 }

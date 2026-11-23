@@ -107,6 +107,71 @@ public sealed class AppUser
     public DateTimeOffset UpdatedAt { get; private set; }
 
     /// <summary>
+    /// Gets the number of consecutive failed sign-ins since the last valid one (<c>failed_login_count</c>).
+    /// </summary>
+    public int FailedLoginCount { get; private set; }
+
+    /// <summary>
+    /// Gets the instant until which sign-in is refused after too many failures (<c>locked_until</c>).
+    /// </summary>
+    public DateTimeOffset? LockedUntil { get; private set; }
+
+    /// <summary>
+    /// Gets the version of the sessions (<c>token_version</c>), written in each credential: a credential with another
+    /// version is no longer accepted.
+    /// </summary>
+    public int TokenVersion { get; private set; }
+
+    /// <summary>
+    /// Indica se o início de sessão está temporariamente recusado por excesso de falhas.
+    /// </summary>
+    /// <param name="now">Instante atual, em UTC.</param>
+    /// <returns><see langword="true"/> enquanto <see cref="LockedUntil"/> não tiver passado.</returns>
+    public bool IsLockedOut(DateTimeOffset now)
+    {
+        return this.LockedUntil > now;
+    }
+
+    /// <summary>
+    /// Regista um início de sessão falhado. Cada série de <paramref name="maxFailures"/> falhas seguidas recusa o início
+    /// de sessão durante <paramref name="lockout"/>, a dobrar a cada série, até <paramref name="maxLockout"/>.
+    /// </summary>
+    /// <param name="now">Instante da falha, em UTC.</param>
+    /// <param name="maxFailures">Falhas seguidas que provocam o bloqueio.</param>
+    /// <param name="lockout">Duração do primeiro bloqueio.</param>
+    /// <param name="maxLockout">Duração máxima de um bloqueio.</param>
+    public void RegisterFailedLogin(DateTimeOffset now, int maxFailures, TimeSpan lockout, TimeSpan maxLockout)
+    {
+        this.FailedLoginCount++;
+        if (this.FailedLoginCount % maxFailures != 0)
+        {
+            return;
+        }
+
+        // Limitar o expoente evita o transbordo; a partir daí o máximo já foi atingido.
+        int doublings = Math.Min((this.FailedLoginCount / maxFailures) - 1, 30);
+        double seconds = Math.Min(lockout.TotalSeconds * Math.Pow(2, doublings), maxLockout.TotalSeconds);
+        this.LockedUntil = now.AddSeconds(seconds);
+    }
+
+    /// <summary>
+    /// Regista um início de sessão com a palavra-passe certa: as falhas anteriores deixam de contar.
+    /// </summary>
+    public void RegisterValidLogin()
+    {
+        this.FailedLoginCount = 0;
+        this.LockedUntil = null;
+    }
+
+    /// <summary>
+    /// Termina todas as sessões da conta: as credenciais emitidas até aqui deixam de ser aceites (fim de sessão).
+    /// </summary>
+    public void RevokeSessions()
+    {
+        this.TokenVersion++;
+    }
+
+    /// <summary>
     /// Indica se a conta pode iniciar sessão: só as contas ativas o podem fazer (RF086, RF089).
     /// </summary>
     /// <returns><see langword="true"/> se o estado for <see cref="AccountStatus.Active"/>.</returns>
@@ -167,7 +232,8 @@ public sealed class AppUser
     }
 
     /// <summary>
-    /// Substitui o resumo da palavra-passe (RF040 e RF084). A regra P05 é validada antes do cálculo do resumo.
+    /// Substitui o resumo da palavra-passe (RF040 e RF084) e termina todas as sessões da conta, incluindo a do pedido. A
+    /// regra P05 é validada antes do cálculo do resumo.
     /// </summary>
     /// <param name="hash">Novo resumo criptográfico da palavra-passe, com no máximo 255 caracteres.</param>
     /// <param name="now">Instante da alteração, em UTC.</param>
@@ -178,6 +244,7 @@ public sealed class AppUser
 
         this.PasswordHash = hash;
         this.UpdatedAt = now;
+        this.RevokeSessions();
     }
 
     private static void ValidatePasswordHash(string hash)
@@ -213,5 +280,6 @@ public sealed class AppUser
 
         this.Status = target;
         this.UpdatedAt = now;
+        this.RevokeSessions();
     }
 }

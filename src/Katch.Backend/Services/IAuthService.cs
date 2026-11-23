@@ -55,8 +55,17 @@ public interface IAuthService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Altera a palavra-passe da própria conta (documentação da API v02, secção 6.1.5; RF002, RF040, RF084). A
-    /// credencial de sessão atual mantém-se válida até expirar.
+    /// Termina a sessão (RF105 a RF107): as credenciais emitidas até aqui para a conta, em qualquer dispositivo, deixam
+    /// de ser aceites.
+    /// </summary>
+    /// <param name="userId">Identificador da conta, obtido da credencial de sessão.</param>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
+    /// <returns>Tarefa que termina quando o fim das sessões foi gravado.</returns>
+    public Task LogoutAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Altera a palavra-passe da própria conta (documentação da API v02, secção 6.1.5; RF002, RF040, RF084). As
+    /// sessões da conta terminam, incluindo a do pedido: o início de sessão seguinte usa a nova palavra-passe.
     /// </summary>
     /// <param name="userId">Identificador da conta, obtido da credencial de sessão.</param>
     /// <param name="request">Palavra-passe atual e palavra-passe nova.</param>

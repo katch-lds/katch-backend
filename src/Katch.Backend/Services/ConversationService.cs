@@ -135,8 +135,8 @@ public sealed class ConversationService : IConversationService
     }
 
     /// <summary>
-    /// Obtém o match a que o utilizador pertence: 404 se não existir, 403 se a conta não for uma das partes, 409 ERR-37
-    /// se não estiver confirmado.
+    /// Obtém o match a que o utilizador pertence: 404 se não existir ou se a conta não for uma das partes (a resposta não
+    /// confirma que o match existe), 409 ERR-37 se não estiver confirmado.
     /// </summary>
     private async Task<Match> GetConversationAsync(Guid userId, Guid matchId, CancellationToken cancellationToken)
     {
@@ -145,7 +145,7 @@ public sealed class ConversationService : IConversationService
         Guid? recruiterId = await this.matches.GetRecruiterIdAsync(matchId, cancellationToken);
         if (match.CandidateId != userId && recruiterId != userId)
         {
-            throw new ElementForbiddenException();
+            throw new ElementNotFoundException();
         }
 
         if (match.Status != MatchStatus.Matched)

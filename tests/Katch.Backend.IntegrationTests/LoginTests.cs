@@ -408,7 +408,8 @@ public sealed class LoginTests : IClassFixture<KatchWebApplicationFactory>
     }
 
     /// <summary>
-    /// Valores muito longos não rebentam o pedido: são recusados como credenciais erradas.
+    /// Valores muito longos, dentro do limite do corpo, não rebentam o pedido: são recusados como credenciais erradas.
+    /// Acima do limite, o pedido é recusado antes (413, <c>HostingTests</c>).
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
@@ -418,11 +419,11 @@ public sealed class LoginTests : IClassFixture<KatchWebApplicationFactory>
 
         using HttpResponseMessage longPassword = await AuthTestAccounts.LoginAsync(
             this.factory,
-            AuthTestAccounts.Credentials(user.Email, new string('a', 100_000) + "1"),
+            AuthTestAccounts.Credentials(user.Email, new string('a', 30_000) + "1"),
             "mobile");
         using HttpResponseMessage longEmail = await AuthTestAccounts.LoginAsync(
             this.factory,
-            AuthTestAccounts.Credentials(new string('a', 100_000) + "@exemplo.pt", AuthTestAccounts.Password),
+            AuthTestAccounts.Credentials(new string('a', 30_000) + "@exemplo.pt", AuthTestAccounts.Password),
             "mobile");
 
         await AuthenticationTests.AssertErrorAsync(longPassword, HttpStatusCode.Unauthorized, "ERR-02", InvalidCredentials);

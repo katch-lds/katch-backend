@@ -88,8 +88,8 @@ public sealed class ConversationServiceTests
     }
 
     /// <summary>
-    /// A ordem das verificações é a existência (ERR-20), a parte do match (ERR-08) e o match confirmado (ERR-37), em todas
-    /// as operações.
+    /// A ordem das verificações é a existência e a parte do match (ERR-20 nos dois casos, SEG-013) e o match confirmado
+    /// (ERR-37), em todas as operações.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
@@ -105,9 +105,9 @@ public sealed class ConversationServiceTests
         await Assert.ThrowsAsync<ElementNotFoundException>(() => service.CloseAsync(this.candidateId, Guid.NewGuid(), token));
 
         Guid stranger = Guid.NewGuid();
-        await Assert.ThrowsAsync<ElementForbiddenException>(() => service.OpenAsync(stranger, waiting.Id, null, token));
-        await Assert.ThrowsAsync<ElementForbiddenException>(() => service.SendAsync(stranger, waiting.Id, request, token));
-        await Assert.ThrowsAsync<ElementForbiddenException>(() => service.CloseAsync(stranger, waiting.Id, token));
+        await Assert.ThrowsAsync<ElementNotFoundException>(() => service.OpenAsync(stranger, waiting.Id, null, token));
+        await Assert.ThrowsAsync<ElementNotFoundException>(() => service.SendAsync(stranger, waiting.Id, request, token));
+        await Assert.ThrowsAsync<ElementNotFoundException>(() => service.CloseAsync(stranger, waiting.Id, token));
 
         AssertConflict("ERR-37", await Assert.ThrowsAsync<OperationConflictException>(() => service.OpenAsync(this.candidateId, waiting.Id, null, token)));
         AssertConflict("ERR-37", await Assert.ThrowsAsync<OperationConflictException>(() => service.SendAsync(this.candidateId, waiting.Id, request, token)));

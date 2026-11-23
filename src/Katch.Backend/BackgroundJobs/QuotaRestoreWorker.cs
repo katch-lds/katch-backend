@@ -17,6 +17,11 @@ namespace Katch.Backend.BackgroundJobs;
 /// </remarks>
 public sealed partial class QuotaRestoreWorker : BackgroundService
 {
+    /// <summary>
+    /// Chave do bloqueio consultivo desta tarefa, a mesma em todas as instâncias da API (ROB-007).
+    /// </summary>
+    internal const long LockKey = 7_100_001;
+
     private readonly IServiceScopeFactory scopeFactory;
     private readonly TimeSpan interval;
     private readonly ILogger<QuotaRestoreWorker> logger;
@@ -51,12 +56,16 @@ public sealed partial class QuotaRestoreWorker : BackgroundService
         {
             using IServiceScope scope = this.scopeFactory.CreateScope();
             var quotaService = scope.ServiceProvider.GetRequiredService<IQuotaService>();
+            var jobLock = scope.ServiceProvider.GetRequiredService<IBackgroundJobLock>();
 
-            int restored = await quotaService.RestoreDueQuotasAsync(cancellationToken);
+            int? restored = await jobLock.RunExclusiveAsync(
+                LockKey,
+                () => quotaService.RestoreDueQuotasAsync(cancellationToken),
+                cancellationToken);
 
             if (restored > 0)
             {
-                this.LogRestored(restored);
+                this.LogRestored(restored.Value);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

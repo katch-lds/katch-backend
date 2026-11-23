@@ -5,11 +5,13 @@ using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Errors;
+using Katch.Backend.Infrastructure.RateLimiting;
 using Katch.Backend.Services;
 using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Katch.Backend.Controllers;
 
@@ -47,6 +49,7 @@ public sealed class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// RF-003: Registar-se como Candidato.
     /// Regista-se como Candidato (UC03): a conta fica ativa, com a quota de 10 interesses, e a sessão iniciada (RF003
     /// a RF005). Todos os campos em erro são indicados na mesma resposta (RF004).
     /// </summary>
@@ -55,6 +58,7 @@ public sealed class AuthController : ControllerBase
     /// <returns><c>201</c> com a credencial de sessão, ou <c>400</c> (ERR-10) com os campos em erro.</returns>
     [HttpPost("candidates")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Registration)]
     [Consumes("application/json")]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]
@@ -69,6 +73,7 @@ public sealed class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// RF-037: Criar conta de Recrutador.
     /// Cria a conta de Recrutador (UC07): a conta fica ativa e sem Empresa, com a sessão iniciada (RF037). As operações
     /// que exigem a Empresa aprovada devolvem ERR-07 até à aprovação. Todos os campos em erro são indicados na mesma
     /// resposta.
@@ -78,6 +83,7 @@ public sealed class AuthController : ControllerBase
     /// <returns><c>201</c> com a credencial de sessão, sem <c>Location</c>, ou <c>400</c> (ERR-10) com os campos em erro.</returns>
     [HttpPost("recruiters")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Registration)]
     [Consumes("application/json")]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]
@@ -94,6 +100,7 @@ public sealed class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// RF-001: Iniciar sessão.
     /// Inicia a sessão (UC01). Verifica, por esta ordem, as credenciais, o estado da conta e o ponto de acesso; o estado
     /// da conta só é revelado a quem apresenta a palavra-passe correta (RF001, RF038, RF083, RNF009). Uma Empresa
     /// pendente, recusada ou suspensa não impede o início de sessão do Recrutador.
@@ -112,6 +119,7 @@ public sealed class AuthController : ControllerBase
     /// </returns>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Login)]
     [Consumes("application/json")]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status400BadRequest)]
@@ -131,10 +139,11 @@ public sealed class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Termina a sessão (UC01; RF105 a RF107). A autenticação não guarda estado no servidor: o pedido só confirma o fim
-    /// da sessão e o cliente descarta a credencial, que continua tecnicamente válida até expirar (documentação da API
-    /// v02, secção 3.5).
+    /// RF-105: Terminar sessão.
+    /// Termina a sessão (UC01; RF105 a RF107). As credenciais emitidas até aqui para a conta, incluindo as de outros
+    /// dispositivos, deixam de ser aceites (ERR-01).
     /// </summary>
+    /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns><c>204</c>, ou <c>401</c> (ERR-01) sem credencial válida, ou <c>403</c> (ERR-03, ERR-04) se a conta estiver
     /// bloqueada ou suspensa.</returns>
     [HttpPost("logout")]
@@ -142,14 +151,21 @@ public sealed class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
-    public IActionResult Logout()
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
+        if (!this.User.TryGetAccountId(out Guid userId))
+        {
+            return this.Unauthorized(ApiErrorResponse.InvalidSession());
+        }
+
+        await this.authService.LogoutAsync(userId, cancellationToken);
         return this.NoContent();
     }
 
     /// <summary>
+    /// RF-002: Alterar a própria palavra-passe.
     /// Altera a palavra-passe da própria conta, seja qual for o tipo de conta (UC02; RF002, RF040, RF084). O início de
-    /// sessão seguinte só aceita a nova palavra-passe; a credencial atual mantém-se válida até expirar.
+    /// sessão seguinte só aceita a nova palavra-passe e as sessões da conta terminam, incluindo a do pedido.
     /// </summary>
     /// <param name="request">Palavra-passe atual e palavra-passe nova.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>

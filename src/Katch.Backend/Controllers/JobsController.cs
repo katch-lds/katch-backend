@@ -40,6 +40,7 @@ public sealed class JobsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-059: Listar as vagas da Empresa.
     /// Lista as vagas da Empresa, sem as eliminadas, da mais recente para a mais antiga, com os interesses em espera de
     /// cada uma (RF059, RF060).
     /// </summary>
@@ -55,6 +56,7 @@ public sealed class JobsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-050: Criar uma vaga.
     /// Cria uma vaga não publicada (UC09). Todos os campos em erro são indicados na mesma resposta (RF050, RF051).
     /// </summary>
     /// <param name="request">Dados da vaga.</param>
@@ -79,6 +81,7 @@ public sealed class JobsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-054: Alterar uma vaga.
     /// Substitui os dados editáveis de uma vaga, com as validações da criação; o estado não muda (RF054).
     /// </summary>
     /// <param name="jobId">Identificador da vaga.</param>
@@ -107,6 +110,7 @@ public sealed class JobsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-053: Publicar uma vaga.
     /// Publica uma vaga não publicada (RF053); na primeira publicação fica também a data da primeira publicação (RF096).
     /// </summary>
     /// <param name="jobId">Identificador da vaga.</param>
@@ -125,6 +129,7 @@ public sealed class JobsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-055: Suspender uma vaga.
     /// Suspende uma vaga publicada; deixa de ser apresentada aos Candidatos e os interesses mantêm-se (RF055, RF113).
     /// </summary>
     /// <param name="jobId">Identificador da vaga.</param>
@@ -140,6 +145,7 @@ public sealed class JobsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-115: Voltar a publicar uma vaga suspensa.
     /// Volta a publicar uma vaga suspensa; a data da primeira publicação não muda (RF115).
     /// </summary>
     /// <param name="jobId">Identificador da vaga.</param>
@@ -155,6 +161,7 @@ public sealed class JobsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-056: Encerrar uma vaga.
     /// Encerra definitivamente uma vaga; os interesses e os matches mantêm-se (RF056, RF113).
     /// </summary>
     /// <param name="jobId">Identificador da vaga.</param>
@@ -170,6 +177,7 @@ public sealed class JobsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-058: Eliminar uma vaga sem interesses.
     /// Elimina logicamente uma vaga sem interesses registados; deixa de aparecer em todas as consultas (RF058, RF114).
     /// </summary>
     /// <param name="jobId">Identificador da vaga.</param>
@@ -189,6 +197,7 @@ public sealed class JobsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-052: Acrescentar uma fotografia à vaga.
     /// Acrescenta uma fotografia à vaga, em JPEG ou PNG até 5 MB, com o máximo de 5 por vaga (6.5.9; RF052; RNF015,
     /// RNF016; P01, P13). O pedido é <c>multipart/form-data</c> com o campo <c>file</c>.
     /// </summary>

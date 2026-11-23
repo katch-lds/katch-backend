@@ -40,13 +40,14 @@ public sealed class AdminAccountSeedTests
     }
 
     /// <summary>
-    /// Uma palavra-passe fora do P05 (mínimo de 8 caracteres, com uma letra e um algarismo) é rejeitada.
+    /// Uma palavra-passe fora do P05 (mínimo de 8 caracteres, com uma letra e um algarismo) ou comum é rejeitada.
     /// </summary>
     /// <param name="password">Palavra-passe que não cumpre o P05.</param>
     [Theory]
     [InlineData("abc1234")]
     [InlineData("abcdefgh")]
     [InlineData("12345678")]
+    [InlineData("Admin123")]
     [InlineData("   ")]
     public void PasswordOutsideP05IsRejected(string password)
     {

@@ -11,7 +11,8 @@ using Microsoft.IdentityModel.Tokens;
 namespace Katch.Backend.Infrastructure;
 
 /// <summary>
-/// Emite credenciais JWT assinadas com HS256, com as claims <c>sub</c>, <c>role</c>, <c>iat</c> e <c>exp</c>.
+/// Emite credenciais JWT assinadas com HS256, com as claims <c>sub</c>, <c>role</c>, <c>ver</c> (versão das sessões),
+/// <c>iat</c> e <c>exp</c>.
 /// </summary>
 public sealed class JwtTokenService : ITokenService
 {
@@ -51,6 +52,7 @@ public sealed class JwtTokenService : ITokenService
             {
                 [JwtRegisteredClaimNames.Sub] = user.Id.ToString(),
                 ["role"] = AccountRoles.FromUserType(user.UserType),
+                [ClaimsPrincipalExtensions.TokenVersionClaim] = user.TokenVersion,
             },
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret!)),

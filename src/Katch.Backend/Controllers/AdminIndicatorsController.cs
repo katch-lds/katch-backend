@@ -36,6 +36,7 @@ public sealed class AdminIndicatorsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-096: Consultar o painel de indicadores por período.
     /// Consulta os sete indicadores do RF096 para o período, com as datas no fuso <c>Europe/Lisbon</c> (DAPI-07). A
     /// resposta só tem contagens, sem texto de mensagens (RF103).
     /// </summary>

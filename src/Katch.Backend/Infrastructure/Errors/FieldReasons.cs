@@ -40,6 +40,16 @@ public static class FieldReasons
     public const string PasswordPolicy = "A palavra-passe tem de ter pelo menos 8 caracteres, uma letra e um algarismo.";
 
     /// <summary>
+    /// Texto com caracteres de controlo além da tabulação e das mudanças de linha (SEG-006).
+    /// </summary>
+    public const string ControlCharacters = "O texto contém caracteres não permitidos.";
+
+    /// <summary>
+    /// Palavra-passe que cumpre o P05 mas está na lista de palavras-passe comuns (SEG-009).
+    /// </summary>
+    public const string PasswordTooCommon = "A palavra-passe é demasiado comum. Escolha outra.";
+
+    /// <summary>
     /// Palavra-passe com mais de 128 caracteres (documentação da API v02, secção 8.1).
     /// </summary>
     public const string PasswordTooLong = "A palavra-passe tem no máximo 128 caracteres.";
@@ -205,5 +215,15 @@ public static class FieldReasons
     public static string TextTooLong(int maxLength)
     {
         return $"O texto não pode exceder {maxLength} caracteres.";
+    }
+
+    /// <summary>
+    /// Período dos indicadores mais longo do que o máximo (ROB-009).
+    /// </summary>
+    /// <param name="maxDays">Número máximo de dias do período.</param>
+    /// <returns>A razão, com o máximo.</returns>
+    public static string PeriodTooLong(int maxDays)
+    {
+        return $"O período não pode exceder {maxDays} dias.";
     }
 }

@@ -17,7 +17,6 @@ public sealed class ConversationsEndpointsTests : IClassFixture<KatchWebApplicat
 {
     private const string ReadOnlyMessage = "A conversa está em modo apenas de consulta.";
     private const string NoMatchMessage = "Não existe match para esta conversa.";
-    private const string ForbiddenMessage = "Não tem autorização para aceder a este elemento.";
     private const string NotFoundMessage = "O elemento pedido não existe ou não está disponível.";
     private const string Err06Message = "A operação não está disponível para este tipo de conta.";
 
@@ -294,11 +293,12 @@ public sealed class ConversationsEndpointsTests : IClassFixture<KatchWebApplicat
     }
 
     /// <summary>
-    /// Os terceiros recebem 403 ERR-08 em todas as operações sobre a conversa, sem que nada seja alterado.
+    /// Os terceiros recebem 404 ERR-20 em todas as operações sobre a conversa, como se o match não existisse (SEG-013),
+    /// sem que nada seja alterado.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
-    public async Task ThirdPartiesGetErr08OnEveryOperation()
+    public async Task ThirdPartiesGetErr20OnEveryOperation()
     {
         Scenario s = await this.SeedScenarioAsync();
         CandidateSeed otherCandidate = await SeedCandidateAsync(this.factory);
@@ -315,10 +315,10 @@ public sealed class ConversationsEndpointsTests : IClassFixture<KatchWebApplicat
             {
                 using HttpResponseMessage response = await SendAsync(this.factory, method, path, token, method == HttpMethod.Post ? new { content = "Olá" } : null);
 
-                Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+                Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
                 JsonElement error = await AuthTestAccounts.ReadJsonAsync(response);
-                Assert.Equal("ERR-08", error.GetProperty("code").GetString());
-                Assert.Equal(ForbiddenMessage, error.GetProperty("message").GetString());
+                Assert.Equal("ERR-20", error.GetProperty("code").GetString());
+                Assert.Equal(NotFoundMessage, error.GetProperty("message").GetString());
             }
         }
 

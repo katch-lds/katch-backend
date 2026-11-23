@@ -8,6 +8,7 @@ using Katch.Backend.Repositories;
 using Katch.Backend.Services;
 using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Options;
 
 namespace Katch.Backend.UnitTests.Services;
 
@@ -40,7 +41,8 @@ public sealed class AuthServiceTests
             this.unitOfWork,
             new IdentityPasswordHasher(),
             this.tokens,
-            new FixedClock(Now));
+            new FixedClock(Now),
+            Options.Create(new LimitsOptions()));
     }
 
     /// <summary>
@@ -134,6 +136,8 @@ public sealed class AuthServiceTests
     [InlineData("password", "katch20", FieldReasons.PasswordPolicy)]
     [InlineData("password", "katchkatch", FieldReasons.PasswordPolicy)]
     [InlineData("password", "2026202620", FieldReasons.PasswordPolicy)]
+    [InlineData("password", "Password123", FieldReasons.PasswordTooCommon)]
+    [InlineData("password", "benfica1", FieldReasons.PasswordTooCommon)]
     public async Task InvalidFieldIsRejectedWithItsReason(string field, string value, string reason)
     {
         RegisterCandidateInput request = field switch

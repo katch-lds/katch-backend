@@ -56,6 +56,21 @@ public sealed class JwtTokenServiceTests
     }
 
     /// <summary>
+    /// A claim <c>ver</c> leva a versão das sessões da conta no instante da emissão (SEG-003).
+    /// </summary>
+    [Fact]
+    public void VersionClaimCarriesTheTokenVersion()
+    {
+        AppUser user = NewUser(UserType.Candidate);
+        user.RevokeSessions();
+        user.RevokeSessions();
+
+        JsonWebToken token = Read(this.CreateService(Issued).CreateToken(user));
+
+        Assert.Equal("2", token.GetClaim("ver").Value);
+    }
+
+    /// <summary>
     /// A credencial é assinada com HS256.
     /// </summary>
     [Fact]

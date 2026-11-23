@@ -1,6 +1,34 @@
 ﻿START TRANSACTION;
 DO $EF$
 BEGIN
+    IF EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "migration_id" = '20261121195748_AddLoginSecurity') THEN
+    ALTER TABLE app_user DROP COLUMN failed_login_count;
+    END IF;
+END $EF$;
+DO $EF$
+BEGIN
+    IF EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "migration_id" = '20261121195748_AddLoginSecurity') THEN
+    ALTER TABLE app_user DROP COLUMN locked_until;
+    END IF;
+END $EF$;
+DO $EF$
+BEGIN
+    IF EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "migration_id" = '20261121195748_AddLoginSecurity') THEN
+    ALTER TABLE app_user DROP COLUMN token_version;
+    END IF;
+END $EF$;
+DO $EF$
+BEGIN
+    IF EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "migration_id" = '20261121195748_AddLoginSecurity') THEN
+    DELETE FROM "__EFMigrationsHistory"
+    WHERE migration_id = '20261121195748_AddLoginSecurity';
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+DO $EF$
+BEGIN
     IF EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "migration_id" = '20261024180929_AddMessageAndOperationLog') THEN
     DROP TABLE message;
     END IF;

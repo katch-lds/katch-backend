@@ -402,6 +402,11 @@ public sealed class CompanyApprovalServiceTests
             return Task.FromResult(this.All.SingleOrDefault(company => company.Id == id));
         }
 
+        public Task<bool> IsVisibleToCandidatesAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<CompanyWithLocation?> GetWithLocationAsync(Guid id, CancellationToken cancellationToken = default)
         {
             Company? company = this.All.SingleOrDefault(item => item.Id == id);
@@ -470,7 +475,7 @@ public sealed class CompanyApprovalServiceTests
 
     private sealed class UnusedJobs : IJobRepository
     {
-        public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobWithCompanyVisibility?> GetWithCompanyVisibilityAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

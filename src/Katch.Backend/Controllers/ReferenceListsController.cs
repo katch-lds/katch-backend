@@ -3,10 +3,12 @@
 using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
+using Katch.Backend.Infrastructure.RateLimiting;
 using Katch.Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Katch.Backend.Controllers;
 
@@ -31,6 +33,7 @@ public sealed class ReferenceListsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-003: Consultar as localidades.
     /// Consulta as localidades, sem credencial: é uma operação não reservada, porque o registo do Candidato precisa da
     /// localidade antes de existir sessão (especificação de requisitos v02, secção 2.2; DAPI-12; DC-14).
     /// </summary>
@@ -38,6 +41,7 @@ public sealed class ReferenceListsController : ControllerBase
     /// <returns><c>200</c> com as localidades por ordem alfabética, só com o identificador e a designação.</returns>
     [HttpGet("locations")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Locations)]
     [ProducesResponseType<List<ReferenceItemDto>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<List<ReferenceItemDto>>> ListLocations(CancellationToken cancellationToken)
     {
@@ -47,6 +51,7 @@ public sealed class ReferenceListsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-008: Consultar as competências.
     /// Consulta as competências da lista pré-definida, com sessão iniciada de qualquer tipo de conta (RF008, RF050).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -64,6 +69,7 @@ public sealed class ReferenceListsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-050: Consultar os benefícios.
     /// Consulta os benefícios da lista pré-definida, com sessão iniciada de qualquer tipo de conta (RF050).
     /// </summary>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
@@ -81,6 +87,7 @@ public sealed class ReferenceListsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-099: Acrescentar uma competência.
     /// Acrescenta uma competência à lista pré-definida (UC20). A operação é registada com o Administrador (RF099,
     /// RF112).
     /// </summary>
@@ -109,6 +116,7 @@ public sealed class ReferenceListsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-100: Alterar a designação de uma competência.
     /// Altera a designação de uma competência (UC20). Os perfis e as vagas que a usam mantêm a associação e passam a
     /// apresentar a nova designação; a operação é registada com o Administrador (RF100, RF112).
     /// </summary>
@@ -140,6 +148,7 @@ public sealed class ReferenceListsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-101: Acrescentar um benefício.
     /// Acrescenta um benefício à lista pré-definida (UC20). A operação é registada com o Administrador (RF101, RF112).
     /// </summary>
     /// <param name="request">Designação do benefício.</param>
@@ -167,6 +176,7 @@ public sealed class ReferenceListsController : ControllerBase
     }
 
     /// <summary>
+    /// RF-102: Alterar a designação de um benefício.
     /// Altera a designação de um benefício (UC20). As vagas que o usam mantêm a associação e passam a apresentar a nova
     /// designação; a operação é registada com o Administrador (RF102, RF112).
     /// </summary>

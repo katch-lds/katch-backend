@@ -484,6 +484,11 @@ public sealed class JobPhotoServiceTests : IDisposable
             throw new NotSupportedException();
         }
 
+        Task<bool> ICompanyRepository.IsVisibleToCandidatesAsync(Guid id, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<Company?> GetByRecruiterAsync(Guid recruiterId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(this.Companies.Find(item => item.RecruiterId == recruiterId));
@@ -526,7 +531,7 @@ public sealed class JobPhotoServiceTests : IDisposable
             throw new NotSupportedException();
         }
 
-        public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobWithCompanyVisibility?> GetWithCompanyVisibilityAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

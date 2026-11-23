@@ -7,6 +7,7 @@ using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
 using Katch.Backend.Services.Models;
+using Microsoft.Extensions.Options;
 
 namespace Katch.Backend.UnitTests.Services;
 
@@ -79,6 +80,24 @@ public sealed class IndicatorServiceTests
     }
 
     /// <summary>
+    /// O período pode ter até 366 dias, com os dois extremos incluídos; acima disso é recusado no campo <c>from</c>, sem
+    /// consultar a base de dados (ROB-009).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task PeriodLongerThan366DaysIsRejected()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        var lastDay = new DateOnly(2026, 10, 9);
+
+        await this.Service().GetAsync(lastDay.AddDays(-365), lastDay, token);
+        ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
+            () => this.Service().GetAsync(lastDay.AddDays(-366), lastDay, token));
+
+        Assert.Equal([new FieldError("from", "O período não pode exceder 366 dias.")], exception.Fields);
+    }
+
+    /// <summary>
     /// A data final posterior à data atual em Lisboa é recusada com o campo <c>to</c>.
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
@@ -148,7 +167,14 @@ public sealed class IndicatorServiceTests
 
     private IndicatorService Service()
     {
-        return new IndicatorService(this.counts, this.counts, this.counts, this.counts, this.counts, this.clock);
+        return new IndicatorService(
+            this.counts,
+            this.counts,
+            this.counts,
+            this.counts,
+            this.counts,
+            this.clock,
+            Options.Create(new LimitsOptions()));
     }
 
     private sealed class FixedClock : IClock
@@ -250,6 +276,11 @@ public sealed class IndicatorServiceTests
             throw new NotSupportedException();
         }
 
+        Task<bool> ICompanyRepository.IsVisibleToCandidatesAsync(Guid id, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<bool> TaxIdExistsAsync(string taxId, Guid? exceptId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -260,7 +291,7 @@ public sealed class IndicatorServiceTests
             throw new NotSupportedException();
         }
 
-        public Task<JobWithCompanyStatus?> GetWithCompanyStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobWithCompanyVisibility?> GetWithCompanyVisibilityAsync(Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

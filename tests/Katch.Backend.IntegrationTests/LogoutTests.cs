@@ -2,10 +2,17 @@
 
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Infrastructure;
+using Katch.Backend.Infrastructure.Authentication;
+using Katch.Backend.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Katch.Backend.IntegrationTests;
 
@@ -15,6 +22,7 @@ namespace Katch.Backend.IntegrationTests;
 public sealed class LogoutTests : IClassFixture<KatchWebApplicationFactory>
 {
     private const string Route = "/api/auth/logout";
+    private const string InvalidSession = "A sessão expirou ou não é válida. Inicie sessão novamente.";
 
     private readonly KatchWebApplicationFactory factory;
 
@@ -133,6 +141,96 @@ public sealed class LogoutTests : IClassFixture<KatchWebApplicationFactory>
             HttpStatusCode.Forbidden,
             code,
             suspended ? "A conta está suspensa." : "A conta está bloqueada.");
+    }
+
+    /// <summary>
+    /// O fim de sessão termina todas as sessões da conta (SEG-003): as credenciais da conta, incluindo as de outros
+    /// dispositivos, passam a ERR-01; as de outra conta continuam aceites e um novo início de sessão volta a funcionar.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task LogoutRevokesEveryTokenOfTheAccount()
+    {
+        AppUser user = await AuthTestAccounts.SeedAsync(this.factory, UserType.Candidate);
+        AppUser other = await AuthTestAccounts.SeedAsync(this.factory, UserType.Candidate);
+        string first = this.IssueToken(user);
+        string second = this.IssueToken(user, DateTimeOffset.UtcNow.AddSeconds(-5));
+
+        using HttpResponseMessage logout = await this.PostAsync(first);
+        using HttpResponseMessage sameToken = await this.PostAsync(first);
+        using HttpResponseMessage otherDevice = await this.PostAsync(second);
+        using HttpResponseMessage otherAccount = await this.PostAsync(this.IssueToken(other));
+        using HttpResponseMessage login = await AuthTestAccounts.LoginAsync(
+            this.factory,
+            AuthTestAccounts.Credentials(user.Email, AuthTestAccounts.Password),
+            "mobile");
+        string fresh = (await AuthTestAccounts.ReadJsonAsync(login)).GetProperty("token").GetString()!;
+        using HttpResponseMessage afterLogin = await this.PostAsync(fresh);
+
+        Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
+        await AuthenticationTests.AssertErrorAsync(sameToken, HttpStatusCode.Unauthorized, "ERR-01", InvalidSession);
+        await AuthenticationTests.AssertErrorAsync(otherDevice, HttpStatusCode.Unauthorized, "ERR-01", InvalidSession);
+        Assert.Equal(HttpStatusCode.NoContent, otherAccount.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, afterLogin.StatusCode);
+    }
+
+    /// <summary>
+    /// Uma credencial assinada pela API mas sem a versão das sessões (emitida antes do SEG-003) é recusada com ERR-01.
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task TokenWithoutVersionIsErr01()
+    {
+        AppUser user = await AuthTestAccounts.SeedAsync(this.factory, UserType.Candidate);
+        string secret = this.factory.Services.GetRequiredService<IOptions<JwtOptions>>().Value.Secret!;
+        string token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
+        {
+            Issuer = JwtOptions.Issuer,
+            Audience = JwtOptions.Audience,
+            Expires = DateTime.UtcNow.AddHours(1),
+            Claims = new Dictionary<string, object> { ["sub"] = user.Id.ToString(), ["role"] = AccountRoles.Candidate },
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+                SecurityAlgorithms.HmacSha256),
+        });
+
+        using HttpResponseMessage response = await this.PostAsync(token);
+
+        await AuthenticationTests.AssertErrorAsync(response, HttpStatusCode.Unauthorized, "ERR-01", InvalidSession);
+    }
+
+    /// <summary>
+    /// Com a conta bloqueada, a credencial anterior recebe ERR-03 (o estado vem primeiro); depois da reativação, essa
+    /// credencial já não vale (ERR-01) e um início de sessão novo funciona (SEG-018).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task BlockingRevokesTheTokenForGoodEvenAfterReactivation()
+    {
+        AppUser user = await AuthTestAccounts.SeedAsync(this.factory, UserType.Candidate);
+        string token = this.IssueToken(user);
+
+        await this.ChangeAccountAsync(user.Id, account => account.Block(DateTimeOffset.UtcNow));
+        using HttpResponseMessage whileBlocked = await this.PostAsync(token);
+        await this.ChangeAccountAsync(user.Id, account => account.Reactivate(DateTimeOffset.UtcNow));
+        using HttpResponseMessage afterReactivation = await this.PostAsync(token);
+        using HttpResponseMessage login = await AuthTestAccounts.LoginAsync(
+            this.factory,
+            AuthTestAccounts.Credentials(user.Email, AuthTestAccounts.Password),
+            "mobile");
+
+        await AuthenticationTests.AssertErrorAsync(whileBlocked, HttpStatusCode.Forbidden, "ERR-03", "A conta está bloqueada.");
+        await AuthenticationTests.AssertErrorAsync(afterReactivation, HttpStatusCode.Unauthorized, "ERR-01", InvalidSession);
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+    }
+
+    private async Task ChangeAccountAsync(Guid userId, Action<AppUser> change)
+    {
+        using IServiceScope scope = this.factory.Services.CreateScope();
+        KatchDbContext context = scope.ServiceProvider.GetRequiredService<KatchDbContext>();
+        AppUser account = await context.Users.SingleAsync(item => item.Id == userId, TestContext.Current.CancellationToken);
+        change(account);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
     private string IssueToken(AppUser user, DateTimeOffset? issuedAt = null)

@@ -8,6 +8,7 @@ using Katch.Backend.Repositories;
 using Katch.Backend.Services;
 using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Options;
 
 namespace Katch.Backend.UnitTests.Services;
 
@@ -41,7 +42,8 @@ public sealed class AuthServiceLoginTests
             this.unitOfWork,
             this.hasher,
             this.tokens,
-            new FixedClock(Now));
+            new FixedClock(Now),
+            Options.Create(new LimitsOptions()));
     }
 
     /// <summary>
@@ -459,6 +461,24 @@ public sealed class AuthServiceLoginTests
                 TestContext.Current.CancellationToken));
 
         Assert.Equal(0, this.unitOfWork.Saves);
+    }
+
+    /// <summary>
+    /// O fim de sessão incrementa a versão das sessões da conta e grava uma vez; uma conta inexistente é um erro
+    /// inesperado (SEG-003).
+    /// </summary>
+    /// <returns>Tarefa do teste.</returns>
+    [Fact]
+    public async Task LogoutRevokesTheSessionsOfTheAccount()
+    {
+        AppUser user = this.AddUser(UserType.Candidate);
+
+        await this.service.LogoutAsync(user.Id, TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => this.service.LogoutAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
+
+        Assert.Equal(1, user.TokenVersion);
+        Assert.Equal(1, this.unitOfWork.Saves);
     }
 
     private static LoginInput Credentials()

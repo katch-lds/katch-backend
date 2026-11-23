@@ -22,6 +22,7 @@ PowerShell (menu Iniciar, "Windows PowerShell") ou escreva `powershell` no termi
 12. [Quota de interesses e tarefa periódica](#12-quota-de-interesses-e-tarefa-periódica)
 13. [Recusa, interesse e quota do Candidato](#13-recusa-interesse-e-quota-do-candidato)
 14. [CORS do frontend web](#14-cors-do-frontend-web)
+15. [Alojamento, limites e verificações de saúde](#15-alojamento-limites-e-verificações-de-saúde)
 
 ## 1. Estrutura do repositório
 
@@ -147,8 +148,8 @@ Now listening on: http://localhost:5180
 Application started. Press Ctrl+C to shut down.
 ```
 
-Abra `http://localhost:5180/swagger` no browser. Se a lista de endpoints estiver vazia, é porque ainda não há
-controllers implementados; o que importa é a API ter arrancado sem erros. Para parar, **Ctrl+C**.
+Abra `http://localhost:5180/swagger` no browser. O Swagger só é publicado com `Swagger__Enabled=true`, que os perfis
+`http` e `https` do `launchSettings.json` já definem (secção 15). Para parar, **Ctrl+C**.
 
 Para usar HTTPS (`https://localhost:7180`), corra uma vez `dotnet dev-certs https --trust` e use
 `--launch-profile https`.
@@ -296,11 +297,30 @@ O início de sessão verifica, **por esta ordem**, as credenciais (`401` `ERR-02
 - O estado da conta e o ponto de acesso só são revelados a quem apresenta a palavra-passe correta.
 - A situação da Empresa não conta: um Recrutador com a Empresa pendente, recusada ou suspensa inicia sessão; só as
   operações `ApprovedCompany` lhe ficam vedadas (`ERR-07`).
+- **Bloqueio por tentativas.** 5 falhas seguidas bloqueiam o início de sessão da conta durante 1 minuto; cada novo
+  bloqueio, sem um início de sessão válido pelo meio, dobra a espera, até 15 minutos (`Limits__MaxFailedLogins`,
+  `Limits__LockoutSeconds`, `Limits__MaxLockoutSeconds`, secção 15). Durante o bloqueio a resposta é sempre o mesmo
+  `401` `ERR-02`, mesmo com a palavra-passe certa, para não revelar que a conta existe. Um início de sessão válido
+  repõe o contador.
 
 Na alteração da palavra-passe, a atual errada devolve `400` `ERR-10` no campo `currentPassword` (e não `401`, para o
-cliente não a confundir com uma sessão expirada) e a nova fora do P05 devolve `400` `ERR-10` em `newPassword`. A
-credencial usada continua válida até expirar, tal como a de um fim de sessão: a autenticação não guarda estado no
-servidor e o cliente é que descarta a credencial (API v02, secção 3.5).
+cliente não a confundir com uma sessão expirada) e a nova fora do P05 devolve `400` `ERR-10` em `newPassword`.
+
+**Palavras-passe comuns.** No registo, na alteração da palavra-passe e na palavra-passe do Administrador
+(`Katch__AdminPassword`), além do P05 é recusada uma lista de palavras-passe comuns que o cumprem (`password1`,
+`qwerty123`, `benfica1`, ...; `Infrastructure/CommonPasswords.cs`), sem distinguir maiúsculas: `400` `ERR-10` com a
+razão «A palavra-passe é demasiado comum. Escolha outra.».
+
+**Fim das sessões.** Cada credencial leva a versão das sessões da conta (claim `ver`, coluna `token_version`), que o
+servidor confirma em cada pedido, na mesma consulta do estado da conta. O fim de sessão e a alteração da palavra-passe
+incrementam a versão: **todas** as credenciais da conta, em qualquer dispositivo e incluindo a do próprio pedido, passam
+a receber `401` `ERR-01`, e o cliente tem de iniciar sessão outra vez. As credenciais emitidas antes da migration
+`AddLoginSecurity` não têm a claim `ver` e também deixam de ser aceites. O bloqueio e a suspensão da conta também
+terminam as sessões: com a conta bloqueada o pedido recebe `403` `ERR-03` (ou `ERR-04`), e depois da reativação a
+credencial anterior ao bloqueio recebe `401` `ERR-01`, por isso é preciso iniciar sessão outra vez.
+
+Uma rota que não existe responde `404` `ERR-20` com o corpo `ApiErrorDto` a quem tem sessão e `401` `ERR-01` a quem não a
+tem (para não revelar que a rota não existe); um método que o endpoint não aceita responde `405`.
 
 **Experimentar no Swagger** (`/swagger`): em `POST /api/auth/login` preencha `X-Client-App` (lista `mobile`/`web`) e o
 corpo, execute, copie o `token` da resposta, clique em **Authorize** e cole-o (sem o prefixo `Bearer`); os pedidos
@@ -545,3 +565,75 @@ curl.exe -i -X OPTIONS http://localhost:5180/api/auth/login -H "Origin: https://
 
 Os testes estão em `KatchCorsOptionsTests` (unitários, validação das origens e política registada) e em `CorsTests`
 (integração: preflight, pedido de origem autorizada e não autorizada e erros 400, 401 e 403).
+
+## 15. Alojamento, limites e verificações de saúde
+
+**Limites globais (`LimitsOptions`, secção `Limits`).** Os limites partilhados ou que mudam com frequência estão em
+`src/Katch.Backend/Infrastructure/LimitsOptions.cs`, com o valor por omissão de cada um. Qualquer valor pode ser
+substituído pela variável `Limits__<Nome>` e é validado no arranque: um valor inválido faz a API **não arrancar**, com
+uma mensagem que indica a variável a corrigir.
+
+| Variável | Por omissão | Efeito |
+| --- | --- | --- |
+| `Limits__MaxRequestBodyBytes` | `65536` (64 KB) | Corpo máximo dos pedidos fora dos carregamentos; acima disto, `413` ERR-12 (API v02, secção 4.2). Os carregamentos mantêm os 6 MB |
+| `Limits__RateLimitWindowSeconds` | `60` | Duração da janela dos limites de pedidos |
+| `Limits__LoginPermitLimit` | `10` | Inícios de sessão por IP em cada janela |
+| `Limits__RegistrationPermitLimit` | `10` | Registos de Candidato e de Recrutador (contagem comum) por IP em cada janela |
+| `Limits__LocationsPermitLimit` | `30` | Consultas anónimas das localidades por IP em cada janela |
+| `Limits__UserPermitLimit` | `300` | Pedidos de cada conta autenticada em cada janela (a consulta periódica de 3 s gasta cerca de 40 por minuto) |
+| `Limits__MaxFailedLogins` | `5` | Inícios de sessão falhados seguidos que bloqueiam a conta (secção 9) |
+| `Limits__LockoutSeconds` | `60` | Duração do primeiro bloqueio; cada novo bloqueio dobra-a |
+| `Limits__MaxLockoutSeconds` | `900` | Duração máxima de um bloqueio (não pode ser inferior a `Limits__LockoutSeconds`) |
+| `Limits__IndicatorsMaxPeriodDays` | `366` | Período máximo dos indicadores, com os dois extremos; acima disto, `400` ERR-10 no campo `from` |
+
+**Tarefas periódicas com várias instâncias.** Cada execução da reposição das quotas e do encerramento das vagas
+expiradas pede um bloqueio consultivo do PostgreSQL (`pg_try_advisory_lock`): se outra instância da API já o tiver, a
+execução é saltada e repete no intervalo seguinte. O teste em PostgreSQL (`BackgroundJobLockTests`) só corre com a
+variável `KATCH_TEST_POSTGRES` (cadeia de ligação a uma base descartável); sem ela, fica como saltado.
+
+**Limite de pedidos.** Acima de um limite, a resposta é `429` ERR-14 («Demasiados pedidos. Tente novamente dentro de
+instantes.») com o cabeçalho `Retry-After` (segundos até ao fim da janela). Sem os cabeçalhos do proxy ligados, todos os
+pedidos parecem vir do mesmo IP (o do proxy): no Railway, `ForwardedHeaders__Enabled=true` é obrigatório.
+
+**Anfitriões aceites (`AllowedHosts`).** O `appsettings.json` só aceita `localhost`, `127.0.0.1` e `10.0.2.2` (a API
+local vista do emulador Android); um pedido com outro cabeçalho `Host` recebe `400`. Para testar a app num telemóvel
+na rede local, acrescente o IP do computador: `$env:AllowedHosts = "localhost;127.0.0.1;10.0.2.2;192.168.1.20"`.
+
+**Proxy do alojamento (`ForwardedHeaders__Enabled`).** No Railway o HTTPS termina no proxy. Com
+`ForwardedHeaders__Enabled=true`, a API usa o IP do cliente e o esquema que o proxy acrescenta no fim de
+`X-Forwarded-For` e `X-Forwarded-Proto` (só o último valor, que o cliente não controla). Localmente fica desligado:
+sem proxy, estes cabeçalhos viriam do próprio cliente.
+
+**Verificações de saúde.** Anónimas, fora de `/api`: `GET /health` responde `200 Healthy` enquanto a API corre;
+`GET /health/ready` também verifica a ligação à base de dados e responde `503 Unhealthy` sem ela.
+
+**Swagger (`Swagger__Enabled`).** O documento OpenAPI e o Swagger UI só são publicados com `Swagger__Enabled=true`,
+seja qual for o ambiente. Já não é preciso correr em `Development` para ter o Swagger.
+
+**Erros e cabeçalhos de segurança.** Qualquer exceção não tratada responde `500` ERR-50 («Ocorreu um erro inesperado.
+Tente novamente.»), sem a mensagem nem o tipo da exceção, que ficam só no registo da API. Um `Content-Type` que o
+endpoint não aceita responde `415` ERR-13, também nos endpoints anónimos e antes da autenticação. Todas as respostas
+levam `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` e, fora do Swagger
+UI, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` (a API só devolve JSON e ficheiros, que os
+clientes leem por pedido HTTP). Fora de `Development`, os pedidos HTTPS levam também o HSTS.
+
+**Registo de segurança e correlação.** Cada resposta leva o cabeçalho `X-Correlation-Id`, que também aparece em todos
+os registos desse pedido (incluindo o da exceção de um `500`), para encontrar no registo da API o pedido de que um
+utilizador se queixa. As respostas `401`, `403` e `429` (inícios de sessão falhados, acessos negados e limites) ficam
+registadas em `Warning`, só com o método, o caminho, o estado e o identificador da conta: nunca o correio, o IP, o
+corpo ou a consulta.
+
+**Texto livre.** Os textos dos pedidos JSON não podem ter caracteres de controlo além da tabulação e das mudanças de
+linha: `400` ERR-10 no campo, com a razão «O texto contém caracteres não permitidos.».
+
+**Variáveis no Railway:**
+
+| Variável | Valor |
+| --- | --- |
+| `ASPNETCORE_ENVIRONMENT` | `Production` (sem página de exceções e com HSTS) |
+| `Swagger__Enabled` | `true` enquanto as contas de avaliação usarem o Swagger |
+| `ForwardedHeaders__Enabled` | `true` |
+| `AllowedHosts` | o domínio público da API (por exemplo, `katch-backend-production.up.railway.app`) |
+
+Em *Settings → Deploy → Healthcheck Path* pode indicar-se `/health/ready`, para o Railway só trocar de versão quando a
+nova liga à base de dados.

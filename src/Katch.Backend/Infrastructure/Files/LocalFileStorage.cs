@@ -54,11 +54,16 @@ public sealed partial class LocalFileStorage : IFileStorage
         string fullPath = this.Resolve($"{folder}/{fileName}");
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
 
+        // O conteúdo já tem a dimensão validada (no máximo 5 MB): é lido por inteiro para retirar os metadados.
+        using var buffer = new MemoryStream();
+        await buffer.WriteAsync(header.AsMemory(0, read), cancellationToken);
+        await content.CopyToAsync(buffer, cancellationToken);
+        byte[] stored = ImageMetadata.Strip(buffer.ToArray(), format);
+
         FileStream target = new(fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, useAsync: true);
         await using (target)
         {
-            await target.WriteAsync(header.AsMemory(0, read), cancellationToken);
-            await content.CopyToAsync(target, cancellationToken);
+            await target.WriteAsync(stored, cancellationToken);
         }
 
         return $"{folder}/{fileName}";
