@@ -2,11 +2,11 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -88,7 +88,7 @@ public sealed class CandidateDecisionServiceTests
     {
         Match match = this.AddOpenedInterest();
 
-        MatchDto dto = await this.service.AcceptAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
+        MatchModel dto = await this.service.AcceptAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(match.Id, dto.MatchId);
         Assert.Equal("Programador", dto.JobTitle);
@@ -305,7 +305,7 @@ public sealed class CandidateDecisionServiceTests
         Match match = this.AddOpenedInterest();
         this.clock.UtcNow = Now.AddMinutes(7);
 
-        MatchDto dto = await this.service.AcceptAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
+        MatchModel dto = await this.service.AcceptAsync(this.recruiterId, match.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(Now.AddMinutes(7), match.RecruiterActionAt);
         Assert.Equal(Now.AddMinutes(7), dto.MatchedAt);

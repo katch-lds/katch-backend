@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Errors;
@@ -53,7 +54,9 @@ public sealed class MatchesController : ControllerBase
 
         if (this.User.IsInRole(AccountRoles.Candidate))
         {
-            return await this.matchService.ListForCandidateAsync(accountId, cancellationToken);
+            return (await this.matchService.ListForCandidateAsync(accountId, cancellationToken))
+                .Select(item => item.ToDto())
+                .ToList();
         }
 
         // A política ApprovedCompany só se aplica ao Recrutador: avalia-se aqui, para que o Candidato fique de fora.
@@ -69,7 +72,9 @@ public sealed class MatchesController : ControllerBase
                     reason?.Message ?? ApiErrorResponse.CompanyNotApprovedMessage(null)));
         }
 
-        return await this.matchService.ListForRecruiterAsync(accountId, cancellationToken);
+        return (await this.matchService.ListForRecruiterAsync(accountId, cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList();
     }
 
     private Guid GetAccountId()

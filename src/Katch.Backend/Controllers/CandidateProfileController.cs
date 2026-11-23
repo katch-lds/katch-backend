@@ -1,5 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Api;
 using Katch.Backend.Infrastructure.Authentication;
@@ -52,7 +53,7 @@ public sealed class CandidateProfileController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<CandidateProfileDto>> Get(CancellationToken cancellationToken)
     {
-        return await this.profileService.GetAsync(this.GetCandidateId(), cancellationToken);
+        return (await this.profileService.GetAsync(this.GetCandidateId(), cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -70,10 +71,10 @@ public sealed class CandidateProfileController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] UpdateCandidateProfileRequest? request,
         CancellationToken cancellationToken)
     {
-        return await this.profileService.UpdateAsync(
+        return (await this.profileService.UpdateAsync(
             this.GetCandidateId(),
-            request ?? UpdateCandidateProfileRequest.Empty,
-            cancellationToken);
+            (request ?? UpdateCandidateProfileRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -91,10 +92,10 @@ public sealed class CandidateProfileController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] UpdatePreferencesRequest? request,
         CancellationToken cancellationToken)
     {
-        return await this.profileService.UpdatePreferencesAsync(
+        return (await this.profileService.UpdatePreferencesAsync(
             this.GetCandidateId(),
             (request ?? UpdatePreferencesRequest.Empty).ToPreferences(),
-            cancellationToken);
+            cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -112,10 +113,10 @@ public sealed class CandidateProfileController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] SetLinksRequest? request,
         CancellationToken cancellationToken)
     {
-        return await this.profileService.SetLinksAsync(
+        return (await this.profileService.SetLinksAsync(
             this.GetCandidateId(),
-            request ?? SetLinksRequest.Empty,
-            cancellationToken);
+            (request ?? SetLinksRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
     }
 
     /// <summary>
@@ -203,10 +204,10 @@ public sealed class CandidateProfileController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AddSkillRequest? request,
         CancellationToken cancellationToken)
     {
-        CandidateProfileDto profile = await this.profileService.AddSkillAsync(
+        CandidateProfileDto profile = (await this.profileService.AddSkillAsync(
             this.GetCandidateId(),
-            request ?? AddSkillRequest.Empty,
-            cancellationToken);
+            (request ?? AddSkillRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
         return this.StatusCode(StatusCodes.Status201Created, profile);
     }
 
@@ -245,10 +246,10 @@ public sealed class CandidateProfileController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AddCustomSkillRequest? request,
         CancellationToken cancellationToken)
     {
-        CandidateProfileDto profile = await this.profileService.AddCustomSkillAsync(
+        CandidateProfileDto profile = (await this.profileService.AddCustomSkillAsync(
             this.GetCandidateId(),
-            request ?? AddCustomSkillRequest.Empty,
-            cancellationToken);
+            (request ?? AddCustomSkillRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
         return this.StatusCode(StatusCodes.Status201Created, profile);
     }
 

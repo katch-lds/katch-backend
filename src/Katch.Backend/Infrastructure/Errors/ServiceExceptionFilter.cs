@@ -40,7 +40,7 @@ internal sealed class ServiceExceptionFilter : IExceptionFilter
                 context.ExceptionHandled = true;
                 break;
             case OperationConflictException conflict:
-                context.Result = new ConflictObjectResult(conflict.Error);
+                context.Result = new ConflictObjectResult(ApiErrorResponse.FromServiceError(conflict.Error));
                 context.ExceptionHandled = true;
                 break;
         }

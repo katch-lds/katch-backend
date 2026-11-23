@@ -2,12 +2,12 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -15,7 +15,7 @@ namespace Katch.Backend.UnitTests.Services;
 /// <summary>
 /// Testes de <see cref="JobService"/> (documentação da API v02, secção 6.5; modelo de classes do backend v02,
 /// <c>IJobService</c>): limites da validação, titularidade, conversão das transições recusadas no ERR-30, uso do relógio
-/// e composição do <see cref="JobDto"/>. Os pedidos HTTP completos são verificados nos testes de integração.
+/// e composição do <see cref="JobModel"/>. Os pedidos HTTP completos são verificados nos testes de integração.
 /// </summary>
 public sealed class JobServiceTests
 {
@@ -51,7 +51,7 @@ public sealed class JobServiceTests
     [Fact]
     public async Task CreateBuildsAnUnpublishedJobWithDefaults()
     {
-        JobRequest request = this.Valid() with
+        JobInput request = this.Valid() with
         {
             Title = "  Programador  ",
             SkillIds = [this.sql.Id, this.csharp.Id],
@@ -59,7 +59,7 @@ public sealed class JobServiceTests
             IsUrgent = null,
         };
 
-        JobDto job = await this.Service().CreateAsync(this.recruiterId, request, TestContext.Current.CancellationToken);
+        JobModel job = await this.Service().CreateAsync(this.recruiterId, request, TestContext.Current.CancellationToken);
 
         Assert.Equal(JobStatus.Unpublished, job.Status);
         Assert.Equal("Programador", job.Title);
@@ -82,7 +82,7 @@ public sealed class JobServiceTests
     [Fact]
     public async Task AllInvalidFieldsAreReportedTogether()
     {
-        var request = new JobRequest(
+        var request = new JobInput(
             " ",
             new string('d', JobService.MaxDescriptionLength + 1),
             -1m,
@@ -100,17 +100,17 @@ public sealed class JobServiceTests
 
         Assert.Equal(
             [
-                new FieldErrorDto("title", FieldReasons.Required),
-                new FieldErrorDto("description", FieldReasons.TextTooLong(5000)),
-                new FieldErrorDto("minSalary", FieldReasons.SalaryNotPositive),
-                new FieldErrorDto("maxSalary", FieldReasons.Required),
-                new FieldErrorDto("locationId", FieldReasons.NotInList),
-                new FieldErrorDto("contractType", FieldReasons.NotInList),
-                new FieldErrorDto("workMode", FieldReasons.Required),
-                new FieldErrorDto("skillIds[1]", FieldReasons.NotInList),
-                new FieldErrorDto("skillIds[2]", FieldReasons.RepeatedInList),
-                new FieldErrorDto("benefitIds[0]", FieldReasons.NotInList),
-                new FieldErrorDto("expiresAt", FieldReasons.ExpiresAtNotFuture),
+                new FieldError("title", FieldReasons.Required),
+                new FieldError("description", FieldReasons.TextTooLong(5000)),
+                new FieldError("minSalary", FieldReasons.SalaryNotPositive),
+                new FieldError("maxSalary", FieldReasons.Required),
+                new FieldError("locationId", FieldReasons.NotInList),
+                new FieldError("contractType", FieldReasons.NotInList),
+                new FieldError("workMode", FieldReasons.Required),
+                new FieldError("skillIds[1]", FieldReasons.NotInList),
+                new FieldError("skillIds[2]", FieldReasons.RepeatedInList),
+                new FieldError("benefitIds[0]", FieldReasons.NotInList),
+                new FieldError("expiresAt", FieldReasons.ExpiresAtNotFuture),
             ],
             exception.Fields);
         Assert.Empty(this.store.Jobs);
@@ -126,7 +126,7 @@ public sealed class JobServiceTests
     [Fact]
     public async Task BoundaryValuesAreAccepted()
     {
-        JobRequest request = this.Valid() with
+        JobInput request = this.Valid() with
         {
             Title = new string('t', Job.MaxTitleLength),
             Description = new string('d', JobService.MaxDescriptionLength),
@@ -135,7 +135,7 @@ public sealed class JobServiceTests
             ExpiresAt = Now.AddTicks(1),
         };
 
-        JobDto job = await this.Service().CreateAsync(this.recruiterId, request, TestContext.Current.CancellationToken);
+        JobModel job = await this.Service().CreateAsync(this.recruiterId, request, TestContext.Current.CancellationToken);
 
         Assert.Equal(Job.MaxSalaryValue, job.MinSalary);
         Assert.Equal(Now.AddTicks(1), job.ExpiresAt);
@@ -156,7 +156,7 @@ public sealed class JobServiceTests
     {
         decimal min = decimal.Parse(amount, System.Globalization.CultureInfo.InvariantCulture);
 
-        JobDto job = await this.Service().CreateAsync(
+        JobModel job = await this.Service().CreateAsync(
             this.recruiterId,
             this.Valid() with { MinSalary = min },
             TestContext.Current.CancellationToken);
@@ -177,14 +177,14 @@ public sealed class JobServiceTests
     public async Task SalaryWithMoreThanTwoDecimalsIsRejected(string field, string amount)
     {
         decimal value = decimal.Parse(amount, System.Globalization.CultureInfo.InvariantCulture);
-        JobRequest request = field == "minSalary"
+        JobInput request = field == "minSalary"
             ? this.Valid() with { MinSalary = value }
             : this.Valid() with { MaxSalary = value };
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.Service().CreateAsync(this.recruiterId, request, TestContext.Current.CancellationToken));
 
-        Assert.Equal([new FieldErrorDto(field, FieldReasons.SalaryDecimals)], exception.Fields);
+        Assert.Equal([new FieldError(field, FieldReasons.SalaryDecimals)], exception.Fields);
         Assert.Empty(this.store.Jobs);
     }
 
@@ -238,7 +238,7 @@ public sealed class JobServiceTests
     [InlineData(10, 2000.01, 2000, "minSalary|O valor mínimo não pode ser superior ao valor máximo.")]
     public async Task BoundaryValuesAreRejected(int title, double min, double max, string expected)
     {
-        JobRequest request = this.Valid() with
+        JobInput request = this.Valid() with
         {
             Title = new string('t', title),
             MinSalary = (decimal)min,
@@ -249,7 +249,7 @@ public sealed class JobServiceTests
             () => this.Service().CreateAsync(this.recruiterId, request, TestContext.Current.CancellationToken));
 
         string[] parts = expected.Split('|');
-        Assert.Equal([new FieldErrorDto(parts[0], parts[1])], exception.Fields);
+        Assert.Equal([new FieldError(parts[0], parts[1])], exception.Fields);
     }
 
     /// <summary>
@@ -262,7 +262,7 @@ public sealed class JobServiceTests
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.Service().CreateAsync(this.recruiterId, this.Valid() with { ExpiresAt = Now }, TestContext.Current.CancellationToken));
 
-        Assert.Equal([new FieldErrorDto("expiresAt", FieldReasons.ExpiresAtNotFuture)], exception.Fields);
+        Assert.Equal([new FieldError("expiresAt", FieldReasons.ExpiresAtNotFuture)], exception.Fields);
     }
 
     /// <summary>
@@ -280,7 +280,7 @@ public sealed class JobServiceTests
         await Assert.ThrowsAsync<ElementForbiddenException>(
             () => this.Service().PublishAsync(this.recruiterId, foreign.Id, TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<ElementForbiddenException>(
-            () => this.Service().UpdateAsync(this.recruiterId, foreign.Id, JobRequest.Empty, TestContext.Current.CancellationToken));
+            () => this.Service().UpdateAsync(this.recruiterId, foreign.Id, JobInput.Empty, TestContext.Current.CancellationToken));
         Assert.Equal(JobStatus.Unpublished, foreign.Status);
         Assert.Empty(this.operationLogger.Entries);
     }
@@ -301,7 +301,7 @@ public sealed class JobServiceTests
         clock.UtcNow = Now.AddDays(1);
         await service.SuspendAsync(this.recruiterId, job.Id, TestContext.Current.CancellationToken);
         clock.UtcNow = Now.AddDays(2);
-        JobDto republished = await service.RepublishAsync(this.recruiterId, job.Id, TestContext.Current.CancellationToken);
+        JobModel republished = await service.RepublishAsync(this.recruiterId, job.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(Now, job.FirstPublishedAt);
         Assert.Equal(Now.AddDays(2), republished.PublishedAt);
@@ -342,7 +342,7 @@ public sealed class JobServiceTests
     {
         Job job = this.AddJobWithDeadline(null, status);
 
-        JobDto closed = await this.Service().CloseAsync(this.recruiterId, job.Id, TestContext.Current.CancellationToken);
+        JobModel closed = await this.Service().CloseAsync(this.recruiterId, job.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(JobStatus.Closed, job.Status);
         Assert.Equal(JobStatus.Closed, closed.Status);
@@ -379,7 +379,7 @@ public sealed class JobServiceTests
     [InlineData(true)]
     public async Task MissingLocationAndSkillsAreRequired(bool emptySkills)
     {
-        JobRequest request = this.Valid() with
+        JobInput request = this.Valid() with
         {
             LocationId = Guid.Empty,
             SkillIds = emptySkills ? [] : null,
@@ -390,8 +390,8 @@ public sealed class JobServiceTests
 
         Assert.Equal(
             [
-                new FieldErrorDto("locationId", FieldReasons.Required),
-                new FieldErrorDto("skillIds", FieldReasons.Required),
+                new FieldError("locationId", FieldReasons.Required),
+                new FieldError("skillIds", FieldReasons.Required),
             ],
             exception.Fields);
         Assert.Empty(this.store.Jobs);
@@ -408,7 +408,7 @@ public sealed class JobServiceTests
         job.Close();
 
         OperationConflictException exception = await Assert.ThrowsAsync<OperationConflictException>(
-            () => this.Service().UpdateAsync(this.recruiterId, job.Id, JobRequest.Empty, TestContext.Current.CancellationToken));
+            () => this.Service().UpdateAsync(this.recruiterId, job.Id, JobInput.Empty, TestContext.Current.CancellationToken));
 
         Assert.Equal("A operação não é permitida no estado atual: encerrada.", exception.Error.Message);
     }
@@ -423,7 +423,7 @@ public sealed class JobServiceTests
         Job job = this.AddJob(this.company.Id);
         job.Benefits.Add(this.health);
 
-        JobDto updated = await this.Service().UpdateAsync(
+        JobModel updated = await this.Service().UpdateAsync(
             this.recruiterId,
             job.Id,
             this.Valid() with { SkillIds = [this.sql.Id], BenefitIds = [] },
@@ -471,7 +471,7 @@ public sealed class JobServiceTests
         this.store.Waiting[second.Id] = 3;
         this.AddJob(NewApprovedCompany(Guid.NewGuid(), this.location.Id).Id);
 
-        List<JobDto> jobs = await this.Service().ListOwnAsync(this.recruiterId, TestContext.Current.CancellationToken);
+        List<JobModel> jobs = await this.Service().ListOwnAsync(this.recruiterId, TestContext.Current.CancellationToken);
 
         Assert.Equal([first.Id, second.Id], jobs.Select(job => job.JobId));
         Assert.Equal([0, 3], jobs.Select(job => job.WaitingCandidates));
@@ -606,9 +606,9 @@ public sealed class JobServiceTests
         return company;
     }
 
-    private JobRequest Valid()
+    private JobInput Valid()
     {
-        return new JobRequest(
+        return new JobInput(
             "Programador Backend .NET",
             "Desenvolvimento de APIs REST.",
             1600m,

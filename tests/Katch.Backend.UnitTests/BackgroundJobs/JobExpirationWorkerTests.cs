@@ -1,8 +1,8 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.BackgroundJobs;
-using Katch.Backend.Dtos;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -276,37 +276,37 @@ public sealed class JobExpirationWorkerTests
             return Task.FromResult(this.probe.Call());
         }
 
-        public Task<List<JobDto>> ListOwnAsync(Guid recruiterId, CancellationToken cancellationToken = default)
+        public Task<List<JobModel>> ListOwnAsync(Guid recruiterId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<JobDto> CreateAsync(Guid recruiterId, JobRequest request, CancellationToken cancellationToken = default)
+        public Task<JobModel> CreateAsync(Guid recruiterId, JobInput request, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<JobDto> UpdateAsync(Guid recruiterId, Guid jobId, JobRequest request, CancellationToken cancellationToken = default)
+        public Task<JobModel> UpdateAsync(Guid recruiterId, Guid jobId, JobInput request, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<JobDto> PublishAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobModel> PublishAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<JobDto> SuspendAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobModel> SuspendAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<JobDto> RepublishAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobModel> RepublishAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<JobDto> CloseAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
+        public Task<JobModel> CloseAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

@@ -3,10 +3,10 @@
 using System.Globalization;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -68,51 +68,51 @@ public sealed class CandidateProfileService : ICandidateProfileService
     }
 
     /// <inheritdoc/>
-    public async Task<CandidateProfileDto> GetAsync(Guid candidateId, CancellationToken cancellationToken = default)
+    public async Task<CandidateProfileModel> GetAsync(Guid candidateId, CancellationToken cancellationToken = default)
     {
         Candidate candidate = await this.LoadAsync(candidateId, cancellationToken);
-        return await this.ToDtoAsync(candidate, cancellationToken);
+        return await this.ToModelAsync(candidate, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<CandidateProfileDto> UpdateAsync(
+    public async Task<CandidateProfileModel> UpdateAsync(
         Guid candidateId,
-        UpdateCandidateProfileRequest request,
+        UpdateCandidateProfileInput request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         string? desiredRole = TrimToNull(request.DesiredRole);
         string? experienceSummary = TrimToNull(request.ExperienceSummary);
-        List<FieldErrorDto> errors = [];
+        List<FieldError> errors = [];
 
         if (desiredRole is { Length: > DesiredRoleMaxLength })
         {
-            errors.Add(new FieldErrorDto("desiredRole", FieldReasons.TextTooLong(DesiredRoleMaxLength)));
+            errors.Add(new FieldError("desiredRole", FieldReasons.TextTooLong(DesiredRoleMaxLength)));
         }
 
         Location? location = null;
         if (request.LocationId == Guid.Empty)
         {
-            errors.Add(new FieldErrorDto("locationId", FieldReasons.Required));
+            errors.Add(new FieldError("locationId", FieldReasons.Required));
         }
         else
         {
             location = await this.referenceData.GetLocationAsync(request.LocationId, cancellationToken);
             if (location is null)
             {
-                errors.Add(new FieldErrorDto("locationId", FieldReasons.NotInList));
+                errors.Add(new FieldError("locationId", FieldReasons.NotInList));
             }
         }
 
         if (request.Availability is { } availability && !Enum.IsDefined(availability))
         {
-            errors.Add(new FieldErrorDto("availability", FieldReasons.InvalidValue));
+            errors.Add(new FieldError("availability", FieldReasons.InvalidValue));
         }
 
         if (experienceSummary is { Length: > ExperienceSummaryMaxLength })
         {
-            errors.Add(new FieldErrorDto("experienceSummary", FieldReasons.TextTooLong(ExperienceSummaryMaxLength)));
+            errors.Add(new FieldError("experienceSummary", FieldReasons.TextTooLong(ExperienceSummaryMaxLength)));
         }
 
         if (errors.Count > 0)
@@ -127,36 +127,36 @@ public sealed class CandidateProfileService : ICandidateProfileService
         candidate.ExperienceSummary = experienceSummary;
         await this.unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return this.ToDto(candidate, location!);
+        return this.ToModel(candidate, location!);
     }
 
     /// <inheritdoc/>
-    public async Task<SearchPreferencesDto> UpdatePreferencesAsync(
+    public async Task<SearchPreferencesModel> UpdatePreferencesAsync(
         Guid candidateId,
-        SearchPreferencesDto request,
+        SearchPreferencesModel request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         IReadOnlyList<WorkMode> workModes = request.WorkModes;
         IReadOnlyList<ContractType> contractTypes = request.ContractTypes;
-        List<FieldErrorDto> errors = [];
+        List<FieldError> errors = [];
 
         if (request.MaxDistanceKm is < 1 or > 500)
         {
-            errors.Add(new FieldErrorDto("maxDistanceKm", FieldReasons.MaxDistance));
+            errors.Add(new FieldError("maxDistanceKm", FieldReasons.MaxDistance));
         }
 
         if (request.MinSalaryExpectation is < 0 or > SalaryMaxValue)
         {
-            errors.Add(new FieldErrorDto("minSalaryExpectation", FieldReasons.MinSalary));
+            errors.Add(new FieldError("minSalaryExpectation", FieldReasons.MinSalary));
         }
 
         for (int index = 0; index < workModes.Count; index++)
         {
             if (!Enum.IsDefined(workModes[index]))
             {
-                errors.Add(new FieldErrorDto($"workModes[{index}]", FieldReasons.InvalidValue));
+                errors.Add(new FieldError($"workModes[{index}]", FieldReasons.InvalidValue));
             }
         }
 
@@ -164,7 +164,7 @@ public sealed class CandidateProfileService : ICandidateProfileService
         {
             if (!Enum.IsDefined(contractTypes[index]))
             {
-                errors.Add(new FieldErrorDto($"contractTypes[{index}]", FieldReasons.InvalidValue));
+                errors.Add(new FieldError($"contractTypes[{index}]", FieldReasons.InvalidValue));
             }
         }
 
@@ -185,22 +185,22 @@ public sealed class CandidateProfileService : ICandidateProfileService
     }
 
     /// <inheritdoc/>
-    public async Task<CandidateProfileDto> SetLinksAsync(
+    public async Task<CandidateProfileModel> SetLinksAsync(
         Guid candidateId,
-        SetLinksRequest request,
+        SetLinksInput request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         if (request.Urls is null)
         {
-            throw new ValidationFailedException([new FieldErrorDto("urls", FieldReasons.Required)]);
+            throw new ValidationFailedException([new FieldError("urls", FieldReasons.Required)]);
         }
 
-        List<FieldErrorDto> errors = [];
+        List<FieldError> errors = [];
         if (request.Urls.Count > Candidate.MaxLinks)
         {
-            errors.Add(new FieldErrorDto("urls", FieldReasons.TooManyLinks));
+            errors.Add(new FieldError("urls", FieldReasons.TooManyLinks));
         }
 
         // Os endereços ficam tal como indicados, só sem os espaços nas extremidades; não se importa o conteúdo nem se
@@ -211,7 +211,7 @@ public sealed class CandidateProfileService : ICandidateProfileService
             string? reason = LinkReason(urls, index);
             if (reason is not null)
             {
-                errors.Add(new FieldErrorDto($"urls[{index}]", reason));
+                errors.Add(new FieldError($"urls[{index}]", reason));
             }
         }
 
@@ -231,10 +231,10 @@ public sealed class CandidateProfileService : ICandidateProfileService
             when (exception.ConstraintName is LinkPositionUniqueIndex or LinkUrlUniqueIndex)
         {
             // Outro pedido do mesmo Candidato gravou as hiperligações entre a leitura e a gravação.
-            throw new OperationConflictException(ApiErrorResponse.ConcurrencyConflict());
+            throw new OperationConflictException(ServiceErrors.ConcurrencyConflict());
         }
 
-        return await this.ToDtoAsync(candidate, cancellationToken);
+        return await this.ToModelAsync(candidate, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -281,9 +281,9 @@ public sealed class CandidateProfileService : ICandidateProfileService
     }
 
     /// <inheritdoc/>
-    public async Task<CandidateProfileDto> AddSkillAsync(
+    public async Task<CandidateProfileModel> AddSkillAsync(
         Guid candidateId,
-        AddSkillRequest request,
+        AddSkillInput request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -313,7 +313,7 @@ public sealed class CandidateProfileService : ICandidateProfileService
             throw Invalid("skillId", FieldReasons.SkillAlreadyAdded);
         }
 
-        return await this.ToDtoAsync(candidate, cancellationToken);
+        return await this.ToModelAsync(candidate, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -334,9 +334,9 @@ public sealed class CandidateProfileService : ICandidateProfileService
     }
 
     /// <inheritdoc/>
-    public async Task<CandidateProfileDto> AddCustomSkillAsync(
+    public async Task<CandidateProfileModel> AddCustomSkillAsync(
         Guid candidateId,
-        AddCustomSkillRequest request,
+        AddCustomSkillInput request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -382,7 +382,7 @@ public sealed class CandidateProfileService : ICandidateProfileService
             throw Invalid("label", FieldReasons.CustomSkillFormat);
         }
 
-        return await this.ToDtoAsync(candidate, cancellationToken);
+        return await this.ToModelAsync(candidate, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -426,9 +426,9 @@ public sealed class CandidateProfileService : ICandidateProfileService
         return urls.IndexOf(url) < index ? LinkRepeated : null;
     }
 
-    private static SearchPreferencesDto ToPreferences(Candidate candidate)
+    private static SearchPreferencesModel ToPreferences(Candidate candidate)
     {
-        return new SearchPreferencesDto(
+        return new SearchPreferencesModel(
             candidate.MaxDistanceKm,
             candidate.MinSalaryExpectation,
             candidate.PreferredWorkModes.ToList(),
@@ -437,7 +437,7 @@ public sealed class CandidateProfileService : ICandidateProfileService
 
     private static ValidationFailedException Invalid(string field, string reason)
     {
-        return new ValidationFailedException([new FieldErrorDto(field, reason)]);
+        return new ValidationFailedException([new FieldError(field, reason)]);
     }
 
     private async Task<Candidate> LoadAsync(Guid candidateId, CancellationToken cancellationToken)
@@ -446,22 +446,22 @@ public sealed class CandidateProfileService : ICandidateProfileService
             ?? throw new ElementNotFoundException();
     }
 
-    private async Task<CandidateProfileDto> ToDtoAsync(Candidate candidate, CancellationToken cancellationToken)
+    private async Task<CandidateProfileModel> ToModelAsync(Candidate candidate, CancellationToken cancellationToken)
     {
         Location location = await this.referenceData.GetLocationAsync(candidate.LocationId, cancellationToken)
             ?? throw new InvalidOperationException("A localidade do Candidato não existe na lista pré-definida.");
-        return this.ToDto(candidate, location);
+        return this.ToModel(candidate, location);
     }
 
     /// <summary>
-    /// Converte o Candidato no <see cref="CandidateProfileDto"/>, com as competências por ordem alfabética portuguesa.
+    /// Converte o Candidato no <see cref="CandidateProfileModel"/>, com as competências por ordem alfabética portuguesa.
     /// </summary>
     /// <param name="candidate">Candidato com o perfil completo carregado.</param>
     /// <param name="location">Localidade do Candidato.</param>
     /// <returns>O perfil.</returns>
-    private CandidateProfileDto ToDto(Candidate candidate, Location location)
+    private CandidateProfileModel ToModel(Candidate candidate, Location location)
     {
-        return new CandidateProfileDto(
+        return new CandidateProfileModel(
             candidate.Id,
             candidate.FullName,
             candidate.User.Email,
@@ -475,11 +475,11 @@ public sealed class CandidateProfileService : ICandidateProfileService
             candidate.CvPath is not null,
             candidate.Links.Select(link => link.Url).ToList(),
             candidate.Skills
-                .Select(skill => new ReferenceItemDto(skill.Id, skill.Name))
+                .Select(skill => new ReferenceItemModel(skill.Id, skill.Name))
                 .OrderBy(item => item.Name, Alphabetical)
                 .ToList(),
             candidate.CustomSkills
-                .Select(customSkill => new CustomSkillDto(customSkill.Id, customSkill.Label))
+                .Select(customSkill => new CustomSkillModel(customSkill.Id, customSkill.Label))
                 .OrderBy(item => item.Label, Alphabetical)
                 .ToList(),
             ToPreferences(candidate));

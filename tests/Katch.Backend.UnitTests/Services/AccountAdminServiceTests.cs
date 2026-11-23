@@ -2,10 +2,10 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -61,14 +61,14 @@ public sealed class AccountAdminServiceTests
         AppUser admin = this.AddUser(UserType.Admin, "admin@katch.pt");
         candidate.Block(Now);
 
-        List<AccountDto> accounts = await this.service.ListAccountsAsync(TestContext.Current.CancellationToken);
+        List<AccountModel> accounts = await this.service.ListAccountsAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountFilter.All, this.users.LastFilter);
         Assert.Equal(
             [
-                new AccountDto(admin.Id, "admin@katch.pt", UserType.Admin, AccountStatus.Active),
-                new AccountDto(candidate.Id, "Ana.Ferreira@exemplo.pt", UserType.Candidate, AccountStatus.Blocked),
-                new AccountDto(recruiter.Id, "recrutamento@lumen-exemplo.pt", UserType.Recruiter, AccountStatus.Active),
+                new AccountModel(admin.Id, "admin@katch.pt", UserType.Admin, AccountStatus.Active),
+                new AccountModel(candidate.Id, "Ana.Ferreira@exemplo.pt", UserType.Candidate, AccountStatus.Blocked),
+                new AccountModel(recruiter.Id, "recrutamento@lumen-exemplo.pt", UserType.Recruiter, AccountStatus.Active),
             ],
             accounts);
     }
@@ -89,13 +89,13 @@ public sealed class AccountAdminServiceTests
         Candidate alvaro = this.AddCandidate("Álvaro Costa", "alvaro@exemplo.pt", lisboa.Id);
         rui.User.Suspend(Now);
 
-        List<CandidateAdminDto> list = await this.service.ListCandidatesAsync(TestContext.Current.CancellationToken);
+        List<CandidateAdminModel> list = await this.service.ListCandidatesAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [
-                new CandidateAdminDto(alvaro.Id, "Álvaro Costa", "alvaro@exemplo.pt", "Lisboa (Lisboa)", Created, AccountStatus.Active),
-                new CandidateAdminDto(ana.Id, "Ana Ferreira", "ana@exemplo.pt", "Guimarães (Braga)", Created, AccountStatus.Active),
-                new CandidateAdminDto(rui.Id, "Rui Matos", "rui@exemplo.pt", "Lisboa (Lisboa)", Created, AccountStatus.Suspended),
+                new CandidateAdminModel(alvaro.Id, "Álvaro Costa", "alvaro@exemplo.pt", "Lisboa (Lisboa)", Created, AccountStatus.Active),
+                new CandidateAdminModel(ana.Id, "Ana Ferreira", "ana@exemplo.pt", "Guimarães (Braga)", Created, AccountStatus.Active),
+                new CandidateAdminModel(rui.Id, "Rui Matos", "rui@exemplo.pt", "Lisboa (Lisboa)", Created, AccountStatus.Suspended),
             ],
             list);
     }

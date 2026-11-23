@@ -1,10 +1,12 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -60,9 +62,9 @@ public sealed class AuthController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RegisterCandidateRequest? request,
         CancellationToken cancellationToken)
     {
-        LoginResponse response = await this.authService.RegisterCandidateAsync(
-            request ?? RegisterCandidateRequest.Empty,
-            cancellationToken);
+        LoginResponse response = (await this.authService.RegisterCandidateAsync(
+            (request ?? RegisterCandidateRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
         return this.Created(CandidateProfileRoute, response);
     }
 
@@ -83,9 +85,9 @@ public sealed class AuthController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CreateRecruiterAccountRequest? request,
         CancellationToken cancellationToken)
     {
-        LoginResponse response = await this.authService.CreateRecruiterAccountAsync(
-            request ?? CreateRecruiterAccountRequest.Empty,
-            cancellationToken);
+        LoginResponse response = (await this.authService.CreateRecruiterAccountAsync(
+            (request ?? CreateRecruiterAccountRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
 
         // Sem Location: o estado da Empresa (6.4.3) só existe depois do registo da Empresa (API v02, secção 4.2).
         return this.StatusCode(StatusCodes.Status201Created, response);
@@ -121,7 +123,10 @@ public sealed class AuthController : ControllerBase
         CancellationToken cancellationToken)
     {
         ClientApp app = ParseClientApp(clientApp);
-        LoginResponse response = await this.authService.LoginAsync(request ?? LoginRequest.Empty, app, cancellationToken);
+        LoginResponse response = (await this.authService.LoginAsync(
+            (request ?? LoginRequest.Empty).ToInput(),
+            app,
+            cancellationToken)).ToDto();
         return this.Ok(response);
     }
 
@@ -168,7 +173,10 @@ public sealed class AuthController : ControllerBase
             return this.Unauthorized(ApiErrorResponse.InvalidSession());
         }
 
-        await this.authService.ChangePasswordAsync(userId, request ?? ChangePasswordRequest.Empty, cancellationToken);
+        await this.authService.ChangePasswordAsync(
+            userId,
+            (request ?? ChangePasswordRequest.Empty).ToInput(),
+            cancellationToken);
         return this.NoContent();
     }
 
@@ -180,14 +188,14 @@ public sealed class AuthController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            throw new ValidationFailedException([new FieldErrorDto(ClientAppHeader, FieldReasons.Required)]);
+            throw new ValidationFailedException([new FieldError(ClientAppHeader, FieldReasons.Required)]);
         }
 
         return value switch
         {
             MobileClientApp => ClientApp.Mobile,
             WebClientApp => ClientApp.Web,
-            _ => throw new ValidationFailedException([new FieldErrorDto(ClientAppHeader, FieldReasons.InvalidValue)]),
+            _ => throw new ValidationFailedException([new FieldError(ClientAppHeader, FieldReasons.InvalidValue)]),
         };
     }
 }

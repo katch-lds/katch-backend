@@ -1,7 +1,7 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -19,8 +19,8 @@ public interface IAuthService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A credencial de sessão da conta criada.</returns>
     /// <exception cref="ValidationFailedException">Se um ou mais campos não cumprirem a validação automática.</exception>
-    public Task<LoginResponse> RegisterCandidateAsync(
-        RegisterCandidateRequest request,
+    public Task<LoginResult> RegisterCandidateAsync(
+        RegisterCandidateInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -31,8 +31,8 @@ public interface IAuthService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A credencial de sessão da conta criada.</returns>
     /// <exception cref="ValidationFailedException">Se um ou mais campos não cumprirem a validação automática.</exception>
-    public Task<LoginResponse> CreateRecruiterAccountAsync(
-        CreateRecruiterAccountRequest request,
+    public Task<LoginResult> CreateRecruiterAccountAsync(
+        CreateRecruiterAccountInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -49,8 +49,8 @@ public interface IAuthService
     /// Se as credenciais não coincidirem, a conta estiver bloqueada ou suspensa, ou o tipo de conta não puder entrar por
     /// este ponto de acesso.
     /// </exception>
-    public Task<LoginResponse> LoginAsync(
-        LoginRequest request,
+    public Task<LoginResult> LoginAsync(
+        LoginInput request,
         ClientApp app,
         CancellationToken cancellationToken = default);
 
@@ -67,6 +67,6 @@ public interface IAuthService
     /// </exception>
     public Task ChangePasswordAsync(
         Guid userId,
-        ChangePasswordRequest request,
+        ChangePasswordInput request,
         CancellationToken cancellationToken = default);
 }

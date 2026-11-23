@@ -2,10 +2,10 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -37,7 +37,7 @@ public sealed class ConversationServiceTests
         ConversationView old = View(closed, Now.AddHours(-9));
         var (service, _, _, _) = this.Create(views: [old, recent, emptyOld, emptyNew]);
 
-        List<ConversationSummaryDto> result = await service.ListAsync(this.candidateId, TestContext.Current.CancellationToken);
+        List<ConversationSummaryModel> result = await service.ListAsync(this.candidateId, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [emptyNew.Match.Id, emptyOld.Match.Id, recent.Match.Id, old.Match.Id],
@@ -98,7 +98,7 @@ public sealed class ConversationServiceTests
         CancellationToken token = TestContext.Current.CancellationToken;
         Match waiting = Match.ExpressInterest(this.candidateId, Guid.NewGuid(), Now);
         var (service, _, messages, unitOfWork) = this.Create(waiting);
-        var request = new SendMessageRequest("Olá");
+        var request = new SendMessageInput("Olá");
 
         await Assert.ThrowsAsync<ElementNotFoundException>(() => service.OpenAsync(this.candidateId, Guid.NewGuid(), null, token));
         await Assert.ThrowsAsync<ElementNotFoundException>(() => service.SendAsync(this.candidateId, Guid.NewGuid(), request, token));
@@ -127,13 +127,13 @@ public sealed class ConversationServiceTests
         Match match = this.NewMatch(Now.AddDays(-1));
         var (service, _, messages, unitOfWork) = this.Create(match);
 
-        MessageDto dto = await service.SendAsync(this.candidateId, match.Id, new SendMessageRequest("  Olá  "), TestContext.Current.CancellationToken);
+        MessageModel dto = await service.SendAsync(this.candidateId, match.Id, new SendMessageInput("  Olá  "), TestContext.Current.CancellationToken);
 
         Message saved = Assert.Single(messages.Added);
         Assert.Equal("  Olá  ", saved.Content);
         Assert.Equal(this.candidateId, saved.SenderId);
         Assert.Equal(Now, saved.SentAt);
-        Assert.Equal(new MessageDto(saved.Id, this.candidateId, "  Olá  ", Now, null), dto);
+        Assert.Equal(new MessageModel(saved.Id, this.candidateId, "  Olá  ", Now, null), dto);
         Assert.Equal(1, unitOfWork.Saves);
     }
 
@@ -155,7 +155,7 @@ public sealed class ConversationServiceTests
         string? text = content == "TOO_LONG" ? new string('x', 1001) : content;
 
         ValidationFailedException error = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => service.SendAsync(this.candidateId, match.Id, new SendMessageRequest(text), TestContext.Current.CancellationToken));
+            () => service.SendAsync(this.candidateId, match.Id, new SendMessageInput(text), TestContext.Current.CancellationToken));
 
         Assert.Equal("content", Assert.Single(error.Fields).Field);
         Assert.DoesNotContain("xxx", error.ToString(), StringComparison.Ordinal);
@@ -176,7 +176,7 @@ public sealed class ConversationServiceTests
         Match match = this.NewMatch(Now.AddDays(-1));
         var (service, _, messages, _) = this.Create(match);
 
-        await service.SendAsync(this.candidateId, match.Id, new SendMessageRequest(new string('a', length)), TestContext.Current.CancellationToken);
+        await service.SendAsync(this.candidateId, match.Id, new SendMessageInput(new string('a', length)), TestContext.Current.CancellationToken);
 
         Assert.Equal(length, Assert.Single(messages.Added).Content.Length);
     }
@@ -193,7 +193,7 @@ public sealed class ConversationServiceTests
         var (service, _, messages, unitOfWork) = this.Create(match);
 
         OperationConflictException error = await Assert.ThrowsAsync<OperationConflictException>(
-            () => service.SendAsync(this.candidateId, match.Id, new SendMessageRequest(string.Empty), TestContext.Current.CancellationToken));
+            () => service.SendAsync(this.candidateId, match.Id, new SendMessageInput(string.Empty), TestContext.Current.CancellationToken));
 
         AssertConflict("ERR-36", error);
         Assert.Empty(messages.Added);

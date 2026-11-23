@@ -2,11 +2,11 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Katch.Backend.UnitTests.Services;
@@ -78,7 +78,7 @@ public sealed class CompanyServiceTests
     [Fact]
     public async Task ValidRegistrationCreatesAPendingCompanyAndLogsTheSubmission()
     {
-        CompanyStatusDto status = await this.service.RegisterAsync(RecruiterId, Valid(), TestContext.Current.CancellationToken);
+        CompanyStatusModel status = await this.service.RegisterAsync(RecruiterId, Valid(), TestContext.Current.CancellationToken);
 
         Company company = Assert.Single(this.companies.Added);
         Assert.Equal(RecruiterId, company.RecruiterId);
@@ -89,7 +89,7 @@ public sealed class CompanyServiceTests
         Assert.Equal("509123456", company.TaxId);
         Assert.Equal(Industry.Technology, company.Industry);
         Assert.Equal(Braga, company.LocationId);
-        Assert.Equal(new CompanyStatusDto(company.Id, CompanyStatus.Pending, null, Now), status);
+        Assert.Equal(new CompanyStatusModel(company.Id, CompanyStatus.Pending, null, Now), status);
         Assert.Equal([(RecruiterId, OperationType.CompanySubmitted, company.Id)], this.logger.Entries);
         Assert.Equal(1, this.unitOfWork.Saves);
     }
@@ -101,7 +101,7 @@ public sealed class CompanyServiceTests
     [Fact]
     public async Task TextsAreTrimmedBeforeValidationAndStorage()
     {
-        CompanyRegistrationRequest request = Valid() with
+        CompanyRegistrationInput request = Valid() with
         {
             CompanyName = "  Lumen Software, Lda. ",
             TaxId = " 509123456 ",
@@ -127,7 +127,7 @@ public sealed class CompanyServiceTests
     [Fact]
     public async Task AllInvalidFieldsAreReportedInTheSameResponse()
     {
-        var request = new CompanyRegistrationRequest(
+        var request = new CompanyRegistrationInput(
             " ",
             "123",
             (Industry)99,
@@ -167,7 +167,7 @@ public sealed class CompanyServiceTests
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.RegisterAsync(
                 RecruiterId,
-                CompanyRegistrationRequest.Empty,
+                CompanyRegistrationInput.Empty,
                 TestContext.Current.CancellationToken));
 
         Assert.Equal(
@@ -187,7 +187,7 @@ public sealed class CompanyServiceTests
     [MemberData(nameof(InvalidFields))]
     public async Task InvalidFieldIsRejectedWithItsReason(string field, string value, string reason)
     {
-        CompanyRegistrationRequest request = field switch
+        CompanyRegistrationInput request = field switch
         {
             "companyName" => Valid() with { CompanyName = value },
             "taxId" => Valid() with { TaxId = value },
@@ -200,7 +200,7 @@ public sealed class CompanyServiceTests
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.RegisterAsync(RecruiterId, request, TestContext.Current.CancellationToken));
 
-        FieldErrorDto error = Assert.Single(exception.Fields);
+        FieldError error = Assert.Single(exception.Fields);
         Assert.Equal(field, error.Field);
         Assert.Equal(reason, error.Reason);
     }
@@ -217,7 +217,7 @@ public sealed class CompanyServiceTests
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.RegisterAsync(RecruiterId, Valid(), TestContext.Current.CancellationToken));
 
-        FieldErrorDto error = Assert.Single(exception.Fields);
+        FieldError error = Assert.Single(exception.Fields);
         Assert.Equal(("taxId", "O número de identificação fiscal já está registado."), (error.Field, error.Reason));
         Assert.Empty(this.companies.Added);
     }
@@ -234,7 +234,7 @@ public sealed class CompanyServiceTests
         OperationConflictException exception = await Assert.ThrowsAsync<OperationConflictException>(
             () => this.service.RegisterAsync(
                 RecruiterId,
-                CompanyRegistrationRequest.Empty,
+                CompanyRegistrationInput.Empty,
                 TestContext.Current.CancellationToken));
 
         Assert.Equal("ERR-40", exception.Error.Code);
@@ -256,7 +256,7 @@ public sealed class CompanyServiceTests
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.RegisterAsync(RecruiterId, Valid(), TestContext.Current.CancellationToken));
 
-        FieldErrorDto error = Assert.Single(exception.Fields);
+        FieldError error = Assert.Single(exception.Fields);
         Assert.Equal(("taxId", "O número de identificação fiscal já está registado."), (error.Field, error.Reason));
     }
 
@@ -291,12 +291,12 @@ public sealed class CompanyServiceTests
         DateTimeOffset later = Now.AddDays(1);
         this.clock.UtcNow = later;
 
-        CompanyStatusDto status = await this.service.ResubmitAsync(
+        CompanyStatusModel status = await this.service.ResubmitAsync(
             RecruiterId,
             Valid() with { Address = "Avenida da Liberdade, 102, 4710-000 Braga" },
             TestContext.Current.CancellationToken);
 
-        Assert.Equal(new CompanyStatusDto(company.Id, CompanyStatus.Pending, null, later), status);
+        Assert.Equal(new CompanyStatusModel(company.Id, CompanyStatus.Pending, null, later), status);
         Assert.Equal(CompanyStatus.Pending, company.Status);
         Assert.Null(company.StatusReason);
         Assert.Equal(later, company.SubmittedAt);
@@ -376,9 +376,9 @@ public sealed class CompanyServiceTests
         company.Reject(RejectionReason);
         this.companies.Existing.Add(company);
 
-        CompanyStatusDto status = await this.service.GetStatusAsync(RecruiterId, TestContext.Current.CancellationToken);
+        CompanyStatusModel status = await this.service.GetStatusAsync(RecruiterId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(new CompanyStatusDto(company.Id, CompanyStatus.Rejected, RejectionReason, Now), status);
+        Assert.Equal(new CompanyStatusModel(company.Id, CompanyStatus.Rejected, RejectionReason, Now), status);
     }
 
     /// <summary>
@@ -395,9 +395,9 @@ public sealed class CompanyServiceTests
         Company company = NewCompany(RecruiterId, "509123456", status);
         this.companies.Existing.Add(company);
 
-        CompanyStatusDto result = await this.service.GetStatusAsync(RecruiterId, TestContext.Current.CancellationToken);
+        CompanyStatusModel result = await this.service.GetStatusAsync(RecruiterId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(new CompanyStatusDto(company.Id, status, null, Now), result);
+        Assert.Equal(new CompanyStatusModel(company.Id, status, null, Now), result);
     }
 
     /// <summary>
@@ -411,9 +411,9 @@ public sealed class CompanyServiceTests
             () => this.service.GetStatusAsync(RecruiterId, TestContext.Current.CancellationToken));
     }
 
-    private static CompanyRegistrationRequest Valid()
+    private static CompanyRegistrationInput Valid()
     {
-        return new CompanyRegistrationRequest(
+        return new CompanyRegistrationInput(
             "Lumen Software, Lda.",
             "509123456",
             Industry.Technology,

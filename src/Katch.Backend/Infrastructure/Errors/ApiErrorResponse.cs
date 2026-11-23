@@ -4,6 +4,7 @@ using System.Text.Json;
 using Katch.Backend.Domain.Enums;
 using Katch.Backend.Dtos;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Infrastructure.Errors;
 
@@ -354,6 +355,30 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
+    /// Cria o corpo do ERR-10 (400) a partir dos erros por campo indicados pela camada de serviços.
+    /// </summary>
+    /// <param name="fields">Um erro por campo em causa.</param>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto ValidationFailed(IReadOnlyList<FieldError> fields)
+    {
+        ArgumentNullException.ThrowIfNull(fields);
+
+        return ValidationFailed(fields.Select(field => new FieldErrorDto(field.Field, field.Reason)).ToList());
+    }
+
+    /// <summary>
+    /// Cria o corpo de um erro do catálogo indicado pela camada de serviços (código e mensagem).
+    /// </summary>
+    /// <param name="error">Código e mensagem do erro.</param>
+    /// <returns>O corpo da resposta.</returns>
+    public static ApiErrorDto FromServiceError(ServiceError error)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+
+        return new ApiErrorDto(error.Code, error.Message);
+    }
+
+    /// <summary>
     /// Cria o corpo do ERR-11 (400): o ficheiro enviado não é aceite (RNF015, RNF016).
     /// </summary>
     /// <param name="reason">Motivo da recusa, indicado no campo <c>file</c>.</param>
@@ -393,18 +418,6 @@ public static class ApiErrorResponse
     }
 
     /// <summary>
-    /// Cria o corpo do ERR-30 (409): a operação não é permitida no estado atual do elemento.
-    /// </summary>
-    /// <param name="stateLabel">Estado atual, como é apresentado ao utilizador (por exemplo «pendente»).</param>
-    /// <returns>O corpo da resposta, por exemplo «A operação não é permitida no estado atual: pendente.».</returns>
-    public static ApiErrorDto InvalidState(string stateLabel)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(stateLabel);
-
-        return new ApiErrorDto(InvalidStateCode, $"A operação não é permitida no estado atual: {stateLabel}.");
-    }
-
-    /// <summary>
     /// Cria o corpo do ERR-31 (409): quota de interesses esgotada (RF020, P11), com o fim do bloqueio em
     /// <see cref="ApiErrorDto.BlockedUntil"/>.
     /// </summary>
@@ -432,72 +445,6 @@ public static class ApiErrorResponse
     public static ApiErrorDto JobUnavailable()
     {
         return new ApiErrorDto(JobUnavailableCode, JobUnavailableMessage);
-    }
-
-    /// <summary>
-    /// Cria o corpo do ERR-36 (409): a conversa está em modo apenas de consulta (RF028, RF075).
-    /// </summary>
-    /// <returns>O corpo da resposta.</returns>
-    public static ApiErrorDto ConversationReadOnly()
-    {
-        return new ApiErrorDto(ConversationReadOnlyCode, ConversationReadOnlyMessage);
-    }
-
-    /// <summary>
-    /// Cria o corpo do ERR-37 (409): o identificador não corresponde a um match confirmado (RF026).
-    /// </summary>
-    /// <returns>O corpo da resposta.</returns>
-    public static ApiErrorDto ConversationWithoutMatch()
-    {
-        return new ApiErrorDto(ConversationWithoutMatchCode, ConversationWithoutMatchMessage);
-    }
-
-    /// <summary>
-    /// Cria o corpo do ERR-39 (409): a galeria ou a vaga já tem o número máximo de fotografias (RF048, RF052, P13).
-    /// </summary>
-    /// <param name="maxPhotos">Número máximo de fotografias, indicado na mensagem.</param>
-    /// <returns>O corpo da resposta.</returns>
-    public static ApiErrorDto PhotoLimitReached(int maxPhotos)
-    {
-        return new ApiErrorDto(PhotoLimitReachedCode, $"Foi atingido o número máximo de fotografias ({maxPhotos}).");
-    }
-
-    /// <summary>
-    /// Cria o corpo do ERR-34 (409): a aceitação ou a recusa foi pedida sem a abertura do perfil completo do Candidato
-    /// registada para a vaga (RF063, RF064; UC12, E1).
-    /// </summary>
-    /// <returns>O corpo da resposta.</returns>
-    public static ApiErrorDto ProfileNotOpened()
-    {
-        return new ApiErrorDto(ProfileNotOpenedCode, ProfileNotOpenedMessage);
-    }
-
-    /// <summary>
-    /// Cria o corpo do ERR-35 (409): o interesse já não está em espera, porque o Recrutador já registou a decisão
-    /// (RF117; UC12, E4), na abertura do perfil, na obtenção do curriculum vitae ou na decisão.
-    /// </summary>
-    /// <returns>O corpo da resposta.</returns>
-    public static ApiErrorDto CandidateAlreadyEvaluated()
-    {
-        return new ApiErrorDto(CandidateAlreadyEvaluatedCode, CandidateAlreadyEvaluatedMessage);
-    }
-
-    /// <summary>
-    /// Cria o corpo do ERR-38 (409): a vaga tem pelo menos um interesse registado e só pode ser encerrada (RF058).
-    /// </summary>
-    /// <returns>O corpo da resposta.</returns>
-    public static ApiErrorDto JobHasInterests()
-    {
-        return new ApiErrorDto(JobHasInterestsCode, JobHasInterestsMessage);
-    }
-
-    /// <summary>
-    /// Cria o corpo do ERR-40 (409): o Recrutador já registou uma Empresa.
-    /// </summary>
-    /// <returns>O corpo da resposta.</returns>
-    public static ApiErrorDto CompanyAlreadyRegistered()
-    {
-        return new ApiErrorDto(CompanyAlreadyRegisteredCode, CompanyAlreadyRegisteredMessage);
     }
 
     /// <summary>

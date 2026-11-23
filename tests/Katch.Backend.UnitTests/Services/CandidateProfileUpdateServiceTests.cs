@@ -2,11 +2,11 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -55,7 +55,7 @@ public sealed class CandidateProfileUpdateServiceTests
         this.candidate.ProfilePhotoPath = "profile_photo/abc.png";
         this.candidate.CvPath = "curriculum_vitae/abc.pdf";
 
-        CandidateProfileDto profile = await this.service.GetAsync(this.candidate.Id, TestContext.Current.CancellationToken);
+        CandidateProfileModel profile = await this.service.GetAsync(this.candidate.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal("Guimarães (Braga)", profile.LocationName);
         Assert.Equal("/api/files/PROFILE_PHOTO/abc.png", profile.PhotoUrl);
@@ -83,14 +83,14 @@ public sealed class CandidateProfileUpdateServiceTests
     {
         await this.service.UpdateAsync(
             this.candidate.Id,
-            new UpdateCandidateProfileRequest("  Programadora ", this.location.Id, Availability.OneMonth, " Resumo "),
+            new UpdateCandidateProfileInput("  Programadora ", this.location.Id, Availability.OneMonth, " Resumo "),
             TestContext.Current.CancellationToken);
         Assert.Equal("Programadora", this.candidate.DesiredRole);
         Assert.Equal("Resumo", this.candidate.ExperienceSummary);
 
         await this.service.UpdateAsync(
             this.candidate.Id,
-            new UpdateCandidateProfileRequest("   ", this.location.Id, null, null),
+            new UpdateCandidateProfileInput("   ", this.location.Id, null, null),
             TestContext.Current.CancellationToken);
 
         Assert.Null(this.candidate.DesiredRole);
@@ -111,7 +111,7 @@ public sealed class CandidateProfileUpdateServiceTests
     [InlineData(150, 1001, "experienceSummary")]
     public async Task UpdateTextLimits(int roleLength, int summaryLength, string field)
     {
-        var request = new UpdateCandidateProfileRequest(new string('a', roleLength), this.location.Id, null, new string('b', summaryLength));
+        var request = new UpdateCandidateProfileInput(new string('a', roleLength), this.location.Id, null, new string('b', summaryLength));
 
         if (field.Length == 0)
         {
@@ -131,7 +131,7 @@ public sealed class CandidateProfileUpdateServiceTests
     [Fact]
     public async Task UpdateReportsAllErrorsTogetherAndSavesNothing()
     {
-        var request = new UpdateCandidateProfileRequest(new string('a', 151), Guid.NewGuid(), (Availability)99, new string('b', 1001));
+        var request = new UpdateCandidateProfileInput(new string('a', 151), Guid.NewGuid(), (Availability)99, new string('b', 1001));
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.UpdateAsync(this.candidate.Id, request, TestContext.Current.CancellationToken));
@@ -150,9 +150,9 @@ public sealed class CandidateProfileUpdateServiceTests
     public async Task UpdateLocationIsRequiredAndMustBeInTheList()
     {
         ValidationFailedException missing = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => this.service.UpdateAsync(this.candidate.Id, UpdateCandidateProfileRequest.Empty, TestContext.Current.CancellationToken));
+            () => this.service.UpdateAsync(this.candidate.Id, UpdateCandidateProfileInput.Empty, TestContext.Current.CancellationToken));
         ValidationFailedException unknown = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => this.service.UpdateAsync(this.candidate.Id, new UpdateCandidateProfileRequest(null, Guid.NewGuid(), null, null), TestContext.Current.CancellationToken));
+            () => this.service.UpdateAsync(this.candidate.Id, new UpdateCandidateProfileInput(null, Guid.NewGuid(), null, null), TestContext.Current.CancellationToken));
 
         Assert.Equal("O campo é obrigatório.", Assert.Single(missing.Fields).Reason);
         Assert.Equal("O valor não pertence à lista pré-definida.", Assert.Single(unknown.Fields).Reason);
@@ -165,18 +165,18 @@ public sealed class CandidateProfileUpdateServiceTests
     [Fact]
     public async Task PreferencesAreSavedAndNullOrEmptyMeanNoFilter()
     {
-        SearchPreferencesDto saved = await this.service.UpdatePreferencesAsync(
+        SearchPreferencesModel saved = await this.service.UpdatePreferencesAsync(
             this.candidate.Id,
-            new SearchPreferencesDto(500, 1400.456m, [WorkMode.Remote, WorkMode.Remote], [ContractType.Permanent]),
+            new SearchPreferencesModel(500, 1400.456m, [WorkMode.Remote, WorkMode.Remote], [ContractType.Permanent]),
             TestContext.Current.CancellationToken);
 
         Assert.Equal(500, saved.MaxDistanceKm);
         Assert.Equal(1400.46m, saved.MinSalaryExpectation);
         Assert.Equal([WorkMode.Remote], saved.WorkModes);
 
-        SearchPreferencesDto cleared = await this.service.UpdatePreferencesAsync(
+        SearchPreferencesModel cleared = await this.service.UpdatePreferencesAsync(
             this.candidate.Id,
-            new SearchPreferencesDto(null, null, [], []),
+            new SearchPreferencesModel(null, null, [], []),
             TestContext.Current.CancellationToken);
 
         Assert.Null(cleared.MaxDistanceKm);
@@ -202,7 +202,7 @@ public sealed class CandidateProfileUpdateServiceTests
     public async Task PreferencesLimits(int distance, double salary, string field)
     {
         this.candidate.MaxDistanceKm = 30;
-        var request = new SearchPreferencesDto(distance, (decimal)salary, [], []);
+        var request = new SearchPreferencesModel(distance, (decimal)salary, [], []);
 
         if (field.Length == 0)
         {
@@ -227,7 +227,7 @@ public sealed class CandidateProfileUpdateServiceTests
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.UpdatePreferencesAsync(
                 this.candidate.Id,
-                new SearchPreferencesDto(null, null, [WorkMode.Remote, (WorkMode)99], [(ContractType)99]),
+                new SearchPreferencesModel(null, null, [WorkMode.Remote, (WorkMode)99], [(ContractType)99]),
                 TestContext.Current.CancellationToken));
 
         Assert.Equal(["workModes[1]", "contractTypes[0]"], exception.Fields.Select(item => item.Field));
@@ -240,19 +240,19 @@ public sealed class CandidateProfileUpdateServiceTests
     [Fact]
     public async Task LinksAreSavedAsGivenInOrderAndReplaceThePreviousOnes()
     {
-        CandidateProfileDto three = await this.service.SetLinksAsync(
+        CandidateProfileModel three = await this.service.SetLinksAsync(
             this.candidate.Id,
-            new SetLinksRequest(["HTTPS://A.pt/X", " http://b.pt ", "https://c.pt"]),
+            new SetLinksInput(["HTTPS://A.pt/X", " http://b.pt ", "https://c.pt"]),
             TestContext.Current.CancellationToken);
         Assert.Equal(["HTTPS://A.pt/X", "http://b.pt", "https://c.pt"], three.Links);
 
-        CandidateProfileDto replaced = await this.service.SetLinksAsync(
+        CandidateProfileModel replaced = await this.service.SetLinksAsync(
             this.candidate.Id,
-            new SetLinksRequest(["https://c.pt"]),
+            new SetLinksInput(["https://c.pt"]),
             TestContext.Current.CancellationToken);
         Assert.Equal(["https://c.pt"], replaced.Links);
 
-        CandidateProfileDto none = await this.service.SetLinksAsync(this.candidate.Id, new SetLinksRequest([]), TestContext.Current.CancellationToken);
+        CandidateProfileModel none = await this.service.SetLinksAsync(this.candidate.Id, new SetLinksInput([]), TestContext.Current.CancellationToken);
         Assert.Empty(none.Links);
     }
 
@@ -268,7 +268,7 @@ public sealed class CandidateProfileUpdateServiceTests
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.SetLinksAsync(
                 this.candidate.Id,
-                new SetLinksRequest(["ftp://x.pt", "https://ok.pt", "https://ok.pt", tooLong]),
+                new SetLinksInput(["ftp://x.pt", "https://ok.pt", "https://ok.pt", tooLong]),
                 TestContext.Current.CancellationToken));
 
         Assert.Equal(["urls", "urls[0]", "urls[2]", "urls[3]"], exception.Fields.Select(item => item.Field));
@@ -284,13 +284,13 @@ public sealed class CandidateProfileUpdateServiceTests
     {
         await this.service.SetLinksAsync(
             this.candidate.Id,
-            new SetLinksRequest(["https://" + new string('a', 492)]),
+            new SetLinksInput(["https://" + new string('a', 492)]),
             TestContext.Current.CancellationToken);
 
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.SetLinksAsync(
                 this.candidate.Id,
-                new SetLinksRequest(["https://" + new string('a', 493)]),
+                new SetLinksInput(["https://" + new string('a', 493)]),
                 TestContext.Current.CancellationToken));
         Assert.Equal("urls[0]", Assert.Single(exception.Fields).Field);
     }
@@ -304,9 +304,9 @@ public sealed class CandidateProfileUpdateServiceTests
     public async Task LinksWithoutTheListAreRequired()
     {
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
-            () => this.service.SetLinksAsync(this.candidate.Id, new SetLinksRequest(null), TestContext.Current.CancellationToken));
+            () => this.service.SetLinksAsync(this.candidate.Id, new SetLinksInput(null), TestContext.Current.CancellationToken));
 
-        Assert.Equal(new FieldErrorDto("urls", FieldReasons.Required), Assert.Single(exception.Fields));
+        Assert.Equal(new FieldError("urls", FieldReasons.Required), Assert.Single(exception.Fields));
         Assert.Equal(0, this.store.Saves);
     }
 
@@ -328,7 +328,7 @@ public sealed class CandidateProfileUpdateServiceTests
         Exception? exception = await Record.ExceptionAsync(
             () => this.service.SetLinksAsync(
                 this.candidate.Id,
-                new SetLinksRequest(["https://a.pt"]),
+                new SetLinksInput(["https://a.pt"]),
                 TestContext.Current.CancellationToken));
 
         if (converted)
@@ -460,7 +460,7 @@ public sealed class CandidateProfileUpdateServiceTests
         await Assert.ThrowsAsync<ConcurrencyConflictException>(
             () => this.service.UpdateAsync(
                 this.candidate.Id,
-                new UpdateCandidateProfileRequest(null, this.location.Id, null, null),
+                new UpdateCandidateProfileInput(null, this.location.Id, null, null),
                 TestContext.Current.CancellationToken));
     }
 

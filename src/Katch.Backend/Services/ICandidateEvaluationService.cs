@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -22,7 +22,7 @@ public interface ICandidateEvaluationService
     /// <returns>Os Candidatos em espera; lista vazia se não houver.</returns>
     /// <exception cref="ElementNotFoundException">Se a vaga não existir ou estiver eliminada (ERR-20).</exception>
     /// <exception cref="ElementForbiddenException">Se a vaga for de outra Empresa (ERR-08).</exception>
-    public Task<List<WaitingCandidateDto>> ListWaitingAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
+    public Task<List<WaitingCandidateModel>> ListWaitingAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Abre o perfil completo do Candidato para a vaga do interesse, com as competências coincidentes com as pretendidas
@@ -38,7 +38,7 @@ public interface ICandidateEvaluationService
     /// </exception>
     /// <exception cref="ElementForbiddenException">Se a vaga do interesse for de outra Empresa (ERR-08).</exception>
     /// <exception cref="OperationConflictException">Se o interesse já não estiver em espera (ERR-35).</exception>
-    public Task<CandidateFullProfileDto> OpenProfileAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken = default);
+    public Task<CandidateFullProfileModel> OpenProfileAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Obtém o curriculum vitae do Candidato, só enquanto o interesse está em espera numa vaga da Empresa (RF061,
@@ -69,7 +69,7 @@ public interface ICandidateEvaluationService
     /// Se o interesse já não estiver em espera, incluindo a perda na concorrência com outro pedido de decisão (ERR-35), ou
     /// se o perfil ainda não tiver sido aberto (ERR-34). Em qualquer erro, nada é alterado.
     /// </exception>
-    public Task<MatchDto> AcceptAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken = default);
+    public Task<MatchModel> AcceptAsync(Guid recruiterId, Guid matchId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Recusa o Candidato (RF064, RF065, RF117; T6): o interesse passa a recusado pelo Recrutador, com o autor e a data da

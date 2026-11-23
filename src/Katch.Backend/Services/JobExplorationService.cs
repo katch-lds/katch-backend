@@ -3,10 +3,10 @@
 using System.Globalization;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -83,7 +83,7 @@ public sealed class JobExplorationService : IJobExplorationService
     }
 
     /// <inheritdoc/>
-    public async Task<JobCardDto?> GetNextCardAsync(Guid candidateId, CancellationToken cancellationToken = default)
+    public async Task<JobCardModel?> GetNextCardAsync(Guid candidateId, CancellationToken cancellationToken = default)
     {
         Candidate candidate = await this.GetCandidateAsync(candidateId, cancellationToken);
 
@@ -104,7 +104,7 @@ public sealed class JobExplorationService : IJobExplorationService
     }
 
     /// <inheritdoc/>
-    public async Task<JobDetailDto> GetDetailAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default)
+    public async Task<JobDetailModel> GetDetailAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default)
     {
         // A mesma parte de estado do RF014 que a resposta à vaga verifica (vaga publicada, não eliminada e não expirada, de
         // Empresa aprovada); a distância, o salário e as preferências não restringem o detalhe.
@@ -125,7 +125,7 @@ public sealed class JobExplorationService : IJobExplorationService
         Location home = await this.GetLocationAsync(candidate.LocationId, cancellationToken);
         Location location = await this.GetLocationAsync(job.LocationId, cancellationToken);
 
-        return new JobDetailDto(
+        return new JobDetailModel(
             this.ToCard(job, company, location, this.distances.DistanceKm(home, location)),
             job.Description,
             job.Skills.Select(skill => skill.Name).Order(Alphabetical).ToList(),
@@ -144,19 +144,19 @@ public sealed class JobExplorationService : IJobExplorationService
     }
 
     /// <inheritdoc/>
-    public Task<QuotaDto> ExpressInterestAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default)
+    public Task<QuotaModel> ExpressInterestAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default)
     {
         return this.RetryOnConflictAsync(() => this.TryExpressInterestAsync(candidateId, jobId, cancellationToken), cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task<QuotaDto> GetQuotaAsync(Guid candidateId, CancellationToken cancellationToken = default)
+    public Task<QuotaModel> GetQuotaAsync(Guid candidateId, CancellationToken cancellationToken = default)
     {
         return this.RetryOnConflictAsync(() => this.TryGetQuotaAsync(candidateId, cancellationToken), cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<CompanyPageDto> GetCompanyPageAsync(Guid companyId, CancellationToken cancellationToken = default)
+    public async Task<Company> GetCompanyPageAsync(Guid companyId, CancellationToken cancellationToken = default)
     {
         // Uma Empresa pendente, recusada ou suspensa não é visível ao Candidato: a mesma resposta que a inexistente.
         Company? company = await this.companies.GetByIdAsync(companyId, cancellationToken);
@@ -165,12 +165,12 @@ public sealed class JobExplorationService : IJobExplorationService
             throw new ElementNotFoundException();
         }
 
-        return CompanyPageMapper.ToPage(company, this.fileUrls);
+        return company;
     }
 
-    private static QuotaDto ToQuota(Candidate candidate)
+    private static QuotaModel ToQuota(Candidate candidate)
     {
-        return new QuotaDto(candidate.SwipeRightsRemaining, Candidate.MaxInterests, candidate.NextSwipeAvailableAt);
+        return new QuotaModel(candidate.SwipeRightsRemaining, Candidate.MaxInterests, candidate.NextSwipeAvailableAt);
     }
 
     /// <summary>
@@ -178,7 +178,7 @@ public sealed class JobExplorationService : IJobExplorationService
     /// passar de <see cref="ConflictRetryLimit"/>. Em cada repetição descarta o contexto e espera um pouco (jitter), para
     /// que os pedidos simultâneos do mesmo Candidato se serializem e cada um leia a quota já atualizada pelos outros.
     /// </summary>
-    private async Task<QuotaDto> RetryOnConflictAsync(Func<Task<QuotaDto>> operation, CancellationToken cancellationToken)
+    private async Task<QuotaModel> RetryOnConflictAsync(Func<Task<QuotaModel>> operation, CancellationToken cancellationToken)
     {
         long started = this.timeProvider.GetTimestamp();
 
@@ -197,7 +197,7 @@ public sealed class JobExplorationService : IJobExplorationService
         }
     }
 
-    private async Task<QuotaDto> TryExpressInterestAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken)
+    private async Task<QuotaModel> TryExpressInterestAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken)
     {
         DateTimeOffset now = this.clock.UtcNow;
 
@@ -213,7 +213,7 @@ public sealed class JobExplorationService : IJobExplorationService
         return ToQuota(candidate);
     }
 
-    private async Task<QuotaDto> TryGetQuotaAsync(Guid candidateId, CancellationToken cancellationToken)
+    private async Task<QuotaModel> TryGetQuotaAsync(Guid candidateId, CancellationToken cancellationToken)
     {
         Candidate candidate = await this.GetCandidateAsync(candidateId, cancellationToken);
 
@@ -246,9 +246,9 @@ public sealed class JobExplorationService : IJobExplorationService
         }
     }
 
-    private JobCardDto ToCard(Job job, Company company, Location location, int distanceKm)
+    private JobCardModel ToCard(Job job, Company company, Location location, int distanceKm)
     {
-        return new JobCardDto(
+        return new JobCardModel(
             job.Id,
             job.Title,
             company.CompanyName,

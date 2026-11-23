@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -18,7 +18,7 @@ public interface ICandidateProfileService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>O perfil, com o URL da fotografia e sem os caminhos dos ficheiros.</returns>
     /// <exception cref="ElementNotFoundException">Se o Candidato não existir.</exception>
-    public Task<CandidateProfileDto> GetAsync(Guid candidateId, CancellationToken cancellationToken = default);
+    public Task<CandidateProfileModel> GetAsync(Guid candidateId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Grava a função pretendida, a localidade, a disponibilidade e o resumo da experiência (RF006; P08, P14). Os
@@ -30,9 +30,9 @@ public interface ICandidateProfileService
     /// <returns>O perfil atualizado.</returns>
     /// <exception cref="ValidationFailedException">Se algum campo não cumprir a validação (todos são indicados).</exception>
     /// <exception cref="ElementNotFoundException">Se o Candidato não existir.</exception>
-    public Task<CandidateProfileDto> UpdateAsync(
+    public Task<CandidateProfileModel> UpdateAsync(
         Guid candidateId,
-        UpdateCandidateProfileRequest request,
+        UpdateCandidateProfileInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -48,9 +48,9 @@ public interface ICandidateProfileService
     /// anteriores mantêm-se.
     /// </exception>
     /// <exception cref="ElementNotFoundException">Se o Candidato não existir.</exception>
-    public Task<SearchPreferencesDto> UpdatePreferencesAsync(
+    public Task<SearchPreferencesModel> UpdatePreferencesAsync(
         Guid candidateId,
-        SearchPreferencesDto request,
+        SearchPreferencesModel request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -64,9 +64,9 @@ public interface ICandidateProfileService
     /// Se houver mais de 3 endereços, ou algum sem <c>http://</c> ou <c>https://</c>, acima de 500 caracteres ou repetido.
     /// </exception>
     /// <exception cref="ElementNotFoundException">Se o Candidato não existir.</exception>
-    public Task<CandidateProfileDto> SetLinksAsync(
+    public Task<CandidateProfileModel> SetLinksAsync(
         Guid candidateId,
-        SetLinksRequest request,
+        SetLinksInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -111,9 +111,9 @@ public interface ICandidateProfileService
     /// Se <c>skillId</c> faltar, não pertencer à lista ou já estiver associada ao perfil.
     /// </exception>
     /// <exception cref="ElementNotFoundException">Se o Candidato não existir.</exception>
-    public Task<CandidateProfileDto> AddSkillAsync(
+    public Task<CandidateProfileModel> AddSkillAsync(
         Guid candidateId,
-        AddSkillRequest request,
+        AddSkillInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -137,9 +137,9 @@ public interface ICandidateProfileService
     /// Se <c>label</c> faltar, não cumprir o P07 ou já estiver indicada no perfil, sem distinção de maiúsculas.
     /// </exception>
     /// <exception cref="ElementNotFoundException">Se o Candidato não existir.</exception>
-    public Task<CandidateProfileDto> AddCustomSkillAsync(
+    public Task<CandidateProfileModel> AddCustomSkillAsync(
         Guid candidateId,
-        AddCustomSkillRequest request,
+        AddCustomSkillInput request,
         CancellationToken cancellationToken = default);
 
     /// <summary>

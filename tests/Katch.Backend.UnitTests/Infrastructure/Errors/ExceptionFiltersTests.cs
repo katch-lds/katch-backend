@@ -3,6 +3,7 @@
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -35,7 +36,7 @@ public sealed class ExceptionFiltersTests
         {
             "not-found" => new ElementNotFoundException(),
             "forbidden" => new ElementForbiddenException(),
-            _ => new OperationConflictException(ApiErrorResponse.InvalidState("publicada")),
+            _ => new OperationConflictException(ServiceErrors.InvalidState("publicada")),
         };
         ExceptionContext context = NewContext(exception);
 
@@ -71,19 +72,21 @@ public sealed class ExceptionFiltersTests
     }
 
     /// <summary>
-    /// A validação falhada dá <c>400</c> ERR-10 com todos os campos em erro, pela ordem.
+    /// A validação falhada dá <c>400</c> ERR-10 com todos os campos em erro, pela ordem, no formato da API (I138).
     /// </summary>
     [Fact]
     public void ValidationFailedBecomesErr10WithAllFields()
     {
-        FieldErrorDto[] fields = [new("email", FieldReasons.Required), new("phoneNumber", FieldReasons.InvalidValue)];
+        FieldError[] fields = [new("email", FieldReasons.Required), new("phoneNumber", FieldReasons.InvalidValue)];
         ExceptionContext context = NewContext(new ValidationFailedException(fields));
 
         new ValidationFailedExceptionFilter().OnException(context);
 
         ApiErrorDto body = Assert.IsType<ApiErrorDto>(Assert.IsType<BadRequestObjectResult>(context.Result).Value);
         Assert.Equal(ApiErrorResponse.ValidationFailedCode, body.Code);
-        Assert.Equal(fields, body.Fields);
+        Assert.Equal(
+            [new FieldErrorDto("email", FieldReasons.Required), new FieldErrorDto("phoneNumber", FieldReasons.InvalidValue)],
+            body.Fields!);
         Assert.True(context.ExceptionHandled);
     }
 

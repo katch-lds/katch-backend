@@ -1,9 +1,13 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using Katch.Backend.Controllers;
+using Katch.Backend.Controllers.Mapping;
+using Katch.Backend.Domain;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
+using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
@@ -20,6 +24,7 @@ public sealed class CompanyControllerTests
 {
     private readonly Guid recruiterId = Guid.NewGuid();
     private readonly ServiceDouble<ICompanyService> service = new();
+    private readonly FileUrlBuilder fileUrlBuilder = new();
     private readonly CompanyController controller;
 
     /// <summary>
@@ -27,7 +32,7 @@ public sealed class CompanyControllerTests
     /// </summary>
     public CompanyControllerTests()
     {
-        this.controller = new CompanyController(this.service.Service).WithUser(this.recruiterId, AccountRoles.Recruiter);
+        this.controller = new CompanyController(this.service.Service, this.fileUrlBuilder).WithUser(this.recruiterId, AccountRoles.Recruiter);
     }
 
     /// <summary>
@@ -38,31 +43,32 @@ public sealed class CompanyControllerTests
     [Fact]
     public async Task RegisterReturnsCreatedWithTheStatusRoute()
     {
-        var status = ControllerTesting.Sentinel<CompanyStatusDto>();
+        CompanyStatusModel status = ServiceModels.RegistrationStatus;
         this.service.Returns(nameof(ICompanyService.RegisterAsync), status);
 
         ActionResult<CompanyStatusDto> result = await this.controller.Register(null, TestContext.Current.CancellationToken);
 
         CreatedResult created = Assert.IsType<CreatedResult>(result.Result);
         Assert.Equal("/api/recruiter/company/status", created.Location);
-        Assert.Same(status, created.Value);
+        Assert.Equal(status.ToDto(), created.Value);
         ServiceCall call = this.service.SingleCall(nameof(ICompanyService.RegisterAsync));
         Assert.Equal(this.recruiterId, call.Arguments[0]);
-        Assert.Same(CompanyRegistrationRequest.Empty, call.Arguments[1]);
+        Assert.Equal(CompanyRegistrationInput.Empty, call.Arguments[1]);
     }
 
     /// <summary>
     /// A nova submissão, a consulta do estado e dos dados, a alteração e a página devolvem o resultado do serviço para o
-    /// Recrutador da credencial (RF044, RF045, RF046, RF049).
+    /// Recrutador da credencial, no formato da API; a página é construída a partir da Empresa devolvida pelo serviço,
+    /// com os URL da API do logótipo e da galeria (RF044, RF045, RF046, RF049, I138).
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
     public async Task ReadsAndUpdatesReturnTheServiceResult()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
-        var status = ControllerTesting.Sentinel<CompanyStatusDto>();
-        var registration = ControllerTesting.Sentinel<CompanyRegistrationDto>();
-        var page = ControllerTesting.Sentinel<CompanyPageDto>();
+        CompanyStatusModel status = ServiceModels.RegistrationStatus;
+        CompanyRegistrationModel registration = ServiceModels.CompanyRegistration;
+        Company page = ServiceModels.Company;
         this.service
             .Returns(nameof(ICompanyService.ResubmitAsync), status)
             .Returns(nameof(ICompanyService.GetStatusAsync), status)
@@ -71,17 +77,20 @@ public sealed class CompanyControllerTests
             .Returns(nameof(ICompanyService.GetPageAsync), page)
             .Returns(nameof(ICompanyService.UpdatePageAsync), page);
 
-        Assert.Same(status, (await this.controller.Resubmit(null, token)).Value);
-        Assert.Same(status, (await this.controller.GetStatus(token)).Value);
-        Assert.Same(registration, (await this.controller.GetRegistration(token)).Value);
-        Assert.Same(status, (await this.controller.UpdateRegistration(null, token)).Value);
-        Assert.Same(page, (await this.controller.GetPage(token)).Value);
-        Assert.Same(page, (await this.controller.UpdatePage(null, token)).Value);
+        CompanyPageDto expectedPage = page.ToPageDto(this.fileUrlBuilder);
+
+        Assert.Equal(status.ToDto(), (await this.controller.Resubmit(null, token)).Value);
+        Assert.Equal(status.ToDto(), (await this.controller.GetStatus(token)).Value);
+        Assert.Equal(registration.ToDto(), (await this.controller.GetRegistration(token)).Value);
+        Assert.Equal(status.ToDto(), (await this.controller.UpdateRegistration(null, token)).Value);
+        Assert.Equivalent(expectedPage, (await this.controller.GetPage(token)).Value, strict: true);
+        Assert.Equivalent(expectedPage, (await this.controller.UpdatePage(null, token)).Value, strict: true);
+        Assert.Equal("/api/files/COMPANY_LOGO/0123456789abcdef0123456789abcdef.png", expectedPage.LogoUrl);
 
         Assert.All(this.service.Calls, call => Assert.Equal(this.recruiterId, call.Arguments[0]));
-        Assert.Same(CompanyRegistrationRequest.Empty, this.service.Calls[0].Arguments[1]);
-        Assert.Same(CompanyRegistrationRequest.Empty, this.service.Calls[3].Arguments[1]);
-        Assert.Same(CompanyPageRequest.Empty, this.service.Calls[5].Arguments[1]);
+        Assert.Equal(CompanyRegistrationInput.Empty, this.service.Calls[0].Arguments[1]);
+        Assert.Equal(CompanyRegistrationInput.Empty, this.service.Calls[3].Arguments[1]);
+        Assert.Equal(CompanyPageInput.Empty, this.service.Calls[5].Arguments[1]);
     }
 
     /// <summary>

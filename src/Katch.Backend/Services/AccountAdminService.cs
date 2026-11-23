@@ -3,10 +3,9 @@
 using System.Globalization;
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
-using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Repositories;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -77,25 +76,25 @@ public sealed class AccountAdminService : IAccountAdminService
     }
 
     /// <inheritdoc/>
-    public async Task<List<AccountDto>> ListAccountsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<AccountModel>> ListAccountsAsync(CancellationToken cancellationToken = default)
     {
         List<AppUser> accounts = await this.users.ListAsync(AccountFilter.All, cancellationToken);
 
         return accounts
             .OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase)
-            .Select(user => new AccountDto(user.Id, user.Email, user.UserType, user.Status))
+            .Select(user => new AccountModel(user.Id, user.Email, user.UserType, user.Status))
             .ToList();
     }
 
     /// <inheritdoc/>
-    public async Task<List<CandidateAdminDto>> ListCandidatesAsync(CancellationToken cancellationToken = default)
+    public async Task<List<CandidateAdminModel>> ListCandidatesAsync(CancellationToken cancellationToken = default)
     {
         List<Candidate> registered = await this.candidates.ListForAdminAsync(cancellationToken);
         Dictionary<Guid, string> locationNames = (await this.referenceData.ListLocationsAsync(cancellationToken))
             .ToDictionary(location => location.Id, ReferenceListService.DisplayName);
 
         return registered
-            .Select(candidate => new CandidateAdminDto(
+            .Select(candidate => new CandidateAdminModel(
                 candidate.Id,
                 candidate.FullName,
                 candidate.User.Email,
@@ -116,7 +115,7 @@ public sealed class AccountAdminService : IAccountAdminService
         // A conta de Administrador nunca é bloqueada (RF086; AppUser.Block).
         if (user.UserType == UserType.Admin)
         {
-            throw new OperationConflictException(ApiErrorResponse.InvalidState("conta de Administrador"));
+            throw new OperationConflictException(ServiceErrors.InvalidState("conta de Administrador"));
         }
 
         EnsureActive(user);
@@ -152,7 +151,7 @@ public sealed class AccountAdminService : IAccountAdminService
 
         if (user.Status == AccountStatus.Active)
         {
-            throw new OperationConflictException(ApiErrorResponse.InvalidState(AccountStatusLabel(user.Status)));
+            throw new OperationConflictException(ServiceErrors.InvalidState(AccountStatusLabel(user.Status)));
         }
 
         // As conversas encerradas pelo bloqueio ou pela suspensão mantêm-se em consulta (RF075).
@@ -165,7 +164,7 @@ public sealed class AccountAdminService : IAccountAdminService
     {
         if (user.Status != AccountStatus.Active)
         {
-            throw new OperationConflictException(ApiErrorResponse.InvalidState(AccountStatusLabel(user.Status)));
+            throw new OperationConflictException(ServiceErrors.InvalidState(AccountStatusLabel(user.Status)));
         }
     }
 
@@ -188,7 +187,7 @@ public sealed class AccountAdminService : IAccountAdminService
         {
             // Uma das conversas foi alterada por outro pedido (por exemplo, encerrada por uma das partes) entre a leitura e
             // a gravação: nada fica gravado e o Administrador repete a operação (modelo de dados, secção 7.3).
-            throw new OperationConflictException(ApiErrorResponse.ConcurrencyConflict());
+            throw new OperationConflictException(ServiceErrors.ConcurrencyConflict());
         }
     }
 }

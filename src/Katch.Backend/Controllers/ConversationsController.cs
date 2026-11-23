@@ -1,10 +1,12 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using System.Globalization;
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -46,7 +48,9 @@ public sealed class ConversationsController : ControllerBase
     [ProducesResponseType<ApiErrorDto>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<List<ConversationSummaryDto>>> List(CancellationToken cancellationToken)
     {
-        return await this.conversationService.ListAsync(this.GetAccountId(), cancellationToken);
+        return (await this.conversationService.ListAsync(this.GetAccountId(), cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList();
     }
 
     /// <summary>
@@ -72,7 +76,9 @@ public sealed class ConversationsController : ControllerBase
         [FromQuery] string? after,
         CancellationToken cancellationToken)
     {
-        return await this.conversationService.OpenAsync(this.GetAccountId(), matchId, ParseAfter(after), cancellationToken);
+        return (await this.conversationService.OpenAsync(this.GetAccountId(), matchId, ParseAfter(after), cancellationToken))
+            .Select(item => item.ToDto())
+            .ToList();
     }
 
     /// <summary>
@@ -98,11 +104,11 @@ public sealed class ConversationsController : ControllerBase
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] SendMessageRequest? request,
         CancellationToken cancellationToken)
     {
-        MessageDto message = await this.conversationService.SendAsync(
+        MessageDto message = (await this.conversationService.SendAsync(
             this.GetAccountId(),
             matchId,
-            request ?? SendMessageRequest.Empty,
-            cancellationToken);
+            (request ?? SendMessageRequest.Empty).ToInput(),
+            cancellationToken)).ToDto();
 
         // Não há consulta individual de mensagens, por isso a resposta não tem Location.
         return this.StatusCode(StatusCodes.Status201Created, message);
@@ -143,7 +149,7 @@ public sealed class ConversationsController : ControllerBase
                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
                 out DateTimeOffset parsed))
         {
-            throw new ValidationFailedException([new FieldErrorDto("after", FieldReasons.InvalidValue)]);
+            throw new ValidationFailedException([new FieldError("after", FieldReasons.InvalidValue)]);
         }
 
         return parsed;

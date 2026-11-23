@@ -2,12 +2,12 @@
 
 using Katch.Backend.Domain;
 using Katch.Backend.Domain.Enums;
-using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Infrastructure.Files;
 using Katch.Backend.Repositories;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -72,7 +72,7 @@ public sealed class CompanyPageServiceTests
     {
         Company company = this.AddCompany(status);
 
-        CompanyRegistrationDto registration = await this.service.GetRegistrationAsync(
+        CompanyRegistrationModel registration = await this.service.GetRegistrationAsync(
             RecruiterId,
             TestContext.Current.CancellationToken);
 
@@ -107,7 +107,7 @@ public sealed class CompanyPageServiceTests
     {
         Company company = this.AddCompany(CompanyStatus.Approved);
 
-        CompanyStatusDto status = await this.service.UpdateRegistrationAsync(
+        CompanyStatusModel status = await this.service.UpdateRegistrationAsync(
             RecruiterId,
             this.Request(contactPhone: "253000222", address: "  Rua Nova de Santa Cruz, 15  "),
             TestContext.Current.CancellationToken);
@@ -138,7 +138,7 @@ public sealed class CompanyPageServiceTests
                 this.Request(taxId: "509999999", contactPhone: "253000222"),
                 TestContext.Current.CancellationToken));
 
-        FieldErrorDto error = Assert.Single(exception.Fields);
+        FieldError error = Assert.Single(exception.Fields);
         Assert.Equal("taxId", error.Field);
         Assert.Equal("O número de identificação fiscal não pode ser alterado depois da aprovação.", error.Reason);
         Assert.Equal(TaxId, company.TaxId);
@@ -183,7 +183,7 @@ public sealed class CompanyPageServiceTests
         this.AddCompany(CompanyStatus.Approved);
         this.store.TaxIdsOfOtherCompanies.Add(TaxId);
 
-        CompanyStatusDto status = await this.service.UpdateRegistrationAsync(
+        CompanyStatusModel status = await this.service.UpdateRegistrationAsync(
             RecruiterId,
             this.Request(),
             TestContext.Current.CancellationToken);
@@ -200,18 +200,17 @@ public sealed class CompanyPageServiceTests
     {
         Company company = this.AddCompany(CompanyStatus.Approved);
 
-        CompanyPageDto page = await this.service.UpdatePageAsync(
+        Company page = await this.service.UpdatePageAsync(
             RecruiterId,
-            new CompanyPageRequest("  Software de gestão de frotas.  ", " https://www.lumen-exemplo.pt "),
+            new CompanyPageInput("  Software de gestão de frotas.  ", " https://www.lumen-exemplo.pt "),
             TestContext.Current.CancellationToken);
 
-        Assert.Equal(company.Id, page.CompanyId);
+        Assert.Same(company, page);
         Assert.Equal("Lumen Software, Lda.", page.CompanyName);
         Assert.Equal("Software de gestão de frotas.", page.Description);
         Assert.Equal("https://www.lumen-exemplo.pt", page.Website);
-        Assert.Null(page.LogoUrl);
-        Assert.Empty(page.PhotoUrls);
-        Assert.Equal("https://www.lumen-exemplo.pt", company.Website);
+        Assert.Null(page.LogoPath);
+        Assert.Empty(page.PhotoPaths);
         Assert.Equal(1, this.store.Saves);
     }
 
@@ -225,9 +224,9 @@ public sealed class CompanyPageServiceTests
         Company company = this.AddCompany(CompanyStatus.Approved);
         company.UpdatePage("Descrição anterior.", "http://anterior.pt");
 
-        CompanyPageDto page = await this.service.UpdatePageAsync(
+        Company page = await this.service.UpdatePageAsync(
             RecruiterId,
-            new CompanyPageRequest(null, "   "),
+            new CompanyPageInput(null, "   "),
             TestContext.Current.CancellationToken);
 
         Assert.Null(page.Description);
@@ -249,7 +248,7 @@ public sealed class CompanyPageServiceTests
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.UpdatePageAsync(
                 RecruiterId,
-                new CompanyPageRequest(new string('a', 1001), "www.lumen-exemplo.pt"),
+                new CompanyPageInput(new string('a', 1001), "www.lumen-exemplo.pt"),
                 TestContext.Current.CancellationToken));
 
         Assert.Equal(
@@ -273,9 +272,9 @@ public sealed class CompanyPageServiceTests
         this.AddCompany(CompanyStatus.Approved);
         string website = "https://" + new string('a', 492);
 
-        CompanyPageDto page = await this.service.UpdatePageAsync(
+        Company page = await this.service.UpdatePageAsync(
             RecruiterId,
-            new CompanyPageRequest(new string('a', 1000), website),
+            new CompanyPageInput(new string('a', 1000), website),
             TestContext.Current.CancellationToken);
 
         Assert.Equal(500, page.Website!.Length);
@@ -283,14 +282,15 @@ public sealed class CompanyPageServiceTests
         ValidationFailedException exception = await Assert.ThrowsAsync<ValidationFailedException>(
             () => this.service.UpdatePageAsync(
                 RecruiterId,
-                new CompanyPageRequest(null, website + "a"),
+                new CompanyPageInput(null, website + "a"),
                 TestContext.Current.CancellationToken));
 
         Assert.Equal(("website", "O texto não pode exceder 500 caracteres."), (exception.Fields[0].Field, exception.Fields[0].Reason));
     }
 
     /// <summary>
-    /// A página consultada traz os URL da API do logótipo e da galeria, pela ordem, e nunca os caminhos (6.4.9).
+    /// A página consultada é a da Empresa do Recrutador, com o logótipo e a galeria pela ordem; a conversão dos caminhos
+    /// nos URL da API é feita na camada da API (6.4.9, I138).
     /// </summary>
     /// <returns>Tarefa do teste.</returns>
     [Fact]
@@ -301,15 +301,16 @@ public sealed class CompanyPageServiceTests
         company.AddGalleryPhoto("company_photo/11111111111111111111111111111111.jpg");
         company.AddGalleryPhoto("company_photo/22222222222222222222222222222222.png");
 
-        CompanyPageDto page = await this.service.GetPageAsync(RecruiterId, TestContext.Current.CancellationToken);
+        Company page = await this.service.GetPageAsync(RecruiterId, TestContext.Current.CancellationToken);
 
-        Assert.Equal("/api/files/COMPANY_LOGO/0123456789abcdef0123456789abcdef.png", page.LogoUrl);
+        Assert.Same(company, page);
+        Assert.Equal("company_logo/0123456789abcdef0123456789abcdef.png", page.LogoPath);
         Assert.Equal(
             [
-                "/api/files/COMPANY_PHOTO/11111111111111111111111111111111.jpg",
-                "/api/files/COMPANY_PHOTO/22222222222222222222222222222222.png",
+                "company_photo/11111111111111111111111111111111.jpg",
+                "company_photo/22222222222222222222222222222222.png",
             ],
-            page.PhotoUrls);
+            page.PhotoPaths);
     }
 
     /// <summary>
@@ -524,7 +525,7 @@ public sealed class CompanyPageServiceTests
         CompanyNotApprovedException exception = await Assert.ThrowsAsync<CompanyNotApprovedException>(() => operation switch
         {
             "registration" => this.service.UpdateRegistrationAsync(RecruiterId, this.Request(), TestContext.Current.CancellationToken),
-            "page" => this.service.UpdatePageAsync(RecruiterId, new CompanyPageRequest("Texto", null), TestContext.Current.CancellationToken),
+            "page" => this.service.UpdatePageAsync(RecruiterId, new CompanyPageInput("Texto", null), TestContext.Current.CancellationToken),
             "logo" => this.service.UploadLogoAsync(RecruiterId, File("logo.png", Png), TestContext.Current.CancellationToken),
             _ => this.service.AddGalleryPhotoAsync(RecruiterId, File("foto.png", Png), TestContext.Current.CancellationToken),
         });
@@ -576,12 +577,12 @@ public sealed class CompanyPageServiceTests
         return company;
     }
 
-    private CompanyRegistrationRequest Request(
+    private CompanyRegistrationInput Request(
         string taxId = TaxId,
         string contactPhone = "253000111",
         string address = "Avenida da Liberdade, 100, 4710-000 Braga")
     {
-        return new CompanyRegistrationRequest(
+        return new CompanyRegistrationInput(
             "Lumen Software, Lda.",
             taxId,
             Industry.Technology,

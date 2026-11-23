@@ -1,10 +1,12 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
 using System.Globalization;
+using Katch.Backend.Controllers.Mapping;
 using Katch.Backend.Dtos;
 using Katch.Backend.Infrastructure.Authentication;
 using Katch.Backend.Infrastructure.Errors;
 using Katch.Backend.Services;
+using Katch.Backend.Services.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -56,7 +58,7 @@ public sealed class AdminIndicatorsController : ControllerBase
     {
         // As datas chegam como texto para que a falta e o formato errado de cada uma sejam indicados com o campo na
         // mesma resposta; a conversão automática do ASP.NET Core devolvia um 400 sem o campo.
-        var errors = new List<FieldErrorDto>();
+        var errors = new List<FieldError>();
         DateOnly? start = ParseDate(nameof(from), from, errors);
         DateOnly? end = ParseDate(nameof(to), to, errors);
 
@@ -65,20 +67,20 @@ public sealed class AdminIndicatorsController : ControllerBase
             throw new ValidationFailedException(errors);
         }
 
-        return await this.indicatorService.GetAsync(start!.Value, end!.Value, cancellationToken);
+        return (await this.indicatorService.GetAsync(start!.Value, end!.Value, cancellationToken)).ToDto();
     }
 
-    private static DateOnly? ParseDate(string field, string? value, List<FieldErrorDto> errors)
+    private static DateOnly? ParseDate(string field, string? value, List<FieldError> errors)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            errors.Add(new FieldErrorDto(field, FieldReasons.Required));
+            errors.Add(new FieldError(field, FieldReasons.Required));
             return null;
         }
 
         if (!DateOnly.TryParseExact(value.Trim(), DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly date))
         {
-            errors.Add(new FieldErrorDto(field, FieldReasons.DateFormat));
+            errors.Add(new FieldError(field, FieldReasons.DateFormat));
             return null;
         }
 

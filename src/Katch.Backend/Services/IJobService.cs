@@ -1,6 +1,6 @@
 // Copyright (c) Grupo G11. Katch, LDS 2026/2027.
 
-using Katch.Backend.Dtos;
+using Katch.Backend.Services.Models;
 
 namespace Katch.Backend.Services;
 
@@ -20,7 +20,7 @@ public interface IJobService
     /// <param name="recruiterId">Identificador do Recrutador da credencial de sessão.</param>
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>As vagas da Empresa.</returns>
-    public Task<List<JobDto>> ListOwnAsync(Guid recruiterId, CancellationToken cancellationToken = default);
+    public Task<List<JobModel>> ListOwnAsync(Guid recruiterId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Cria uma vaga não publicada na Empresa do Recrutador e regista a operação (documentação da API v02, secção 6.5.2;
@@ -31,7 +31,7 @@ public interface IJobService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A vaga criada.</returns>
     /// <exception cref="ValidationFailedException">Com todos os campos em erro.</exception>
-    public Task<JobDto> CreateAsync(Guid recruiterId, JobRequest request, CancellationToken cancellationToken = default);
+    public Task<JobModel> CreateAsync(Guid recruiterId, JobInput request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Substitui os dados editáveis de uma vaga que não está encerrada, sem mudar o estado, e regista a operação
@@ -43,7 +43,7 @@ public interface IJobService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A vaga alterada.</returns>
     /// <exception cref="OperationConflictException">ERR-30, se a vaga estiver encerrada.</exception>
-    public Task<JobDto> UpdateAsync(Guid recruiterId, Guid jobId, JobRequest request, CancellationToken cancellationToken = default);
+    public Task<JobModel> UpdateAsync(Guid recruiterId, Guid jobId, JobInput request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Publica uma vaga não publicada cuja data-limite não foi atingida (documentação da API v02, secção 6.5.4; RF053).
@@ -53,7 +53,7 @@ public interface IJobService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A vaga publicada.</returns>
     /// <exception cref="OperationConflictException">ERR-30, fora de não publicada ou com a data-limite atingida.</exception>
-    public Task<JobDto> PublishAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
+    public Task<JobModel> PublishAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Suspende uma vaga publicada; os interesses mantêm-se (documentação da API v02, secção 6.5.5; RF055, RF113).
@@ -63,7 +63,7 @@ public interface IJobService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A vaga suspensa.</returns>
     /// <exception cref="OperationConflictException">ERR-30, fora de publicada.</exception>
-    public Task<JobDto> SuspendAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
+    public Task<JobModel> SuspendAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Volta a publicar uma vaga suspensa, sem mudar a data da primeira publicação (documentação da API v02, secção
@@ -74,7 +74,7 @@ public interface IJobService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A vaga publicada.</returns>
     /// <exception cref="OperationConflictException">ERR-30, fora de suspensa.</exception>
-    public Task<JobDto> RepublishAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
+    public Task<JobModel> RepublishAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Encerra definitivamente uma vaga; os interesses e os matches mantêm-se (documentação da API v02, secção 6.5.7;
@@ -85,7 +85,7 @@ public interface IJobService
     /// <param name="cancellationToken">Cancelamento do pedido.</param>
     /// <returns>A vaga encerrada.</returns>
     /// <exception cref="OperationConflictException">ERR-30, se a vaga já estiver encerrada.</exception>
-    public Task<JobDto> CloseAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
+    public Task<JobModel> CloseAsync(Guid recruiterId, Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Elimina logicamente uma vaga sem interesses registados (documentação da API v02, secção 6.5.8; RF058, RF114).
